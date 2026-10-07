@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Request an account · BFS Material Orders{% endblock %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<h1>Request an account</h1>
+<p class="help">Fill in your details. An admin will check and approve your account before you can place orders.</p>
+<form method="post">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <button class="primary">Send request</button>
+</form>
+<p><a href="{% url 'accounts:login' %}">Back to sign in</a></p>
+{% endblock %}

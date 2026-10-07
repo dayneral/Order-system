@@ -1,0 +1,35 @@
+# Render Blueprint: creates the web service and database in one go.
+# Render > New > Blueprint > pick this repository.
+# The daily retention cron job is added in stage 5.
+databases:
+  - name: bfs-orders-db
+    region: frankfurt
+    plan: basic-256mb
+    databaseName: bfs_orders
+    user: bfs
+
+services:
+  - type: web
+    name: bfs-orders
+    runtime: python
+    region: frankfurt
+    plan: starter
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: gunicorn bfs.wsgi --workers 2 --timeout 60
+    healthCheckPath: /accounts/sign-in/
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bfs-orders-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: EMAIL_HOST_PASSWORD
+        sync: false   # entered by hand in the Render dashboard
+      - key: EMAIL_HOST
+        value: smtp.ionos.co.uk
+      - key: EMAIL_HOST_USER
+        value: materialorders@bfsuk.org
+      - key: STORES_EMAIL
+        value: stores@bfsuk.org

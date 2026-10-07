@@ -1,0 +1,33 @@
+{% load static %}<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}BFS Material Orders{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{% url 'home' %}">BFS Material Orders</a>
+  {% if user.is_authenticated %}
+  <nav>
+    <a href="{% url 'home' %}">Home</a>
+    {% if user.is_admin %}
+      <a href="{% url 'accounts:user_list' %}">Users{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}</a>
+      <a href="{% url 'admin:index' %}">Data admin</a>
+    {% endif %}
+  </nav>
+  <div class="who">
+    {{ user.full_name }}{% if user.is_admin %} <span class="tag">Admin</span>{% endif %}
+    <form method="post" action="{% url 'accounts:logout' %}" class="inline">{% csrf_token %}<button class="link">Sign out</button></form>
+  </div>
+  {% endif %}
+</header>
+<main class="{% block main_class %}page{% endblock %}">
+  {% if messages %}
+    {% for message in messages %}<div class="msg msg-{{ message.tags }}">{{ message }}</div>{% endfor %}
+  {% endif %}
+  {% block help %}{% endblock %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

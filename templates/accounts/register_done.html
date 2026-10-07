@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<h1>Request sent</h1>
+<p>Thank you. Your account is waiting for an admin to approve it. You will be able to sign in once it is approved.</p>
+<p><a href="{% url 'accounts:login' %}">Back to sign in</a></p>
+{% endblock %}

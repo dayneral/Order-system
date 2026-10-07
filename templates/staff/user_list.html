@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Users · BFS Material Orders{% endblock %}
+{% block help %}<p class="help">Approve new accounts here. Only approved users can sign in and place orders. Every action is recorded in the audit history.</p>{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<table class="grid">
+  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Requested</th><th>Last sign-in</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+    <tr class="status-{{ u.status }}">
+      <td>{{ u.full_name }}</td>
+      <td>{{ u.email }}</td>
+      <td>{{ u.get_role_display }}</td>
+      <td><span class="pill pill-{{ u.status }}">{{ u.get_status_display }}</span></td>
+      <td>{{ u.date_joined|date:"d M Y" }}</td>
+      <td>{{ u.last_login|date:"d M Y H:i"|default:"Never" }}</td>
+      <td>
+        <form method="post" action="{% url 'accounts:user_action' u.pk %}" class="actions">{% csrf_token %}
+          {% if u.status == "pending" %}
+            <button name="action" value="approve" class="primary">Approve</button>
+            <button name="action" value="reject">Reject</button>
+          {% elif u.status == "approved" %}
+            <button name="action" value="send_reset">Send password reset</button>
+            {% if u.pk != user.pk %}
+              {% if u.role == "admin" %}<button name="action" value="make_ordering">Make ordering user</button>
+              {% else %}<button name="action" value="make_admin">Make admin</button>{% endif %}
+              <button name="action" value="disable" class="danger" onclick="return confirm('Disable {{ u.full_name|escapejs }}? They will no longer be able to sign in.')">Disable</button>
+            {% endif %}
+          {% else %}
+            <button name="action" value="reactivate">Re-enable</button>
+          {% endif %}
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7">No users yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
