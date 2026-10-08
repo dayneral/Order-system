@@ -9,6 +9,8 @@
       <a href="?section={{ s.key }}" class="{% if s.key == current_section %}active{% endif %}"
          hx-get="{% url 'orders:items' order.pk %}?section={{ s.key }}" hx-target="#items" hx-swap="outerHTML">{{ s.name }}</a>
     {% endfor %}
+    {% if has_unsectioned %}<a href="?section=unsectioned" class="{% if current_section == 'unsectioned' %}active{% endif %}"
+       hx-get="{% url 'orders:items' order.pk %}?section=unsectioned" hx-target="#items" hx-swap="outerHTML">Other</a>{% endif %}
     <a href="?section=kits" class="kits-tab{% if current_section == 'kits' %} active{% endif %}"
        hx-get="{% url 'orders:items' order.pk %}?section=kits" hx-target="#items" hx-swap="outerHTML">Kits</a>
   </div>
@@ -32,7 +34,7 @@
         <td class="code">{{ item.part_no }}</td>
         <td>{{ item.name }}
           {% if item.is_flammable %}<span class="flag flam">FLAMMABLE</span>{% endif %}
-          {% if q %}<div class="hint">{{ item.section.name }}</div>{% endif %}
+          {% if q %}<div class="hint">{{ item.section.name|default:"Other" }}</div>{% endif %}
           <div class="hint">{% include "orders/_unit_hint.html" %}</div>
         </td>
         <td class="num">{% if item.trade_price is not None %}£{{ item.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>

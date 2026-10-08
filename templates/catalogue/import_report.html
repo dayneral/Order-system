@@ -81,7 +81,7 @@
 {% if r.no_section or r.unknown_sections %}
 <details open><summary>Section problems</summary>
 {% if r.unknown_sections %}<p>Section names not recognised: {{ r.unknown_sections|join:", " }}</p>{% endif %}
-{% if r.no_section %}<p class="hint">These rows had no recognisable section and will be placed in Miscellaneous. Move them in the catalogue screen if needed.</p>
+{% if r.no_section %}<p class="hint">These rows had no recognisable section and will be placed in Miscellaneous (or left Unsectioned if that section has been removed). Move them in the catalogue screen if needed.</p>
 <table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Section in file</th><th>Where</th></tr></thead><tbody>
 {% for x in r.no_section %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.section_text|default:"(none)" }}</td><td>{{ x.where }}</td></tr>{% endfor %}
 </tbody></table>{% endif %}

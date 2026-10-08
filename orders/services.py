@@ -106,7 +106,7 @@ def _copy_item(line, item):
     line.item = item
     line.part_no = item.part_no
     line.name = item.name
-    line.section_name = item.section.name
+    line.section_name = item.section.name if item.section else ""
     line.measure_type = item.measure_type
     line.unit = item.unit
     line.pack_size = item.pack_size

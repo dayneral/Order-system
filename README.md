@@ -62,6 +62,16 @@ display name, a section, a trade price, a measure type, a unit, a pack size,
 and active, flammable, incomplete and "code to be confirmed" flags. Sell price,
 stock levels and stores locations are never stored.
 
+**Sections** (admin top bar > **Sections**): rename, reorder (the **Order**
+number: lower comes first), add or remove sections. Tick **Flammable store** on
+any section whose items should be flagged FLAMMABLE.
+- Renamed sections still match their old names on import.
+- **Removing a section never deletes its items.** They become *Unsectioned*,
+  are listed under **Other** on the order page, and can be found in Catalogue
+  with the *needs attention > No section* filter. Edit an item's **Section** to move it.
+- Past orders keep the section name they were placed with.
+- All changes are recorded in the audit history.
+
 **Editing items:** go to **Catalogue** in the top bar. Use the **needs attention**
 filter to find codes to confirm, incomplete items, garbled names, and packs
 whose pack size is still 1. Click a Part No. to edit it. The display name can

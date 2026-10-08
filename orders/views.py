@@ -112,11 +112,14 @@ def _item_browser(request, order):
         for term in terms:
             items = items.filter(Q(part_no__icontains=term) | Q(display_name__icontains=term))
         section_key = None
+    elif section_key == "unsectioned":
+        items = items.filter(section__isnull=True)
     else:
         items = items.filter(section_id=section_key)
     items = list(items.order_by("section__sort_order", "display_name")[:ITEM_RESULTS_LIMIT + 1])
     return {
         "sections": sections,
+        "has_unsectioned": Item.objects.filter(is_active=True, section__isnull=True).exists(),
         "current_section": section_key,
         "q": q,
         "items": items[:ITEM_RESULTS_LIMIT],

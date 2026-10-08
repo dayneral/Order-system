@@ -11,6 +11,7 @@ build brief. Newest first.
 | Server memory | The web service runs 1 worker × 4 threads (about 90 MB, down from about 250 MB). |
 | Linked items | One-directional rules ("when X is added, suggest Y") with an optional **two-way** setting. Rules are created by admins by hand. The prompt appears as soon as the trigger item is added. Replaces the unused stage 2 group structure. |
 | Kits | Named sets of items with default quantities. Chosen items prompt the rest of the kit, and a Kits tab adds a whole kit in one go, with an estimated kit value. Kit items are normal order lines, highlighted as **KIT: name** in the app and in the stores email. |
+| Sections | No longer fixed. Admins can rename, reorder, add and remove sections. Removing a section keeps its items as *Unsectioned*, shown under **Other** when ordering. The flammable flag is now a per-section setting. |
 | New order flow | The separate "new order" details page is removed. **New order** opens the order page directly with **Add items** first. The job details sit in a compact panel beside the order lines. An untouched empty draft is reused, not duplicated. |
 
 ## 2026-10-08

@@ -79,12 +79,29 @@ def _norm_header(value):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _norm(text):
+    return re.sub(r"[^a-z]", "", str(text).lower().replace("&", "and"))
+
+
+_alias_cache = None
+
+
+def _current_aliases():
+    """Section key -> recognised names, from the sections that exist now (renamed and added ones included)."""
+    global _alias_cache
+    if _alias_cache is None:
+        _alias_cache = {}
+        for key, name in Section.objects.values_list("key", "name"):
+            _alias_cache[key] = {_norm(name)} | SECTION_ALIASES.get(key, set())
+    return _alias_cache
+
+
 def match_section(text):
     """Return the Section key for a heading such as 'Bathrooms & Kitchens'."""
     if not text:
         return None
-    norm = re.sub(r"[^a-z]", "", str(text).lower().replace("&", "and"))
-    for key, aliases in SECTION_ALIASES.items():
+    norm = _norm(text)
+    for key, aliases in _current_aliases().items():
         if norm in aliases:
             return key
     return None
@@ -95,8 +112,8 @@ def match_section_in_name(text):
     exact = match_section(text)
     if exact or not text:
         return exact
-    norm = re.sub(r"[^a-z]", "", str(text).lower().replace("&", "and"))
-    candidates = sorted(((alias, key) for key, aliases in SECTION_ALIASES.items() for alias in aliases
+    norm = _norm(text)
+    candidates = sorted(((alias, key) for key, aliases in _current_aliases().items() for alias in aliases
                          if len(alias) >= 4), key=lambda pair: -len(pair[0]))
     for alias, key in candidates:
         if alias in norm:
@@ -221,6 +238,8 @@ def _decode_csv(data):
 
 def read_spreadsheet(filename, data):
     """Read a CSV or XLSX file (bytes) and return a ReadResult."""
+    global _alias_cache
+    _alias_cache = None  # sections may have been renamed or added since the last import
     result = ReadResult()
     lower = filename.lower()
     if lower.endswith(".csv"):

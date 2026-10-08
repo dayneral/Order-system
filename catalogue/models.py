@@ -9,10 +9,16 @@ code (e.g. ELE118-B -> ELE130) without breaking later re-imports.
 
 from django.conf import settings
 from django.db import models
+from django.utils.text import slugify
 
 
 class Section(models.Model):
-    """The nine fixed catalogue sections. Created by a data migration."""
+    """Catalogue sections. Admins can rename, reorder, add and remove them.
+
+    The nine original sections are created by a data migration; their keys
+    (below) stay the same when they are renamed. Removing a section keeps its
+    items: they become "Unsectioned" until moved.
+    """
 
     ADHESIVES = "adhesives"
     BATHROOMS_KITCHENS = "bathrooms-kitchens"
@@ -37,15 +43,27 @@ class Section(models.Model):
         (MISC, "Miscellaneous"),
     ]
 
-    key = models.SlugField(primary_key=True, max_length=40)
+    key = models.SlugField(primary_key=True, max_length=40, editable=False)
     name = models.CharField(max_length=60, unique=True)
-    sort_order = models.PositiveSmallIntegerField(unique=True)
+    sort_order = models.PositiveSmallIntegerField("Order", default=100, help_text="Lower numbers are shown first.")
+    is_flammable = models.BooleanField(
+        "Flammable store", default=False,
+        help_text="Items in this section are flagged FLAMMABLE on orders and in the stores email.")
 
     class Meta:
-        ordering = ["sort_order"]
+        ordering = ["sort_order", "name"]
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            base = slugify(self.name)[:34] or "section"
+            key, n = base, 2
+            while Section.objects.filter(key=key).exists():
+                key, n = f"{base}-{n}", n + 1
+            self.key = key
+        super().save(*args, **kwargs)
 
 
 class MeasureType(models.TextChoices):
@@ -84,7 +102,8 @@ class Item(models.Model):
         max_length=300, blank=True,
         help_text="The name users see. Never changed by an import.",
     )
-    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="items")
+    section = models.ForeignKey(Section, null=True, blank=True, on_delete=models.SET_NULL, related_name="items",
+                                help_text="Blank = Unsectioned (its section was removed).")
 
     trade_price = models.DecimalField(
         max_digits=10, decimal_places=4, null=True, blank=True,
@@ -139,7 +158,7 @@ class Item(models.Model):
         if not self.display_name:
             self.display_name = self.catalogue_name
         self.is_incomplete = not self.name.strip() or self.trade_price is None
-        if self.section_id == Section.FLAMMABLE:
+        if self.section_id and self.section.is_flammable:
             self.is_flammable = True
         super().save(*args, **kwargs)
 

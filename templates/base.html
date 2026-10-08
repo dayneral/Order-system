@@ -18,6 +18,7 @@
       <a href="{% url 'accounts:user_list' %}">Users{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}</a>
       <a href="{% url 'notifications:failed' %}">Emails{% if failed_email_count %} <span class="badge bad">{{ failed_email_count }} failed</span>{% endif %}</a>
       <a href="{% url 'admin:catalogue_item_changelist' %}">Catalogue</a>
+      <a href="{% url 'admin:catalogue_section_changelist' %}">Sections</a>
       <a href="{% url 'catalogue:import_start' %}">Import</a>
       <a href="{% url 'admin:catalogue_kit_changelist' %}">Kits</a>
       <a href="{% url 'admin:catalogue_linkeditemrule_changelist' %}">Linked items</a>

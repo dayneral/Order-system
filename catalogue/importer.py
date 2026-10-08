@@ -83,6 +83,7 @@ def _temp_code(code, start_index, used):
 
 def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
     sections = {s.key: s for s in Section.objects.all()}
+    default_section = Section.MISC if Section.MISC in sections else None
     items = list(Item.objects.select_related("section"))
     by_key = {i.import_key: i for i in items if i.import_key}
     by_code = {i.part_no: i for i in items}
@@ -113,7 +114,7 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
             placeholder=code == NO_CODE or bool(PLACEHOLDER_RE.match(code)),
             name=name,
             trade_price=Decimal(row.trade_price) if row.trade_price is not None else None,
-            section_key=row.section or Section.MISC,
+            section_key=row.section if row.section in sections else default_section,
         ))
     incoming_keys = {e.key for e in entries}
 
@@ -172,7 +173,8 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
             if note:
                 report["setup_notes"].append({"part_no": e.part_no, "name": e.name, "note": note})
             report["additions"].append({
-                "part_no": e.part_no, "name": e.name or "(no name)", "section": sections[e.section_key].name,
+                "part_no": e.part_no, "name": e.name or "(no name)",
+                "section": sections[e.section_key].name if e.section_key else "Unsectioned",
                 "price": _money(e.trade_price), "measure": fields["measure_type"], "unit": fields["unit"],
                 "pack_size": fields["pack_size"],
             })
@@ -213,7 +215,8 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
         if i.source == Item.Source.IMPORT and i.is_active and i.pk not in claimed and i.section_id in file_sections
     ]
     for i in removals:
-        report["removals"].append({"part_no": i.part_no, "name": i.name, "section": i.section.name})
+        report["removals"].append({"part_no": i.part_no, "name": i.name,
+                                   "section": i.section.name if i.section else "Unsectioned"})
 
     report["summary"] = {
         "rows": len(entries),
@@ -240,7 +243,7 @@ def _readable(attr, change, sections):
         if attr == "trade_price":
             return _money(value) if value is not None else "(none)"
         if attr == "section_id":
-            return sections[value].name if value in sections else value
+            return sections[value].name if value in sections else (value or "Unsectioned")
         return value
     return {"from": fmt(change["from"]), "to": fmt(change["to"])}
 
@@ -257,7 +260,7 @@ def apply_plan(plan, actor, run=None):
     now = timezone.now()
 
     for e in plan.entries:
-        flammable = e.row.flammable or e.section_key == Section.FLAMMABLE
+        flammable = e.row.flammable or bool(e.section_key and sections[e.section_key].is_flammable)
         if e.item is None:
             item = Item(
                 part_no=e.part_no, original_part_no=e.row.part_no, import_key=e.key, source=Item.Source.IMPORT,

@@ -27,18 +27,22 @@ class NeedsAttentionFilter(admin.SimpleListFilter):
             ("incomplete", "Incomplete"),
             ("name", "Check name"),
             ("pack", "Pack with pack size 1"),
+            ("nosection", "No section"),
         ]
 
     def queryset(self, request, queryset):
         value = self.value()
         if value == "any":
-            return queryset.filter(Q(code_to_confirm=True) | Q(is_incomplete=True) | Q(name_check=True))
+            return queryset.filter(Q(code_to_confirm=True) | Q(is_incomplete=True) | Q(name_check=True)
+                                   | Q(section__isnull=True))
         if value == "code":
             return queryset.filter(code_to_confirm=True)
         if value == "incomplete":
             return queryset.filter(is_incomplete=True)
         if value == "name":
             return queryset.filter(name_check=True)
+        if value == "nosection":
+            return queryset.filter(section__isnull=True)
         if value == "pack":
             return queryset.filter(measure_type=MeasureType.PACK, pack_size__lte=1)
         return queryset
@@ -190,16 +194,47 @@ class ItemAdmin(admin.ModelAdmin):
 
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):
-    list_display = ("sort_order", "name")
+    """Rename, reorder, add and remove sections. Removing a section never deletes its items."""
 
-    def has_add_permission(self, request):
-        return False
+    list_display = ("name", "sort_order", "is_flammable", "item_count")
+    list_editable = ("sort_order",)
+    fields = ("name", "sort_order", "is_flammable")
+    actions = None
 
-    def has_change_permission(self, request, obj=None):
-        return False
+    def get_queryset(self, request):
+        from django.db.models import Count
+        return super().get_queryset(request).annotate(n_items=Count("items"))
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    @admin.display(description="Items", ordering="n_items")
+    def item_count(self, obj):
+        return obj.n_items
+
+    def save_model(self, request, obj, form, change):
+        before = Section.objects.filter(pk=obj.pk).values("name", "sort_order", "is_flammable").first() if change else None
+        super().save_model(request, obj, form, change)
+        if before is None:
+            record(request.user, "section.add", obj, f"Added section {obj.name}")
+        else:
+            changes = {k: {"from": str(v), "to": str(getattr(obj, k))} for k, v in before.items() if v != getattr(obj, k)}
+            if changes:
+                record(request.user, "section.edit", obj, f"Edited section {obj.name}", changes)
+
+    def delete_model(self, request, obj):
+        count = obj.items.count()
+        name = obj.name
+        record(request.user, "section.delete", obj,
+               f"Removed section {name}; {count} item(s) moved to Unsectioned")
+        super().delete_model(request, obj)  # items are kept: their section becomes blank
+        if count:
+            self.message_user(request, f"{count} item(s) from {name} are now Unsectioned. Move them in Catalogue "
+                                       "(filter: needs attention > No section).", messages.WARNING)
+
+    def render_delete_form(self, request, context):
+        obj = context.get("object")
+        if obj is not None and obj.items.exists():
+            self.message_user(request, f"{obj.items.count()} item(s) in {obj.name} will NOT be deleted. "
+                                       "They will become Unsectioned until you move them.", messages.WARNING)
+        return super().render_delete_form(request, context)
 
 
 @admin.register(ImportRun)
