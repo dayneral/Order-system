@@ -12,7 +12,7 @@ from retention.models import RetentionRun
 
 
 class Command(BaseCommand):
-    help = "Anonymise orders 30 days after delivery and delete drafts not saved for 30 days."
+    help = "Delete orders 30 days after delivery and delete drafts not saved for 30 days."
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action="store_true", help="Report what would be done without changing anything.")
@@ -23,7 +23,7 @@ class Command(BaseCommand):
                            trigger=RetentionRun.Trigger.MANUAL if manual else RetentionRun.Trigger.SCHEDULED)
         prefix = "DRY RUN, nothing changed: " if dry_run else ""
         self.stdout.write(self.style.SUCCESS(
-            f"{prefix}{log.orders_anonymised} order(s) anonymised (delivered on or before "
+            f"{prefix}{log.orders_deleted} order(s) deleted (delivered on or before "
             f"{log.cutoff_delivery_date:%d %b %Y}), {log.drafts_deleted} old draft(s) deleted."))
         if log.order_numbers:
             self.stdout.write("Orders: " + ", ".join(log.order_numbers))

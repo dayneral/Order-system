@@ -3,10 +3,12 @@
 THIS ORDER HAS BEEN CANCELLED. Please do not pick or deliver it.
 {% endif %}{% if kind == "amended" %}
 THIS ORDER HAS BEEN AMENDED. It replaces all earlier versions.
-{% endif %}
+{% if changes %}Changes since the last version: {{ changes.new }} new, {{ changes.changed }} changed, {{ changes.removed }} removed.
+{% for h in changes.header %}  CHANGED {{ h.label }} (was: {{ h.was }})
+{% endfor %}{% endif %}{% endif %}
 Order number:         {{ order.order_number }}
 Order date:           {{ order.submitted_at|date:"d M Y H:i" }}
-Requested by:         {{ order.requester_display }}
+Requested by:         {{ order.requester_name }}
 Job number:           {{ order.job_number }}
 Property address:     {{ order.property_address }}
 Property type:        {{ order.get_property_type_display }}
@@ -17,8 +19,8 @@ Special instructions: {{ order.special_instructions|default:"None" }}
 Items:
 {% for group in groups %}
 -- {{ group.section|upper }} --
-{% for line in group.lines %}{{ line.number }}. {{ line.code }} - {{ line.description }}{% if line.is_flammable %} [FLAMMABLE]{% endif %}{% if line.kit_name %} [KIT: {{ line.kit_name }}]{% endif %}
-   Quantity: {{ line.quantity }}
+{% for line in group.lines %}{% if line.change == "removed" %}REMOVED - do not supply: {{ line.code }} - {{ line.description }} ({{ line.quantity }}){% else %}{{ line.number }}. {% if line.change == "new" %}[NEW] {% elif line.change == "changed" %}[CHANGED] {% endif %}{{ line.code }} - {{ line.description }}{% if line.is_flammable %} [FLAMMABLE]{% endif %}{% if line.kit_name %} [KIT: {{ line.kit_name }}]{% endif %}
+   Quantity: {{ line.quantity }}{% if line.was %} (was: {{ line.was }}){% endif %}{% endif %}
 {% endfor %}{% endfor %}
 Open this email in HTML view for the print-friendly table.
 {% endautoescape %}

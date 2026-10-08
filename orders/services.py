@@ -42,12 +42,10 @@ class OrderError(Exception):
 def can_view(order, user):
     if order.is_draft:
         return order.owner_id == user.pk
-    return user.is_active  # any approved user can see All Orders and Historic Orders
+    return user.is_active  # any approved user can see All Orders
 
 
 def can_edit(order, user):
-    if order.is_anonymised:
-        return False
     if order.is_draft:
         return order.owner_id == user.pk
     if order.status == Order.Status.SUBMITTED:
@@ -56,8 +54,7 @@ def can_edit(order, user):
 
 
 def can_cancel(order, user):
-    return (order.status == Order.Status.SUBMITTED and not order.is_anonymised
-            and (order.owner_id == user.pk or user.is_admin))
+    return order.status == Order.Status.SUBMITTED and (order.owner_id == user.pk or user.is_admin)
 
 
 # --- Helpers ---------------------------------------------------------------------
@@ -452,6 +449,31 @@ def submit(order, user, today=None):
     record(user, "order.submit", order, f"Submitted order {order.order_number} for job {order.job_number}")
     notify.order_submitted(order)
     return order
+
+
+def admin_delete(order, user, reason):
+    """Remove an order entered by mistake, so it does not skew the records.
+
+    An order stores may act on is cancelled first, so they receive a CANCELLED email.
+    The deletion itself is logged with the order number, who, when and why.
+    """
+    from audit.models import AuditEntry
+    from retention.services import delete_order_completely
+
+    if not user.is_admin:
+        raise OrderError("Only admins can delete orders.")
+    if order.is_draft:
+        raise OrderError("Drafts are deleted by their owner.")
+    reason = (reason or "").strip()
+    if not reason:
+        raise OrderError("Enter a reason for deleting the order.")
+    if order.status == Order.Status.SUBMITTED:
+        cancel(order, user, f"Deleted by admin: {reason}")
+    number, pk = order.order_number, order.pk
+    delete_order_completely(order)
+    AuditEntry.objects.create(actor=user, action="order.delete", target_type="orders.order", target_id=str(pk),
+                              summary=f"Deleted order {number}: {reason}"[:500])
+    return number
 
 
 def finish_amendment(order, user):

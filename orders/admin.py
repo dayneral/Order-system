@@ -20,9 +20,9 @@ class OrderAdmin(admin.ModelAdmin):
     """Read-only view for checking data. Orders are changed through the ordering screens."""
 
     list_display = ("order_number", "status", "submitted_at", "requester_name", "job_number", "delivery_date",
-                    "order_value", "anonymised_at")
+                    "order_value")
     list_filter = ("status", "property_type")
-    search_fields = ("order_number", "job_number", "requester_name", "anonymous_id")
+    search_fields = ("order_number", "job_number", "requester_name")
     inlines = [OrderLineInline]
 
     def get_queryset(self, request):

@@ -141,10 +141,9 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
 
 ## Ordering
 
-- **Orders** has three tabs:
+- **Orders** has two tabs:
   - **My Orders:** your drafts and the orders you have placed.
   - **All Orders:** everyone's orders. Anyone can view them; only the owner or an admin can change them.
-  - **Historic Orders:** orders whose personal details have been anonymised.
 - **New order** opens the order page straight away. Add items first (browse
   by section, or search across all sections), then fill in the job details on
   the right: job number, property address, property type (Void/Occupied),
@@ -169,6 +168,8 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   updated order.
 - **Cancel:** the owner or an admin. Recorded in the history. The job can then
   be ordered again.
+- **Delete (admins):** for orders entered by mistake. A reason is required, and
+  active orders are cancelled first so stores get a CANCELLED email.
 - **Order value:** shown in the app only, never to stores.
   - Each, pack and whole items: quantity × trade price.
   - Area (vinyl and other flooring): m² (to 2 decimal places) × price per m², no waste allowance.
@@ -204,7 +205,9 @@ submitting is never blocked.
 
 - **Sent to `STORES_EMAIL`** (stores@bfsuk.org) from materialorders@bfsuk.org on
   submit, on **Send amended order to stores** (subject starts `AMENDED:`), and on
-  cancel (subject starts `CANCELLED:`).
+  cancel (subject starts `CANCELLED:`). Amended emails show what changed since
+  the last version: a summary box, lines marked NEW, CHANGED (with the old value)
+  or REMOVED (do not supply), and changed job details highlighted.
 - **Reply-To** is the person who placed the order, so a reply from stores goes to them.
 - **Body:** a print-friendly HTML table, with items grouped under section headings in catalogue order. There is no PDF attachment: stores print the email itself.
   - Each item shows its Part No. and display name. Non-stocked items show NON-STOCKED.
@@ -227,23 +230,12 @@ submitting is never blocked.
 The job runs every night as a Render cron job (`bfs-orders-retention`, 02:15 UTC).
 
 - **Orders more than 30 days past their delivery date** (submitted or cancelled)
-  have these details removed:
-  - the requester's name, which is replaced by a random anonymous ID (a different one for each order);
-  - the link to the user account;
-  - the job number;
-  - the property address;
-  - the special instructions.
-
-  The same details are also removed from the order's history and email log.
-- **Kept for analysis:** order number, order date, items, quantities, units,
-  trade prices, sections, property type, delivery date and order value.
-  Anonymised orders appear under **Orders > Historic Orders** and can no longer
-  be amended or cancelled.
+  are **deleted**, with their lines, history and email log.
 - **Drafts not saved for 30 days are deleted.**
-- **Every run is logged**, including the order numbers it anonymised and the
-  number of drafts it deleted. To see the log, go to **Retention** in the admin top bar.
-- This applies only to this app's records. Stores keep their own copies under
-  their own process.
+- **Every run is logged** with the order numbers it removed (no personal
+  details). To see the log, go to **Retention** in the admin top bar.
+- This applies only to this app's records. Stores keep their own copies and
+  metrics under their own process.
 
 **Running it by hand:**
 

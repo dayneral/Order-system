@@ -5,7 +5,7 @@ from .models import RetentionRun
 
 @admin.register(RetentionRun)
 class RetentionRunAdmin(admin.ModelAdmin):
-    list_display = ("started_at", "trigger", "dry_run", "orders_anonymised", "drafts_deleted", "succeeded")
+    list_display = ("started_at", "trigger", "dry_run", "orders_deleted", "drafts_deleted", "succeeded")
     readonly_fields = [f.name for f in RetentionRun._meta.fields]
 
     def has_add_permission(self, request):

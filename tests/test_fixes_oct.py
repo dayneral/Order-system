@@ -120,19 +120,6 @@ def test_amending_to_occupied_without_operative_is_blocked(make_user):
         services.update_header(order, user, header())
 
 
-def test_operative_name_removed_by_retention(make_user):
-    user = make_user()
-    order = services.create_draft(user, **header(operative_name="Jo Fitter"))
-    services.add_item_line(order, user, make("PLU8"), {"quantity": "1"})
-    services.submit(order, user)
-    type(order).objects.filter(pk=order.pk).update(delivery_date=timezone.localdate() - timedelta(days=31))
-    retention.run()
-    order.refresh_from_db()
-    assert order.operative_name == ""
-
-
-# --- Order values shelved ------------------------------------------------------------
-
 @override_settings(ORDER_VALUES_ENABLED=False)
 def test_values_hidden_and_missing_price_does_not_block_ordering(client, make_user):
     user = make_user()

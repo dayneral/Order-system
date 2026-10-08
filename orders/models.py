@@ -31,7 +31,7 @@ class Order(models.Model):
     order_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT, db_index=True)
 
-    # --- Personal data: cleared by the retention job -----------------------
+    # --- Personal data: the whole order is deleted by the retention job ---------
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                               related_name="orders")
     requester_name = models.CharField(max_length=150, blank=True)
@@ -42,8 +42,6 @@ class Order(models.Model):
 
     # Normalised job number used for the one-order-per-job rule.
     job_number_key = models.CharField(max_length=30, blank=True, db_index=True)
-    # Replaces the requester once personal data is removed.
-    anonymous_id = models.CharField(max_length=20, blank=True)
 
     property_type = models.CharField(max_length=10, choices=PropertyType.choices, blank=True)
     delivery_date = models.DateField(null=True, blank=True)
@@ -59,12 +57,11 @@ class Order(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                      related_name="+")
-    anonymised_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["-submitted_at", "-created_at"]
         constraints = [
-            # One active order per job. Drafts, cancelled and anonymised orders don't count.
+            # One active order per job. Drafts and cancelled orders don't count.
             models.UniqueConstraint(
                 fields=["job_number_key"],
                 condition=Q(status="submitted") & ~Q(job_number_key=""),
@@ -79,13 +76,6 @@ class Order(models.Model):
     def is_draft(self):
         return self.status == self.Status.DRAFT
 
-    @property
-    def is_anonymised(self):
-        return self.anonymised_at is not None
-
-    @property
-    def requester_display(self):
-        return self.anonymous_id if self.is_anonymised else self.requester_name
 
     @property
     def has_estimates(self):

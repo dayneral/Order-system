@@ -17,5 +17,6 @@ urlpatterns = [
     path("<uuid:order_id>/lines/<int:line_id>/remove/", views.line_remove, name="line_remove"),
     path("<uuid:order_id>/print/", views.order_print, name="print"),
     path("<uuid:order_id>/cancel/", views.order_cancel, name="cancel"),
+    path("<uuid:order_id>/delete-order/", views.order_delete, name="delete"),
     path("<uuid:order_id>/delete/", views.draft_delete, name="draft_delete"),
 ]

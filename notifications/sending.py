@@ -21,23 +21,32 @@ class CannotRetry(Exception):
     pass
 
 
-def _build_message(order, kind):
+def last_sent_snapshot(order, before=None):
+    """The order as stores last received it."""
+    emails = OrderEmail.objects.filter(order=order, status=OrderEmail.Status.SENT).exclude(snapshot={})
+    if before is not None:
+        emails = emails.filter(created_at__lt=before)
+    latest = emails.order_by("-created_at").first()
+    return latest.snapshot if latest else None
+
+
+def _build_message(order, kind, previous=None):
     reply_to = [order.owner.email] if order.owner_id and order.owner and order.owner.email else None
     message = EmailMultiAlternatives(
         subject=documents.subject(order, kind),
-        body=documents.render_text(order, kind),
+        body=documents.render_text(order, kind, previous),
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[settings.STORES_EMAIL],
         reply_to=reply_to,
     )
-    message.attach_alternative(documents.render_html(order, kind), "text/html")
+    message.attach_alternative(documents.render_html(order, kind, previous), "text/html")
     return message
 
 
-def _attempt(order, kind):
+def _attempt(order, kind, previous=None):
     """Try to send. Returns (ok, error text)."""
     try:
-        _build_message(order, kind).send(fail_silently=False)
+        _build_message(order, kind, previous).send(fail_silently=False)
         return True, ""
     except Exception as exc:  # noqa: BLE001 - any failure must not lose the order
         logger.exception("Order email failed: %s %s", kind, order.order_number)
@@ -51,11 +60,11 @@ def _resolve_earlier_failures(order, kind):
 
 
 def send_order_email(order, kind):
-    ok, error = _attempt(order, kind)
+    ok, error = _attempt(order, kind, last_sent_snapshot(order) if kind == "amended" else None)
     log = OrderEmail.objects.create(
         order=order, kind=kind, recipient=settings.STORES_EMAIL, subject=documents.subject(order, kind),
         status=OrderEmail.Status.SENT if ok else OrderEmail.Status.FAILED,
-        last_error=error, sent_at=timezone.now() if ok else None,
+        last_error=error, sent_at=timezone.now() if ok else None, snapshot=documents.snapshot(order),
     )
     if ok:
         _resolve_earlier_failures(order, kind)
@@ -67,10 +76,10 @@ def retry(log):
     order = log.order
     if log.status != OrderEmail.Status.FAILED:
         raise CannotRetry("This email is not waiting for a retry.")
-    if order.is_anonymised:
-        raise CannotRetry("The order's personal details have been removed, so it can no longer be sent.")
-    ok, error = _attempt(order, log.kind)
+    previous = last_sent_snapshot(order, before=log.created_at) if log.kind == "amended" else None
+    ok, error = _attempt(order, log.kind, previous)
     log.attempts += 1
+    log.snapshot = documents.snapshot(order)
     log.subject = documents.subject(order, log.kind)
     if ok:
         log.status = OrderEmail.Status.SENT

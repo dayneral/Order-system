@@ -8,6 +8,7 @@
     {% if not order.is_draft %}<a class="button" href="{% url 'orders:print' order.pk %}" target="_blank">Print</a>{% endif %}
     {% if can_edit %}<a class="button" href="{% url 'orders:edit' order.pk %}">{% if order.is_draft %}Continue draft{% else %}Amend order{% endif %}</a>{% endif %}
     {% if can_cancel %}<a class="button danger" href="{% url 'orders:cancel' order.pk %}">Cancel order</a>{% endif %}
+    {% if user.is_admin and not order.is_draft %}<a class="button danger" href="{% url 'orders:delete' order.pk %}">Delete order</a>{% endif %}
   </div>
 </div>
 
@@ -18,20 +19,16 @@
 {% if email_failed %}
 <div class="msg msg-error">The latest email to stores for this order failed to send. {% if user.is_admin %}<a href="{% url 'notifications:failed' %}">Retry it from Failed emails</a>.{% else %}It is listed for an admin to resend.{% endif %}</div>
 {% endif %}
-{% if order.is_anonymised %}
-<div class="msg msg-info">Personal details were removed from this order on {{ order.anonymised_at|date:"d M Y" }} (30 days after delivery). It can no longer be changed.</div>
-{% endif %}
-
 <div class="panel">
 <table class="details">
   <tr><th>Order date</th><td>{{ order.submitted_at|date:"d M Y H:i"|default:"Not submitted" }}</td>
-      <th>Requested by</th><td>{{ order.requester_display|default:"—" }}</td></tr>
+      <th>Requested by</th><td>{{ order.requester_name|default:"—" }}</td></tr>
   <tr><th>Job number</th><td>{{ order.job_number|default:"—" }}</td>
       <th>Property type</th><td>{{ order.get_property_type_display|default:"—" }}{% if order.operative_name %}<br>Operative: <b>{{ order.operative_name }}</b>{% endif %}</td></tr>
   <tr><th>Property address</th><td>{{ order.property_address|default:"—"|linebreaksbr }}</td>
       <th>Delivery date</th><td>{{ order.delivery_date|date:"l d M Y"|default:"—" }}</td></tr>
   <tr><th>Special instructions</th><td colspan="3">{{ order.special_instructions|default:"None"|linebreaksbr }}</td></tr>
-  {% if order.status == "cancelled" %}<tr><th>Cancelled</th><td colspan="3">{{ order.cancelled_at|date:"d M Y H:i" }}{% if order.cancelled_by and not order.is_anonymised %} by {{ order.cancelled_by.full_name }}{% endif %}</td></tr>{% endif %}
+  {% if order.status == "cancelled" %}<tr><th>Cancelled</th><td colspan="3">{{ order.cancelled_at|date:"d M Y H:i" }}{% if order.cancelled_by %} by {{ order.cancelled_by.full_name }}{% endif %}</td></tr>{% endif %}
 </table>
 </div>
 
@@ -59,7 +56,7 @@
   <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
   <tbody>
   {% for e in history %}
-    <tr><td>{{ e.timestamp|date:"d M Y H:i" }}</td><td>{% if order.is_anonymised %}—{% else %}{{ e.actor.full_name|default:"System" }}{% endif %}</td>
+    <tr><td>{{ e.timestamp|date:"d M Y H:i" }}</td><td>{{ e.actor.full_name|default:"System" }}</td>
         <td>{{ e.summary }}{% for field, ch in e.changes.items %}<div class="hint">{{ field }}: {{ ch.from|default:"(blank)" }} &rarr; {{ ch.to|default:"(blank)" }}</div>{% endfor %}</td></tr>
   {% endfor %}
   </tbody>

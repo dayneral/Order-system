@@ -321,40 +321,7 @@ def test_submitted_order_must_keep_one_item(make_user, items):
         services.remove_line(order.lines.get(), user)
 
 
-def test_anonymised_orders_cannot_be_changed(make_user, items, admin_user):
-    user = make_user()
-    order = ready_draft(user, items)
-    services.submit(order, user)
-    order.anonymised_at = timezone.now()
-    order.save()
-    assert not services.can_edit(order, admin_user) and not services.can_cancel(order, admin_user)
-
-
 # --- Lists --------------------------------------------------------------------------
-
-def test_my_all_and_historic_order_lists(client, make_user, items):
-    me, colleague = make_user(), make_user("c@bfsuk.org", "Col League")
-    mine = ready_draft(me, items, "MINE-1")
-    services.submit(mine, me)
-    theirs = ready_draft(colleague, items, "THEIRS-1")
-    services.submit(theirs, colleague)
-    old = ready_draft(colleague, items, "OLD-1")
-    services.submit(old, colleague)
-    Order.objects.filter(pk=old.pk).update(anonymised_at=timezone.now(), job_number="", job_number_key="",
-                                           property_address="", requester_name="", owner=None,
-                                           anonymous_id="ANON-7Q2K")
-    client.force_login(me)
-    my_page = client.get(reverse("orders:list") + "?view=mine").content.decode()
-    all_page = client.get(reverse("orders:list") + "?view=all").content.decode()
-    hist_page = client.get(reverse("orders:list") + "?view=historic").content.decode()
-    assert "MINE-1" in my_page and "THEIRS-1" not in my_page
-    assert "MINE-1" in all_page and "THEIRS-1" in all_page and old.order_number not in all_page
-    assert old.order_number in hist_page and "ANON-7Q2K" in hist_page and "MINE-1" not in hist_page
-    # Any user can open another user's submitted order, but not change it.
-    detail = client.get(reverse("orders:detail", args=[theirs.pk])).content.decode()
-    assert "THEIRS-1" in detail and "Amend order" not in detail
-    assert client.get(reverse("orders:edit", args=[theirs.pk])).status_code == 403
-
 
 # --- Old drafts --------------------------------------------------------------------
 
@@ -409,3 +376,19 @@ def test_submit_errors_shown_on_page(client, make_user, items):
     resp = client.post(reverse("orders:edit", args=[order.pk]), {"action": "submit"})
     page = resp.content.decode()
     assert resp.status_code == 200 and "could not be submitted" in page and "Add at least one item" in page
+
+
+def test_my_and_all_order_lists(client, make_user, items):
+    me, colleague = make_user(), make_user("c@bfsuk.org", "Col League")
+    mine = ready_draft(me, items, "MINE-1")
+    services.submit(mine, me)
+    theirs = ready_draft(colleague, items, "THEIRS-1")
+    services.submit(theirs, colleague)
+    client.force_login(me)
+    my_page = client.get(reverse("orders:list") + "?view=mine").content.decode()
+    all_page = client.get(reverse("orders:list") + "?view=all").content.decode()
+    assert "MINE-1" in my_page and "THEIRS-1" not in my_page
+    assert "MINE-1" in all_page and "THEIRS-1" in all_page and "Historic" not in all_page
+    detail = client.get(reverse("orders:detail", args=[theirs.pk])).content.decode()
+    assert "THEIRS-1" in detail and "Amend order" not in detail
+    assert client.get(reverse("orders:edit", args=[theirs.pk])).status_code == 403

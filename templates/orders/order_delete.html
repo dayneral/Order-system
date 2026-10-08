@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<h1>Delete order {{ order.order_number }}?</h1>
+<p>Job {{ order.job_number }} · {{ order.property_address|linebreaksbr }}</p>
+<p>Use this for orders placed by mistake. The order, its items, its history and its email log are removed
+  permanently. Only the order number, your name, the date and your reason are kept in the audit log.</p>
+{% if order.status == "submitted" %}
+<div class="msg msg-warning">This order is active: stores will be sent a <b>CANCELLED</b> notice before it is deleted.</div>
+{% endif %}
+{% if error %}<div class="msg msg-error">{{ error }}</div>{% endif %}
+<form method="post">{% csrf_token %}
+  <div class="field"><label for="reason">Reason <span class="req">*</span></label>
+    <input id="reason" name="reason" maxlength="200" required placeholder="e.g. duplicate of BFS-2026-000123"></div>
+  <button class="danger">Delete permanently</button>
+  <a href="{% url 'orders:detail' order.pk %}">Keep the order</a>
+</form>
+{% endblock %}

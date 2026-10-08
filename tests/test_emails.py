@@ -133,15 +133,6 @@ def test_later_success_resolves_earlier_failure(order, monkeypatch):
     assert list(OrderEmail.objects.values_list("status", flat=True).order_by("created_at")) == ["resolved", "sent"]
 
 
-def test_cannot_retry_after_anonymisation(order, monkeypatch):
-    monkeypatch.setattr("django.core.mail.EmailMessage.send", lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
-    services.submit(order, order.owner)
-    order.anonymised_at = timezone.now()
-    order.save()
-    with pytest.raises(sending.CannotRetry):
-        sending.retry(OrderEmail.objects.get())
-
-
 def test_print_view(client, order, make_user):
     services.submit(order, order.owner)
     client.force_login(make_user("viewer@bfsuk.org", "Viewer"))

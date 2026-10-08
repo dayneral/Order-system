@@ -3,8 +3,8 @@
 {% block help %}
 <p class="help">
 {% if view == "mine" %}Your drafts and the orders you have placed. Open an order to view, amend, print or cancel it.
-{% elif view == "all" %}Every order placed by anyone at BFS. You can open any order; only its owner or an admin can change it.
-{% else %}Orders more than 30 days past their delivery date. Job numbers, addresses and names have been removed; each order shows an anonymous ID instead.{% endif %}
+{% else %}Every order placed by anyone at BFS. You can open any order; only its owner or an admin can change it.{% endif %}
+Orders are deleted 30 days after their delivery date.
 </p>
 {% endblock %}
 {% block content %}
@@ -49,14 +49,14 @@
 
 <form method="get" class="search">
   <input type="hidden" name="view" value="{{ view }}">
-  <input type="search" name="q" value="{{ q }}" placeholder="{% if view == 'historic' %}Search order number or anonymous ID{% else %}Search order number, job number, address or name{% endif %}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search order number, job number, address or name">
   <button>Search</button>{% if q %} <a href="?view={{ view }}">Clear</a>{% endif %}
 </form>
 
 <table class="grid">
   <thead><tr>
     <th>Order number</th><th>Order date</th>
-    {% if view == "historic" %}<th>Anonymous ID</th>{% else %}<th>Job number</th><th>Address</th><th>Requested by</th>{% endif %}
+    <th>Job number</th><th>Address</th><th>Requested by</th>
     <th>Property</th><th>Delivery</th><th>Items</th>{% if show_values %}<th class="num">Value</th>{% endif %}<th>Status</th>
   </tr></thead>
   <tbody>
@@ -64,8 +64,7 @@
     <tr>
       <td><a href="{% url 'orders:detail' o.pk %}">{{ o.order_number }}</a></td>
       <td>{{ o.submitted_at|date:"d M Y" }}</td>
-      {% if view == "historic" %}<td>{{ o.anonymous_id }}</td>
-      {% else %}<td>{{ o.job_number }}</td><td>{{ o.property_address|truncatechars:50 }}</td><td>{{ o.requester_name }}</td>{% endif %}
+      <td>{{ o.job_number }}</td><td>{{ o.property_address|truncatechars:50 }}</td><td>{{ o.requester_name }}</td>
       <td>{{ o.get_property_type_display }}</td>
       <td>{{ o.delivery_date|date:"d M Y" }}</td>
       <td>{{ o.line_count }}</td>

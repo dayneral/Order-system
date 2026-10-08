@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Data retention · BFS Material Orders{% endblock %}
-{% block help %}<p class="help">Every night the app removes personal details (requester name, job number, address, special instructions) from orders delivered more than 30 days ago, and deletes drafts not saved for 30 days. Each run is logged below. You do not normally need to do anything here.</p>{% endblock %}
+{% block help %}<p class="help">Every night the app deletes orders delivered more than 30 days ago (with their lines, history and email log), and drafts not saved for 30 days. Stores keep their own copies. Each run is logged below. You do not normally need to do anything here.</p>{% endblock %}
 {% block content %}
 <div class="row-between">
   <h1>Data retention</h1>
@@ -10,14 +10,14 @@
 <p>Waiting for the next run: <b>{{ due_now }}</b> order{{ due_now|pluralize }} delivered on or before {{ cutoff|date:"d M Y" }},
   and <b>{{ drafts_due_now }}</b> old draft{{ drafts_due_now|pluralize }}.</p>
 <table class="grid">
-  <thead><tr><th>Started</th><th>Type</th><th>Delivered on or before</th><th>Orders anonymised</th><th>Drafts deleted</th><th>Result</th></tr></thead>
+  <thead><tr><th>Started</th><th>Type</th><th>Delivered on or before</th><th>Orders deleted</th><th>Drafts deleted</th><th>Result</th></tr></thead>
   <tbody>
   {% for r in runs %}
     <tr>
       <td>{{ r.started_at|date:"d M Y H:i" }}</td>
       <td>{{ r.get_trigger_display }}{% if r.run_by %} ({{ r.run_by }}){% endif %}{% if r.dry_run %} – dry run{% endif %}</td>
       <td>{{ r.cutoff_delivery_date|date:"d M Y" }}</td>
-      <td>{{ r.orders_anonymised }}{% if r.order_numbers %}<div class="hint">{{ r.order_numbers|join:", "|truncatechars:200 }}</div>{% endif %}</td>
+      <td>{{ r.orders_deleted }}{% if r.order_numbers %}<div class="hint">{{ r.order_numbers|join:", "|truncatechars:200 }}</div>{% endif %}</td>
       <td>{{ r.drafts_deleted }}</td>
       <td>{% if r.succeeded %}<span class="pill pill-approved">OK</span>{% else %}<span class="pill pill-rejected">Failed</span><div class="hint">{{ r.error|truncatechars:200 }}</div>{% endif %}</td>
     </tr>

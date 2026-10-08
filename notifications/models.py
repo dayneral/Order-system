@@ -23,6 +23,8 @@ class OrderEmail(models.Model):
     last_error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    # The order as it was in this email, so the next AMENDED email can show what changed.
+    snapshot = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

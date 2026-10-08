@@ -24,6 +24,6 @@ def run_list(request):
 @require_POST
 def run_now(request):
     log = services.run(trigger=RetentionRun.Trigger.MANUAL, run_by=request.user.full_name)
-    messages.success(request, f"Retention run complete: {log.orders_anonymised} order(s) anonymised, "
+    messages.success(request, f"Retention run complete: {log.orders_deleted} old order(s) deleted, "
                               f"{log.drafts_deleted} old draft(s) deleted.")
     return redirect("retention:runs")

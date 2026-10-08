@@ -54,7 +54,6 @@ def _get_order(request, order_id, edit=False):
 VIEWS = {
     "mine": "My Orders",
     "all": "All Orders",
-    "historic": "Historic Orders",
 }
 
 
@@ -66,17 +65,11 @@ def order_list(request):
     q = request.GET.get("q", "").strip()
 
     orders = Order.objects.exclude(status=Order.Status.DRAFT).annotate(line_count=Count("lines"))
-    if view == "historic":
-        orders = orders.filter(anonymised_at__isnull=False)
-        if q:
-            orders = orders.filter(Q(order_number__icontains=q) | Q(anonymous_id__icontains=q))
-    else:
-        orders = orders.filter(anonymised_at__isnull=True)
-        if view == "mine":
-            orders = orders.filter(owner=request.user)
-        if q:
-            orders = orders.filter(Q(order_number__icontains=q) | Q(job_number__icontains=q)
-                                   | Q(property_address__icontains=q) | Q(requester_name__icontains=q))
+    if view == "mine":
+        orders = orders.filter(owner=request.user)
+    if q:
+        orders = orders.filter(Q(order_number__icontains=q) | Q(job_number__icontains=q)
+                               | Q(property_address__icontains=q) | Q(requester_name__icontains=q))
     page = Paginator(orders.order_by("-submitted_at"), 50).get_page(request.GET.get("page"))
 
     drafts = []
@@ -304,5 +297,33 @@ def order_print(request, order_id):
     """Print-friendly page with the same content as the stores email."""
     order = _get_order(request, order_id)
     kind = "cancelled" if order.status == Order.Status.CANCELLED else ("amended" if order.amended_at else "submitted")
-    html = documents.render_to_string_for_print(order, kind, back_url=reverse("orders:detail", args=[order.pk]))
+    from notifications.sending import last_sent_snapshot
+
+    previous = None
+    if kind == "amended":
+        # Changes compared with the version stores had before the latest amendment email.
+        latest = order.emails.filter(kind="amended", status="sent").order_by("-created_at").first()
+        previous = last_sent_snapshot(order, before=latest.created_at if latest else None)
+    html = documents.render_to_string_for_print(order, kind, back_url=reverse("orders:detail", args=[order.pk]),
+                                                previous=previous)
     return HttpResponse(html)
+
+
+@login_required
+def order_delete(request, order_id):
+    """Admins only: delete an order entered by mistake."""
+    if not request.user.is_admin:
+        raise PermissionDenied
+    order = _get_order(request, order_id)
+    error = None
+    if request.method == "POST":
+        was_active = order.status == Order.Status.SUBMITTED
+        try:
+            number = services.admin_delete(order, request.user, request.POST.get("reason", ""))
+        except OrderError as exc:
+            error = str(exc)
+        else:
+            messages.success(request, f"Order {number} deleted." + (
+                " Stores have been sent a CANCELLED notice." if was_active else ""))
+            return redirect(reverse("orders:list") + "?view=all")
+    return render(request, "orders/order_delete.html", {"order": order, "error": error})
