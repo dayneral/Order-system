@@ -26,10 +26,10 @@ Pages are plain server-rendered HTML with no separate front-end build.
 | `bfs/` | Project settings, top-level URLs and the home page |
 | `accounts/` | Users, sign-in, registration, approval, roles and password reset. Its users table is designed to be shared with a future job management system. |
 | `audit/` | One shared audit history ("who did what, when") used by every module |
-| `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`) and the ordering screens |
+| `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`), linked-item and kit prompts (`suggestions.py`) and the ordering screens |
 | `notifications/` | The order document (one template for the email and the print page), sending, and the failed-email list with retry |
 | `retention/` | The daily retention job (`run_retention` command), its run log, and the admin Retention page |
-| `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, and linked-item groups (data only for now) |
+| `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, linked-item rules and kits |
 | `templates/` | The HTML pages |
 | `static/` | Stylesheet |
 | `tests/` | Automated tests (run with `pytest`) |
@@ -158,6 +158,30 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   - Worktops and splashbacks: length ÷ catalogue length × price (an estimate).
   - Each line is rounded to the penny. Non-stocked items are excluded.
   - The code is in `orders/pricing.py`.
+
+## Linked items and kits
+
+**Linked items** (admin top bar > **Linked items**): "when X is added, suggest Y".
+- Each rule has a trigger item, one or more suggested items, and an optional
+  note shown to the user (e.g. "Sealant needs an applicator gun").
+- Tick **Suggest both ways** to make the rule two-way: adding a suggested item
+  then also suggests the trigger item.
+- As soon as the trigger item is added, the order panel shows "Commonly ordered
+  with …", with **Add** buttons and a **No thanks** button.
+
+**Kits** (admin top bar > **Kits**): a named set of items with default quantities,
+e.g. a close-coupled toilet kit (pan, cistern, seat, pan connector, valves).
+- Tick **Prompts kit** on the items that should offer the kit. Adding one of
+  them then offers the rest of the kit as a tick list: quantities can be
+  changed, and items already on the order are left unticked.
+- Users can also add a whole kit from the **Kits** tab in the item browser,
+  which shows an estimated kit value.
+- Each kit item becomes a normal order line labelled **KIT: name**, in the app
+  and in the stores email.
+
+In both cases, items already on the order, inactive items and incomplete items
+are never suggested. Nothing is added without the user pressing a button, and
+submitting is never blocked.
 
 ## Order emails
 
@@ -315,6 +339,5 @@ database. The daily cron job adds a few cents per month, with a minimum charge o
 ## Still to come (after launch)
 
 - Print layout refinements (brief stage 6). Amendment and cancellation emails (stage 7) are already built.
-- Linked-item reminders (stage 8). The data structure (`LinkedItemGroup`) is already in place.
 - Admin reports on order value.
 - An API for the future job management system.

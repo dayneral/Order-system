@@ -262,20 +262,55 @@ def _next_position(order):
     return (last or 0) + 1
 
 
-def add_item_line(order, user, item, data):
+def add_item_line(order, user, item, data, kit_name="", audit=True):
     _require_editable(order, user)
     if not item.is_active:
         raise OrderError(f"{item.part_no} is no longer available.")
     if item.is_incomplete:
         raise OrderError(f"{item.part_no} cannot be ordered yet: its catalogue details are incomplete.")
     measurement = parse_measurement(item.measure_type, data)
-    line = OrderLine(order=order, position=_next_position(order), **measurement)
+    line = OrderLine(order=order, position=_next_position(order), kit_name=kit_name, **measurement)
     _copy_item(line, item)
     _price(line)
     line.save()
     recalculate_total(order)
-    _touch(order, user, f"added {line.part_no} {line.name} ({line.measurement_text})")
+    if audit:
+        _touch(order, user, f"added {line.part_no} {line.name} ({line.measurement_text})")
     return line
+
+
+def add_kit(order, user, kit, data):
+    """Add the ticked items of a kit. Every ticked item is checked before anything is added.
+
+    Form fields per kit item (id = KitItem id): include_<id>, and quantity_<id>
+    or length_<id> / width_<id> depending on the item's measure type.
+    """
+    _require_editable(order, user)
+    chosen, errors = [], []
+    for kit_item in kit.kit_items.select_related("item__section"):
+        if not data.get(f"include_{kit_item.pk}"):
+            continue
+        item = kit_item.item
+        if not item.is_orderable:
+            errors.append(f"{item.part_no} {item.name} is not available.")
+            continue
+        fields = {name: data.get(f"{name}_{kit_item.pk}", "") for name in ("quantity", "length", "width")}
+        try:
+            chosen.append((item, parse_measurement(item.measure_type, fields)))
+        except OrderError as exc:
+            errors.append(f"{item.part_no} {item.name}: {exc}")
+    if errors:
+        raise OrderError(errors[0], errors)
+    if not chosen:
+        raise OrderError("Tick at least one item to add.")
+    with transaction.atomic():
+        lines = [add_item_line(order, user, item, {
+            "quantity": m["quantity"], "length": m["length_m"], "width": m["width_m"]}, kit_name=kit.name, audit=False)
+            for item, m in chosen]
+        # Label lines already on the order that belong to this kit (e.g. the item that prompted it).
+        order.lines.filter(item__in=kit.kit_items.values("item"), kit_name="").update(kit_name=kit.name)
+    _touch(order, user, f"added kit {kit.name}: " + ", ".join(f"{l.part_no} ({l.measurement_text})" for l in lines))
+    return lines
 
 
 def add_non_stocked_line(order, user, name, unit, quantity):

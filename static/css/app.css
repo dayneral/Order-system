@@ -112,3 +112,12 @@ table.details td { padding: .35rem .5rem; vertical-align: top; }
 .side-actions .hint { width: 100%; margin: .2rem 0 0; }
 #items input.qty { width: 4.6rem; }
 #items .inline-fields { flex-wrap: nowrap; }
+.flag.kit { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.section-tabs a.kits-tab { border-color: #93c5fd; color: #1d4ed8; }
+.section-tabs a.kits-tab.active { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+.suggest { border: 2px solid #f0d68a; background: #fffbea; border-radius: 6px; padding: .6rem .8rem; margin-bottom: .8rem; }
+.suggest.kit { border-color: #93c5fd; background: #eff6ff; }
+.suggest table.grid { background: transparent; margin: .4rem 0; }
+.kit-card { border: 1px solid #93c5fd; border-radius: 6px; padding: .6rem .8rem; margin-bottom: .8rem; background: #f8fbff; }
+table.kit-items td { padding: .3rem .4rem; }
+table.kit-items .inline-fields { display: table-cell; }

@@ -14,7 +14,7 @@ Delivery date:        {{ order.delivery_date|date:"l d F Y" }}
 Special instructions: {{ order.special_instructions|default:"None" }}
 
 Items:
-{% for line in lines %}{{ forloop.counter }}. {{ line.code }} - {{ line.description }}{% if line.is_flammable %} [FLAMMABLE]{% endif %}
+{% for line in lines %}{{ forloop.counter }}. {{ line.code }} - {{ line.description }}{% if line.is_flammable %} [FLAMMABLE]{% endif %}{% if line.kit_name %} [KIT: {{ line.kit_name }}]{% endif %}
    Quantity: {{ line.quantity }}   Section: {{ line.section|default:"-" }}
 {% endfor %}
 Open this email in HTML view for the print-friendly table.

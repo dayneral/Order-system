@@ -41,7 +41,7 @@
   {% for line in lines %}
     <tr>
       <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">NON-STOCKED</span>{% else %}{{ line.part_no }}{% endif %}</td>
-      <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}</td>
+      <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
       <td>{{ line.section_name|default:"—" }}</td>
       <td>{{ line.measurement_text }}</td>
       <td class="num">{% if line.trade_price is not None %}£{{ line.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>

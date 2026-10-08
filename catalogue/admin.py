@@ -7,7 +7,7 @@ from django.utils.html import format_html, format_html_join
 
 from audit.models import AuditEntry, record
 
-from .models import ImportRun, Item, MeasureType, Section
+from .models import ImportRun, Item, Kit, KitItem, LinkedItemRule, MeasureType, Section
 
 # Fields an admin can change, with friendly labels for the audit history.
 AUDITED_FIELDS = [
@@ -217,3 +217,62 @@ class ImportRunAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class LinkedItemRuleForm(forms.ModelForm):
+    class Meta:
+        model = LinkedItemRule
+        fields = ["trigger", "suggested_items", "note", "two_way", "is_active"]
+
+    def clean(self):
+        cleaned = super().clean()
+        trigger, suggested = cleaned.get("trigger"), cleaned.get("suggested_items")
+        if trigger and suggested and trigger in suggested:
+            self.add_error("suggested_items", "An item cannot be suggested for itself.")
+        return cleaned
+
+
+@admin.register(LinkedItemRule)
+class LinkedItemRuleAdmin(admin.ModelAdmin):
+    form = LinkedItemRuleForm
+    list_display = ("trigger", "suggestions", "two_way", "is_active", "note")
+    list_filter = ("is_active", "two_way")
+    search_fields = ("trigger__part_no", "trigger__display_name", "suggested_items__part_no",
+                     "suggested_items__display_name")
+    autocomplete_fields = ("trigger", "suggested_items")
+
+    @admin.display(description="Suggests")
+    def suggestions(self, obj):
+        return ", ".join(f"{i.part_no} {i.name}" for i in obj.suggested_items.all())
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        record(request.user, "link.save", form.instance, f"Linked items: {form.instance}")
+
+
+class KitItemInline(admin.TabularInline):
+    model = KitItem
+    extra = 3
+    autocomplete_fields = ("item",)
+    fields = ("position", "item", "quantity", "prompts_kit")
+
+
+@admin.register(Kit)
+class KitAdmin(admin.ModelAdmin):
+    list_display = ("name", "item_count", "prompted_by", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name", "kit_items__item__part_no", "kit_items__item__display_name")
+    inlines = [KitItemInline]
+    fields = ("name", "description", "is_active")
+
+    @admin.display(description="Items")
+    def item_count(self, obj):
+        return obj.kit_items.count()
+
+    @admin.display(description="Prompted when adding")
+    def prompted_by(self, obj):
+        return ", ".join(ki.item.part_no for ki in obj.kit_items.filter(prompts_kit=True).select_related("item")) or "—"
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        record(request.user, "kit.save", form.instance, f"Kit saved: {form.instance.name}")

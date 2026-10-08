@@ -1,0 +1,29 @@
+<form method="post" action="{% url 'orders:kit_add' order.pk offer.kit.pk %}"
+      hx-post="{% url 'orders:kit_add' order.pk offer.kit.pk %}" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}
+  <table class="grid kit-items">
+    <tbody>
+    {% for row in offer.rows %}
+      <tr class="{% if not row.available %}muted{% endif %}">
+        <td><input type="checkbox" name="include_{{ row.kit_item.pk }}" value="1" aria-label="Include {{ row.item.part_no }}"
+                   {% if row.checked %}checked{% endif %}{% if not row.available %} disabled{% endif %}></td>
+        <td class="code">{{ row.item.part_no }}</td>
+        <td>{{ row.item.name }}{% if row.item.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}
+          {% if row.on_order %}<div class="hint">Already on this order</div>{% endif %}
+          {% if not row.available %}<div class="hint">Not available</div>{% endif %}</td>
+        <td class="inline-fields">
+        {% if row.item.measure_type == "area" %}
+          <input name="length_{{ row.kit_item.pk }}" type="number" min="0.1" step="0.1" placeholder="L m" class="qty" aria-label="Length"> ×
+          <input name="width_{{ row.kit_item.pk }}" type="number" min="0.1" step="0.1" placeholder="W m" class="qty" aria-label="Width">
+        {% elif row.item.measure_type == "cut" or row.item.measure_type == "linear" %}
+          <input name="length_{{ row.kit_item.pk }}" type="number" min="0.1" step="0.1" placeholder="m" class="qty" aria-label="Length"> m
+        {% else %}
+          <input name="quantity_{{ row.kit_item.pk }}" type="number" min="1" step="1" value="{{ row.kit_item.quantity }}" class="qty" aria-label="Quantity">
+          {% if row.item.measure_type == "pack" %}packs{% else %}{{ row.item.unit }}{% endif %}
+        {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <button class="primary">Add selected</button>
+</form>

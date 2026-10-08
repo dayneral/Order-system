@@ -18,6 +18,7 @@
   .code { font-family: Courier, monospace; white-space: nowrap; }
   .flam { color: #b42318; font-weight: bold; }
   .nonstock { font-weight: bold; }
+  .kit { color: #1d4ed8; font-weight: bold; }
   .note { margin-top: 8pt; font-size: 9pt; color: #333; }
   .warn { border: 2px solid #b42318; padding: 6pt; margin: 8pt 0; font-weight: bold; }
   .toolbar { margin: 0 0 16px; font-family: system-ui, sans-serif; }
@@ -50,7 +51,7 @@
   {% for line in lines %}
     <tr>
       <td>{{ forloop.counter }}</td>
-      <td>{% if line.is_non_stocked %}<span class="nonstock">NON-STOCKED</span>{% else %}<span class="code">{{ line.code }}</span>{% endif %}&nbsp;&mdash;&nbsp;{{ line.description }}{% if line.is_flammable %} <span class="flam">[FLAMMABLE]</span>{% endif %}</td>
+      <td>{% if line.is_non_stocked %}<span class="nonstock">NON-STOCKED</span>{% else %}<span class="code">{{ line.code }}</span>{% endif %}&nbsp;&mdash;&nbsp;{{ line.description }}{% if line.is_flammable %} <span class="flam">[FLAMMABLE]</span>{% endif %}{% if line.kit_name %} <span class="kit">[KIT: {{ line.kit_name }}]</span>{% endif %}</td>
       <td>{{ line.quantity }}</td>
       <td>{% if line.is_flammable %}<span class="flam">{{ line.section|default:"—" }}</span>{% else %}{{ line.section|default:"—" }}{% endif %}</td>
     </tr>

@@ -1,0 +1,16 @@
+<form method="post" action="{% url 'orders:line_add' order.pk %}" class="inline-fields"
+      hx-post="{% url 'orders:line_add' order.pk %}" hx-target="#lines" hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">{% csrf_token %}
+  <input type="hidden" name="item_id" value="{{ item.pk }}">
+  {% if item.measure_type == "area" %}
+    <input name="length" type="number" min="0.1" step="0.1" placeholder="L m" required class="qty" aria-label="Length in metres">
+    ×
+    <input name="width" type="number" min="0.1" step="0.1" placeholder="W m" required class="qty" aria-label="Width in metres">
+  {% elif item.measure_type == "cut" or item.measure_type == "linear" %}
+    <input name="length" type="number" min="0.1" step="0.1" placeholder="m" required class="qty" aria-label="Length in metres"> m
+  {% else %}
+    <input name="quantity" type="number" min="1" step="1" value="1" required class="qty" aria-label="Quantity">
+    {% if item.measure_type == "pack" %}packs{% endif %}
+  {% endif %}
+  <button>Add</button>
+</form>

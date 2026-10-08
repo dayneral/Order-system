@@ -9,8 +9,21 @@
       <a href="?section={{ s.key }}" class="{% if s.key == current_section %}active{% endif %}"
          hx-get="{% url 'orders:items' order.pk %}?section={{ s.key }}" hx-target="#items" hx-swap="outerHTML">{{ s.name }}</a>
     {% endfor %}
+    <a href="?section=kits" class="kits-tab{% if current_section == 'kits' %} active{% endif %}"
+       hx-get="{% url 'orders:items' order.pk %}?section=kits" hx-target="#items" hx-swap="outerHTML">Kits</a>
   </div>
   {% if q %}<p class="hint">Results for "{{ q }}" across all sections.</p>{% endif %}
+  {% if kits_tab %}
+    <p class="hint">Add a whole kit in one go. Untick anything you don't need and adjust quantities before pressing <b>Add selected</b>.</p>
+    {% for offer in kit_offers %}
+      <div class="kit-card">
+        <div class="row-between"><b>{{ offer.kit.name }}</b>
+          <span class="hint">Est. £{{ offer.estimated_value }}{% if offer.has_measured_items %} + measured items{% endif %}</span></div>
+        {% if offer.kit.description %}<div class="hint">{{ offer.kit.description }}</div>{% endif %}
+        {% include "orders/_kit_form.html" %}
+      </div>
+    {% empty %}<p>No kits have been set up yet.</p>{% endfor %}
+  {% else %}
   <table class="grid items">
     <thead><tr><th>Part No.</th><th>Item</th><th class="num">Price</th><th>Quantity / measurement</th></tr></thead>
     <tbody>
@@ -25,22 +38,7 @@
         <td class="num">{% if item.trade_price is not None %}£{{ item.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>
         <td>
         {% if item.is_orderable %}
-          <form method="post" action="{% url 'orders:line_add' order.pk %}" class="inline-fields"
-                hx-post="{% url 'orders:line_add' order.pk %}" hx-target="#lines" hx-swap="outerHTML"
-                hx-on::after-request="if(event.detail.successful) this.reset()">{% csrf_token %}
-            <input type="hidden" name="item_id" value="{{ item.pk }}">
-            {% if item.measure_type == "area" %}
-              <input name="length" type="number" min="0.1" step="0.1" placeholder="L m" required class="qty" aria-label="Length in metres">
-              ×
-              <input name="width" type="number" min="0.1" step="0.1" placeholder="W m" required class="qty" aria-label="Width in metres">
-            {% elif item.measure_type == "cut" or item.measure_type == "linear" %}
-              <input name="length" type="number" min="0.1" step="0.1" placeholder="m" required class="qty" aria-label="Length in metres"> m
-            {% else %}
-              <input name="quantity" type="number" min="1" step="1" value="1" required class="qty" aria-label="Quantity">
-              {% if item.measure_type == "pack" %}packs{% endif %}
-            {% endif %}
-            <button>Add</button>
-          </form>
+          {% include "orders/_add_form.html" %}
         {% else %}
           <span class="hint">Not available yet: details incomplete</span>
         {% endif %}
@@ -51,5 +49,6 @@
     {% endfor %}
     </tbody>
   </table>
+  {% endif %}
   {% if more_items %}<p class="hint">Showing the first {{ items|length }} items. Search to narrow the list.</p>{% endif %}
 </div>

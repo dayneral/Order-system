@@ -9,9 +9,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from audit.models import AuditEntry
-from catalogue.models import Item, Section
+from catalogue.models import Item, Kit, Section
 
-from . import services
+from . import services, suggestions
 from notifications import documents
 from notifications.models import OrderEmail
 
@@ -99,10 +99,13 @@ def order_new(request):
     return redirect("orders:edit", order.pk)
 
 
-def _item_browser(request):
+def _item_browser(request, order):
     sections = list(Section.objects.all())
     q = request.GET.get("q", "").strip()
     section_key = request.GET.get("section") or (sections[0].key if sections else None)
+    if section_key == "kits" and not q:
+        return {"sections": sections, "current_section": "kits", "q": "", "items": [], "more_items": False,
+                "kit_offers": suggestions.all_kit_offers(order), "kits_tab": True}
     items = Item.objects.filter(is_active=True).select_related("section")
     if q:
         terms = q.split()
@@ -154,20 +157,20 @@ def order_edit(request, order_id):
                 order.refresh_from_db()
     else:
         form = OrderHeaderForm(instance=order)
-    context = {"order": order, "form": form, "errors": errors, **_item_browser(request), **_lines_context(order)}
+    context = {"order": order, "form": form, "errors": errors, **_item_browser(request, order), **_lines_context(order)}
     return render(request, "orders/order_edit.html", context)
 
 
 @login_required
 def item_browser(request, order_id):
     order = _get_order(request, order_id, edit=True)
-    return render(request, "orders/_items.html", {"order": order, **_item_browser(request)})
+    return render(request, "orders/_items.html", {"order": order, **_item_browser(request, order)})
 
 
-def _lines_response(request, order, error=None, notice=None):
+def _lines_response(request, order, error=None, notice=None, extra=None):
     if _is_htmx(request):
         order.refresh_from_db()
-        return render(request, "orders/_lines.html", _lines_context(order, error, notice))
+        return render(request, "orders/_lines.html", {**_lines_context(order, error, notice), **(extra or {})})
     if error:
         messages.error(request, error)
     elif notice:
@@ -184,7 +187,21 @@ def line_add(request, order_id):
         line = services.add_item_line(order, request.user, item, request.POST)
     except OrderError as exc:
         return _lines_response(request, order, error=f"{item.part_no}: {exc}")
-    return _lines_response(request, order, notice=f"Added {line.part_no} {line.name}.")
+    return _lines_response(request, order, notice=f"Added {line.part_no} {line.name}.",
+                           extra=suggestions.after_add(order, item))
+
+
+@login_required
+@require_POST
+def kit_add(request, order_id, kit_id):
+    order = _get_order(request, order_id, edit=True)
+    kit = get_object_or_404(Kit, pk=kit_id, is_active=True)
+    try:
+        lines = services.add_kit(order, request.user, kit, request.POST)
+    except OrderError as exc:
+        return _lines_response(request, order, error=f"{kit.name}: " + "; ".join(exc.errors))
+    return _lines_response(request, order, notice=f"Added {len(lines)} item{'s' if len(lines) != 1 else ''} "
+                                                  f"from {kit.name}.")
 
 
 @login_required

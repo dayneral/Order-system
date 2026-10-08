@@ -169,18 +169,63 @@ class ImportRun(models.Model):
         return f"{self.filename} ({self.get_status_display()}, {self.created_at:%d %b %Y %H:%M})"
 
 
-class LinkedItemGroup(models.Model):
-    """Future feature: items that are usually ordered together.
+class LinkedItemRule(models.Model):
+    """'When X is added, suggest Y': shown on the order page as soon as X is added.
 
-    When one member is ordered without the others, the order screen will show
-    a reminder. Data structure only for now; screens come later.
+    With two_way set, adding any of the suggested items also suggests the trigger item.
     """
 
-    name = models.CharField(max_length=120)
-    reminder_text = models.CharField(max_length=300, blank=True)
-    items = models.ManyToManyField(Item, related_name="linked_groups")
-    is_active = models.BooleanField(default=True)
+    trigger = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="link_rules",
+                                help_text="When this item is added to an order…")
+    suggested_items = models.ManyToManyField(Item, related_name="+",
+                                             help_text="…suggest these items.")
+    note = models.CharField(max_length=200, blank=True,
+                            help_text='Optional reason shown to the user, e.g. "Sealant needs an applicator gun".')
+    two_way = models.BooleanField("Suggest both ways", default=False,
+                                  help_text="Also suggest the trigger item when a suggested item is added.")
+    is_active = models.BooleanField("Active", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "linked item rule"
+        ordering = ["trigger__part_no"]
+
+    def __str__(self):
+        return f"{self.trigger.part_no} → {', '.join(i.part_no for i in self.suggested_items.all())}"
+
+
+class Kit(models.Model):
+    """A named set of items ordered together, e.g. a close-coupled toilet kit.
+
+    Adding an item marked "prompts kit" offers the rest of the kit. Kits can
+    also be added in one go from the Kits tab. Each kit item becomes its own
+    order line, labelled with the kit name.
+    """
+
+    name = models.CharField(max_length=120, unique=True)
+    description = models.CharField(max_length=300, blank=True)
+    is_active = models.BooleanField("Active", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+
+class KitItem(models.Model):
+    kit = models.ForeignKey(Kit, on_delete=models.CASCADE, related_name="kit_items")
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="kit_memberships")
+    quantity = models.PositiveIntegerField(
+        default=1, help_text="Default quantity (packs for pack items). Measured items: the user enters measurements.")
+    prompts_kit = models.BooleanField(
+        default=False, help_text="Adding this item to an order offers the rest of the kit.")
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [models.UniqueConstraint(fields=["kit", "item"], name="kit_item_once")]
+
+    def __str__(self):
+        return f"{self.kit.name}: {self.item.part_no}"

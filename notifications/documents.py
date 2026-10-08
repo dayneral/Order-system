@@ -42,6 +42,7 @@ def document_context(order, kind="submitted"):
             "quantity": quantity_text(line),
             "section": line.section_name,
             "is_flammable": line.is_flammable,
+            "kit_name": line.kit_name,
         })
     return {
         "order": order,

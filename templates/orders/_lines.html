@@ -1,6 +1,28 @@
 <div id="lines">
   {% if line_error %}<div class="msg msg-error">{{ line_error }}</div>{% endif %}
   {% if line_notice %}<div class="msg msg-success">{{ line_notice }}</div>{% endif %}
+  {% if suggested_items %}
+  <div class="suggest">
+    <div class="row-between"><b>Commonly ordered with {{ suggest_for.part_no }} {{ suggest_for.name }}</b>
+      <button type="button" class="link" onclick="this.closest('.suggest').remove()">No thanks</button></div>
+    {% for note in suggest_notes %}<div class="hint">{{ note }}</div>{% endfor %}
+    <table class="grid items"><tbody>
+    {% for item in suggested_items %}
+      <tr><td class="code">{{ item.part_no }}</td>
+          <td>{{ item.name }}{% if item.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}</td>
+          <td>{% include "orders/_add_form.html" %}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+  {% for offer in kit_offers %}
+  <div class="suggest kit">
+    <div class="row-between"><b>{{ suggest_for.part_no }} is part of the {{ offer.kit.name }}. Add the rest?</b>
+      <button type="button" class="link" onclick="this.closest('.suggest').remove()">No thanks</button></div>
+    {% if offer.kit.description %}<div class="hint">{{ offer.kit.description }}</div>{% endif %}
+    {% include "orders/_kit_form.html" %}
+  </div>
+  {% endfor %}
   {% if order.amendment_pending %}<div class="msg msg-warning">This order has changes that have not been sent to stores yet.</div>{% endif %}
   {% if lines %}
   <table class="grid lines">
@@ -9,7 +31,7 @@
     {% for line in lines %}
       <tr>
         <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">NON-STOCKED</span>{% else %}{{ line.part_no }}{% endif %}</td>
-        <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}</td>
+        <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
         <td>
           <form method="post" action="{% url 'orders:line_update' order.pk line.pk %}" class="inline-fields"
                 hx-post="{% url 'orders:line_update' order.pk line.pk %}" hx-trigger="change" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}

@@ -106,6 +106,7 @@ class OrderLine(models.Model):
     trade_price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
     catalogue_length_m = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     is_flammable = models.BooleanField(default=False)
+    kit_name = models.CharField(max_length=120, blank=True, help_text="Set when the line was added as part of a kit.")
 
     # What was asked for.
     quantity = models.DecimalField(max_digits=10, decimal_places=1, null=True, blank=True)
