@@ -3,6 +3,14 @@
 Decisions made with BFS during the build that refine or change the original
 build brief. Newest first.
 
+## 2026-10-08 (after launch)
+
+| Topic | Decision |
+|---|---|
+| PDF attachment | **Removed** at BFS's request. The HTML email is printed by stores, so the PDF was redundant, and it was the largest user of server memory. The print page in the app is kept. |
+| Server memory | The web service runs 1 worker × 4 threads (about 90 MB, down from about 250 MB). |
+| New order flow | The separate "new order" details page is removed. **New order** opens the order page directly with **Add items** first. The job details sit in a compact panel beside the order lines. An untouched empty draft is reused, not duplicated. |
+
 ## 2026-10-08
 
 | Topic | Decision |

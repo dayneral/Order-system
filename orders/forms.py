@@ -18,8 +18,8 @@ class OrderHeaderForm(forms.ModelForm):
             "special_instructions": "Special instructions (optional)",
         }
         widgets = {
-            "property_address": forms.Textarea(attrs={"rows": 3}),
-            "special_instructions": forms.Textarea(attrs={"rows": 3}),
+            "property_address": forms.Textarea(attrs={"rows": 2}),
+            "special_instructions": forms.Textarea(attrs={"rows": 2}),
             "property_type": forms.RadioSelect,
             "delivery_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         }
@@ -30,4 +30,3 @@ class OrderHeaderForm(forms.ModelForm):
             field.required = False
         self.fields["property_type"].choices = Order.PropertyType.choices
         self.fields["delivery_date"].widget.attrs["min"] = timezone.localdate().isoformat()
-        self.fields["job_number"].widget.attrs["autofocus"] = True

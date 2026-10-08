@@ -1,6 +1,6 @@
 """
 Hooks called when stores need to hear about an order. Each sends the order
-email (HTML body with a PDF attached) and returns the OrderEmail record, so
+email (print-friendly HTML body) and returns the OrderEmail record, so
 the caller can warn the user if sending failed.
 """
 

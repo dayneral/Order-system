@@ -76,7 +76,6 @@ td.code { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: no
 .req { color: var(--bad); }
 h2.first { margin-top: 0; }
 .builder { display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 1.25rem; align-items: start; }
-.lines-panel { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; }
 .section-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem; }
 .section-tabs a { padding: .25rem .65rem; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--ink); font-size: .9rem; background: #fff; }
 .section-tabs a.active { background: var(--brand); color: #fff; border-color: var(--brand); }
@@ -99,3 +98,17 @@ table.details td { padding: .35rem .5rem; vertical-align: top; }
 #lines input.qty { width: 4.2rem; }
 #lines .inline-fields { flex-wrap: nowrap; }
 .badge.bad { background: #b42318; color: #fff; }
+.order-side { display: flex; flex-direction: column; gap: 0; }
+.job-details h2 { font-size: 1rem; }
+.job-details .field { margin-bottom: .55rem; }
+.job-details label { font-size: .85rem; }
+.job-details input, .job-details textarea { padding: .35rem .45rem; font-size: .92rem; }
+.job-details textarea { height: 3.6rem; resize: vertical; width: 100%; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+.jd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 .8rem; }
+.jd-grid .span2 { grid-column: span 2; }
+.jd-grid details { margin-bottom: .6rem; }
+.jd-grid details summary { font-size: .85rem; font-weight: 600; }
+.side-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .4rem; }
+.side-actions .hint { width: 100%; margin: .2rem 0 0; }
+#items input.qty { width: 4.6rem; }
+#items .inline-fields { flex-wrap: nowrap; }

@@ -1,0 +1,20 @@
+{% with f=form %}
+<div class="jd-grid">
+  <div class="field{% if f.job_number.errors %} has-error{% endif %}">
+    <label for="{{ f.job_number.id_for_label }}">Job number <span class="req">*</span></label>{{ f.job_number }}
+  </div>
+  <div class="field{% if f.delivery_date.errors %} has-error{% endif %}">
+    <label for="{{ f.delivery_date.id_for_label }}">Delivery date <span class="req">*</span></label>{{ f.delivery_date }}
+  </div>
+  <div class="field span2{% if f.property_address.errors %} has-error{% endif %}">
+    <label for="{{ f.property_address.id_for_label }}">Property address <span class="req">*</span></label>{{ f.property_address }}
+  </div>
+  <div class="field span2">
+    <label>Property type <span class="req">*</span></label>{{ f.property_type }}
+  </div>
+  <details class="span2"{% if f.special_instructions.value %} open{% endif %}>
+    <summary>Special instructions (optional)</summary>
+    {{ f.special_instructions }}
+  </details>
+</div>
+{% endwith %}

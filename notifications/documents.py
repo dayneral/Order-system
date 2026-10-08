@@ -1,11 +1,10 @@
 """
-The order document: one template used for the email body, the PDF attachment
-and the printable page, so all three always match.
+The order document: one template used for the email body and the printable
+page, so the two always match. (A PDF attachment was dropped at BFS's request:
+the email itself is printed.)
 
 Stores never see prices or order values.
 """
-
-import io
 
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -63,31 +62,15 @@ def subject(order, kind="submitted"):
     return f"{label}: {text}" if label else text
 
 
-def render_html(order, kind="submitted", for_pdf=False):
-    return render_to_string("notifications/order_document.html",
-                            {**document_context(order, kind), "for_pdf": for_pdf})
+def render_html(order, kind="submitted"):
+    return render_to_string("notifications/order_document.html", document_context(order, kind))
 
 
 def render_to_string_for_print(order, kind, back_url):
     return render_to_string("notifications/order_document.html",
-                            {**document_context(order, kind), "for_pdf": False, "show_toolbar": True,
+                            {**document_context(order, kind), "show_toolbar": True,
                              "back_url": back_url})
 
 
 def render_text(order, kind="submitted"):
     return render_to_string("notifications/order_document.txt", document_context(order, kind))
-
-
-def render_pdf(order, kind="submitted"):
-    from xhtml2pdf import pisa
-
-    buffer = io.BytesIO()
-    result = pisa.CreatePDF(render_html(order, kind, for_pdf=True), dest=buffer, encoding="utf-8")
-    if result.err:
-        raise RuntimeError(f"PDF could not be created for {order.order_number}")
-    return buffer.getvalue()
-
-
-def pdf_filename(order, kind="submitted"):
-    label = LABELS.get(kind, "")
-    return f"{order.order_number}{'-' + label if label else ''}.pdf"

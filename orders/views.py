@@ -81,8 +81,8 @@ def order_list(request):
 
     drafts = []
     if view == "mine":
-        drafts = list(Order.objects.filter(owner=request.user, status=Order.Status.DRAFT)
-                      .annotate(line_count=Count("lines")).order_by("-updated_at"))
+        drafts = list(services.started_drafts(request.user).annotate(line_count=Count("lines"))
+                      .order_by("-updated_at"))
         for draft in drafts:
             draft.expires = services.draft_expiry(draft)
     return render(request, "orders/order_list.html", {
@@ -94,17 +94,9 @@ def order_list(request):
 
 @login_required
 def order_new(request):
-    if request.method == "POST":
-        form = OrderHeaderForm(request.POST)
-        if form.is_valid():
-            order = services.create_draft(request.user, **form.cleaned_data)
-            other = services.active_order_for_job(order.job_number_key)
-            if other:
-                messages.warning(request, services._job_clash_message(other))
-            return redirect("orders:edit", order.pk)
-    else:
-        form = OrderHeaderForm()
-    return render(request, "orders/order_new.html", {"form": form})
+    """Open the order page straight away. Reuses the user's untouched empty draft, if any."""
+    order = services.empty_draft_for(request.user) or services.create_draft(request.user)
+    return redirect("orders:edit", order.pk)
 
 
 def _item_browser(request):
@@ -152,6 +144,10 @@ def order_edit(request, order_id):
                     _report_email(request, order, f"Amended order {order.order_number} sent to stores.")
                     return redirect("orders:detail", order.pk)
                 messages.success(request, "Draft saved." if order.is_draft else "Changes saved.")
+                if order.is_draft:
+                    other = services.active_order_for_job(order.job_number_key)
+                    if other:
+                        messages.warning(request, services._job_clash_message(other))
                 return redirect("orders:edit", order.pk)
             except OrderError as exc:
                 errors = exc.errors
@@ -283,13 +279,3 @@ def order_print(request, order_id):
     kind = "cancelled" if order.status == Order.Status.CANCELLED else ("amended" if order.amended_at else "submitted")
     html = documents.render_to_string_for_print(order, kind, back_url=reverse("orders:detail", args=[order.pk]))
     return HttpResponse(html)
-
-
-@login_required
-def order_pdf(request, order_id):
-    order = _get_order(request, order_id)
-    kind = "cancelled" if order.status == Order.Status.CANCELLED else ("amended" if order.amended_at else "submitted")
-    response = HttpResponse(documents.render_pdf(order, kind), content_type="application/pdf")
-    name = documents.pdf_filename(order, kind) if order.order_number else "draft-order.pdf"
-    response["Content-Disposition"] = f'inline; filename="{name}"'
-    return response

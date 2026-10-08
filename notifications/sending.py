@@ -31,7 +31,6 @@ def _build_message(order, kind):
         reply_to=reply_to,
     )
     message.attach_alternative(documents.render_html(order, kind), "text/html")
-    message.attach(documents.pdf_filename(order, kind), documents.render_pdf(order, kind), "application/pdf")
     return message
 
 
@@ -40,7 +39,7 @@ def _attempt(order, kind):
     try:
         _build_message(order, kind).send(fail_silently=False)
         return True, ""
-    except Exception as exc:  # noqa: BLE001 - any failure (SMTP, PDF) must not lose the order
+    except Exception as exc:  # noqa: BLE001 - any failure must not lose the order
         logger.exception("Order email failed: %s %s", kind, order.order_number)
         return False, f"{type(exc).__name__}: {exc}"[:2000]
 

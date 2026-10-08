@@ -115,12 +115,28 @@ def test_drafts_are_private(client, make_user, items):
     assert "J1001" not in client.get(reverse("orders:list") + "?view=all").content.decode()
 
 
+def test_new_order_opens_the_order_page_directly_and_reuses_an_empty_draft(client, make_user, items):
+    user = make_user()
+    client.force_login(user)
+    resp = client.get(reverse("orders:new"))
+    order = Order.objects.get()
+    assert resp.url == reverse("orders:edit", args=[order.pk]) and order.is_draft and order.owner == user
+    client.get(reverse("orders:new"))
+    assert Order.objects.count() == 1  # untouched draft reused, not duplicated
+    assert "No drafts" in client.get(reverse("orders:list")).content.decode()  # empty draft not listed
+    services.add_item_line(order, user, items["silicone"], {"quantity": "1"})
+    client.get(reverse("orders:new"))
+    assert Order.objects.count() == 2  # a started draft is kept; a fresh one is made
+
+
 def test_draft_can_be_saved_incomplete_and_resumed(client, make_user, items):
     user = make_user()
     client.force_login(user)
-    resp = client.post(reverse("orders:new"), {"job_number": "J77"})
+    client.get(reverse("orders:new"))
     order = Order.objects.get()
-    assert resp.url == reverse("orders:edit", args=[order.pk])
+    resp = client.post(reverse("orders:edit", args=[order.pk]), {"job_number": "J77", "action": "save"})
+    assert resp.status_code == 302
+    order.refresh_from_db()
     assert order.is_draft and order.job_number == "J77" and order.owner == user
     page = client.get(reverse("orders:list")).content.decode()
     assert "J77" in page and "Continue" in page
@@ -253,7 +269,8 @@ def test_draft_saved_with_job_that_has_active_order_shows_warning(client, make_u
     user = make_user()
     services.submit(ready_draft(user, items, "J-800"), user)
     client.force_login(user)
-    resp = client.post(reverse("orders:new"), {"job_number": "J-800"})
+    draft = services.create_draft(user)
+    resp = client.post(reverse("orders:edit", args=[draft.pk]), {"job_number": "J-800", "action": "save"})
     assert any("already has an active order" in str(m) for m in get_messages(resp.wsgi_request))
 
 
@@ -358,7 +375,7 @@ def test_sign_in_warns_about_drafts_due_for_deletion(client, make_user, items):
 def test_full_order_through_the_website(client, make_user, items):
     user = make_user()
     client.force_login(user)
-    resp = client.post(reverse("orders:new"), {})
+    client.get(reverse("orders:new"))
     order = Order.objects.get()
     edit = reverse("orders:edit", args=[order.pk])
     assert client.get(edit).status_code == 200

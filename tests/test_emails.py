@@ -1,6 +1,5 @@
-"""Order email to stores: content, PDF, failures and retry, print view."""
+"""Order email to stores: content, failures and retry, print view."""
 
-import io
 from datetime import timedelta
 from decimal import Decimal as D
 
@@ -8,7 +7,6 @@ import pytest
 from django.core import mail
 from django.urls import reverse
 from django.utils import timezone
-from pypdf import PdfReader
 
 from catalogue.models import Item, MeasureType, Section
 from notifications import sending
@@ -43,11 +41,7 @@ def order(make_user):
     return o
 
 
-def pdf_text(data):
-    return "\n".join(page.extract_text() for page in PdfReader(io.BytesIO(data)).pages)
-
-
-def test_submit_emails_stores_with_html_body_and_pdf(order, settings):
+def test_submit_emails_stores_with_html_body_and_no_attachment(order, settings):
     services.submit(order, order.owner)
     assert len(mail.outbox) == 1
     msg = mail.outbox[0]
@@ -61,18 +55,16 @@ def test_submit_emails_stores_with_html_body_and_pdf(order, settings):
                      "Black granite bullnose worktop, cut to 1.9m", "Cut to 4.5m × 2.0m = 9.00 m²",
                      "[FLAMMABLE]", "NON-STOCKED", "Brass kick plate", "2 packs of 100"):
         assert expected in html, expected
-    name, data, mimetype = msg.attachments[0]
-    assert name == f"{order.order_number}.pdf" and mimetype == "application/pdf"
-    text = pdf_text(data)
-    for expected in (order.order_number, "J-24017", "cut to 1.9m", "9.00", "FLAMMABLE", "NON-STOCKED"):
-        assert expected in text, expected
+    assert msg.attachments == []
+    for expected in (order.order_number, "J-24017", "cut to 1.9m", "9.00 m²", "[FLAMMABLE]", "NON-STOCKED"):
+        assert expected in msg.body, expected
     assert OrderEmail.objects.get().status == OrderEmail.Status.SENT
 
 
 def test_no_prices_or_totals_go_to_stores(order):
     services.submit(order, order.owner)
     msg = mail.outbox[0]
-    everything = msg.body + msg.alternatives[0][0] + pdf_text(msg.attachments[0][1])
+    everything = msg.body + msg.alternatives[0][0]
     assert "£" not in everything and "10.00" not in everything and str(order.order_value) not in everything
     assert "value" not in everything.lower() and "price" not in everything.lower()
 
@@ -84,7 +76,6 @@ def test_amended_and_cancelled_emails(order):
     services.finish_amendment(order, user)
     amended = mail.outbox[-1]
     assert amended.subject.startswith("AMENDED: ") and "AMENDED" in amended.alternatives[0][0]
-    assert amended.attachments[0][0] == f"{order.order_number}-AMENDED.pdf"
     assert "5 each" in amended.body
 
     services.cancel(order, user)
@@ -151,13 +142,11 @@ def test_cannot_retry_after_anonymisation(order, monkeypatch):
         sending.retry(OrderEmail.objects.get())
 
 
-def test_print_view_and_pdf_download(client, order, make_user):
+def test_print_view(client, order, make_user):
     services.submit(order, order.owner)
     client.force_login(make_user("viewer@bfsuk.org", "Viewer"))
     page = client.get(reverse("orders:print", args=[order.pk])).content.decode()
     assert "window.print()" in page and order.order_number in page and "cut to 1.9m" in page and "£" not in page
-    resp = client.get(reverse("orders:pdf", args=[order.pk]))
-    assert resp["Content-Type"] == "application/pdf" and order.order_number in pdf_text(resp.content)
 
 
 def test_print_view_matches_email_content(order):

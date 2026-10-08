@@ -5,8 +5,7 @@
 <div class="row-between">
   <h1>{% if order.order_number %}Order {{ order.order_number }}{% else %}Draft order{% endif %} {% include "orders/_status.html" %}</h1>
   <div class="actions">
-    {% if not order.is_draft %}<a class="button" href="{% url 'orders:print' order.pk %}" target="_blank">Print</a>
-    <a class="button" href="{% url 'orders:pdf' order.pk %}" target="_blank">PDF</a>{% endif %}
+    {% if not order.is_draft %}<a class="button" href="{% url 'orders:print' order.pk %}" target="_blank">Print</a>{% endif %}
     {% if can_edit %}<a class="button" href="{% url 'orders:edit' order.pk %}">{% if order.is_draft %}Continue draft{% else %}Amend order{% endif %}</a>{% endif %}
     {% if can_cancel %}<a class="button danger" href="{% url 'orders:cancel' order.pk %}">Cancel order</a>{% endif %}
   </div>

@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <title>{% if label %}{{ label }} {% endif %}{{ order.order_number|default:"Draft order" }}</title>
 <style>
-  {% if for_pdf %}@page { size: a4 portrait; margin: 1.5cm; }{% endif %}
   body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #000; margin: 0; }
   .doc { max-width: 800px; }
   h1 { font-size: 16pt; margin: 0 0 4pt 0; }
@@ -21,12 +20,10 @@
   .nonstock { font-weight: bold; }
   .note { margin-top: 8pt; font-size: 9pt; color: #333; }
   .warn { border: 2px solid #b42318; padding: 6pt; margin: 8pt 0; font-weight: bold; }
-  {% if not for_pdf %}
   .toolbar { margin: 0 0 16px; font-family: system-ui, sans-serif; }
   .toolbar button, .toolbar a { font: inherit; margin-right: 8px; }
   @media screen { body { margin: 24px; } }
   @media print { .toolbar { display: none; } body { margin: 0; } }
-  {% endif %}
 </style>
 </head>
 <body>

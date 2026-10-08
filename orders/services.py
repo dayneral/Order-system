@@ -224,6 +224,20 @@ def update_header(order, user, data, today=None):
     return order
 
 
+def started_drafts(user):
+    """The user's drafts that have something in them (an untouched empty draft is not listed)."""
+    return (Order.objects.filter(owner=user, status=Order.Status.DRAFT)
+            .exclude(job_number="", property_address="", lines__isnull=True))
+
+
+def empty_draft_for(user):
+    """An untouched draft to reuse when the user starts a new order."""
+    return (Order.objects.filter(owner=user, status=Order.Status.DRAFT, job_number="", property_address="",
+                                 property_type="", delivery_date__isnull=True, special_instructions="",
+                                 lines__isnull=True)
+            .order_by("-updated_at").first())
+
+
 def delete_draft(order, user):
     if not (order.is_draft and order.owner_id == user.pk):
         raise OrderError("Only your own drafts can be deleted.")
@@ -234,7 +248,7 @@ def drafts_due_for_deletion(user, now=None):
     """The user's drafts that will be deleted within DRAFT_WARNING_DAYS."""
     now = now or timezone.now()
     cutoff = now - timedelta(days=DRAFT_RETENTION_DAYS - DRAFT_WARNING_DAYS)
-    return Order.objects.filter(owner=user, status=Order.Status.DRAFT, updated_at__lte=cutoff).order_by("updated_at")
+    return started_drafts(user).filter(updated_at__lte=cutoff).order_by("updated_at")
 
 
 def draft_expiry(order):

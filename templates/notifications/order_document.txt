@@ -17,5 +17,5 @@ Items:
 {% for line in lines %}{{ forloop.counter }}. {{ line.code }} - {{ line.description }}{% if line.is_flammable %} [FLAMMABLE]{% endif %}
    Quantity: {{ line.quantity }}   Section: {{ line.section|default:"-" }}
 {% endfor %}
-The full order is attached as a PDF.
+Open this email in HTML view for the print-friendly table.
 {% endautoescape %}

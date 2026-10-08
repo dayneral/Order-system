@@ -15,7 +15,9 @@ services:
     plan: starter
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
     preDeployCommand: python manage.py wait_for_db && python manage.py migrate --noinput
-    startCommand: gunicorn bfs.wsgi --workers 2 --timeout 60
+    # One worker with 4 threads: enough for ~20 users at about half the memory
+    # of 2 workers. The worker is recycled every ~1000 requests to stop memory creeping up.
+    startCommand: gunicorn bfs.wsgi --workers 1 --threads 4 --timeout 60 --max-requests 1000 --max-requests-jitter 100
     healthCheckPath: /healthz
     envVars:
       - key: DATABASE_URL

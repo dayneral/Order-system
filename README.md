@@ -9,7 +9,7 @@ Pages are plain server-rendered HTML with no separate front-end build.
 > Status: **Stages 1–5** (everything needed for launch) are complete:
 > sign-in, approval and roles; the catalogue import and admin editing;
 > ordering with drafts, measure types, submit, amend and cancel; the order
-> email to stores (HTML body + PDF) with retry and a printable page; and the
+> email to stores (print-friendly HTML) with retry and a printable page; and the
 > daily data retention job.
 >
 > To deploy, follow [`docs/RENDER_SETUP.md`](docs/RENDER_SETUP.md).
@@ -27,7 +27,7 @@ Pages are plain server-rendered HTML with no separate front-end build.
 | `accounts/` | Users, sign-in, registration, approval, roles and password reset. Its users table is designed to be shared with a future job management system. |
 | `audit/` | One shared audit history ("who did what, when") used by every module |
 | `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`) and the ordering screens |
-| `notifications/` | The order document (one template for email, PDF and print), sending, and the failed-email list with retry |
+| `notifications/` | The order document (one template for the email and the print page), sending, and the failed-email list with retry |
 | `retention/` | The daily retention job (`run_retention` command), its run log, and the admin Retention page |
 | `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, and linked-item groups (data only for now) |
 | `templates/` | The HTML pages |
@@ -128,10 +128,11 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   - **My Orders:** your drafts and the orders you have placed.
   - **All Orders:** everyone's orders. Anyone can view them; only the owner or an admin can change them.
   - **Historic Orders:** orders whose personal details have been anonymised.
-- **New order:** enter the job number, property address, property type
-  (Void/Occupied), requested delivery date (not in the past) and any special
-  instructions. Then add items, browsing by section or searching across all
-  sections. How you enter each item depends on its measure type:
+- **New order** opens the order page straight away. Add items first (browse
+  by section, or search across all sections), then fill in the job details on
+  the right: job number, property address, property type (Void/Occupied),
+  requested delivery date (not in the past) and any special instructions.
+  How you enter each item depends on its measure type:
   - **Each, pack and whole items:** a whole number (for packs, the number of packs).
   - **Area (vinyl and other flooring):** the exact length and width to be cut, in metres
     to 0.1 m. Stores cut to size. The app works out the m², with no waste allowance.
@@ -164,13 +165,13 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   submit, on **Send amended order to stores** (subject starts `AMENDED:`), and on
   cancel (subject starts `CANCELLED:`).
 - **Reply-To** is the person who placed the order, so a reply from stores goes to them.
-- **Body:** a print-friendly HTML table, with a PDF of the same content attached.
+- **Body:** a print-friendly HTML table. There is no PDF attachment: stores print the email itself.
   - Each item shows its Part No. and display name. Non-stocked items show NON-STOCKED.
   - Flammable items are marked.
   - Worktops show a cut instruction (e.g. "cut to 1.9m"), and flooring shows
     "Cut to L × W = A m²".
   - **No prices or totals.**
-- **Print / PDF:** every order has **Print** and **PDF** buttons with the same content.
+- **Print:** every order has a **Print** button showing the same content as the email.
   The template is `templates/notifications/order_document.html`.
 - **If sending fails:** the order is still saved, and the user sees a warning.
   The send is listed under **Emails** in the admin top bar (with a red count),
@@ -277,6 +278,13 @@ Secrets are never stored in the code or in this repository.
 
 ---
 
+## Server size
+
+The web service runs one gunicorn worker with 4 threads, which is plenty for
+about 20 users. This uses roughly 90 MB of the 512 MB Starter plan. The worker
+is restarted every ~1000 requests so memory can't creep up. The settings are
+in `startCommand` in `render.yaml`.
+
 ## Deploying to Render
 
 A beginner's step-by-step guide is in [`docs/RENDER_SETUP.md`](docs/RENDER_SETUP.md). In short:
@@ -306,7 +314,7 @@ database. The daily cron job adds a few cents per month, with a minimum charge o
 
 ## Still to come (after launch)
 
-- PDF and print layout refinements (brief stage 6). Amendment and cancellation emails (stage 7) are already built.
+- Print layout refinements (brief stage 6). Amendment and cancellation emails (stage 7) are already built.
 - Linked-item reminders (stage 8). The data structure (`LinkedItemGroup`) is already in place.
 - Admin reports on order value.
 - An API for the future job management system.
