@@ -6,10 +6,13 @@ Orders are emailed to the stores team and can be printed.
 Built with **Django 5 (Python)** and **PostgreSQL**, hosted on **Render**.
 Pages are plain server-rendered HTML with no separate front-end build.
 
-> Status: **Stages 1–4** are complete: sign-in, approval and roles; the
-> catalogue import and admin editing; ordering with drafts, measure types,
-> submit, amend and cancel; and the order email to stores (HTML body + PDF),
-> with retry of failed sends and a printable page. The retention job follows.
+> Status: **Stages 1–5** (everything needed for launch) are complete:
+> sign-in, approval and roles; the catalogue import and admin editing;
+> ordering with drafts, measure types, submit, amend and cancel; the order
+> email to stores (HTML body + PDF) with retry and a printable page; and the
+> daily data retention job.
+>
+> To deploy, follow [`docs/RENDER_SETUP.md`](docs/RENDER_SETUP.md).
 >
 > Decisions agreed with BFS during the build are recorded in
 > [`docs/DECISIONS.md`](docs/DECISIONS.md).
@@ -25,6 +28,7 @@ Pages are plain server-rendered HTML with no separate front-end build.
 | `audit/` | One shared audit history ("who did what, when") used by every module |
 | `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`) and the ordering screens |
 | `notifications/` | The order document (one template for email, PDF and print), sending, and the failed-email list with retry |
+| `retention/` | The daily retention job (`run_retention` command), its run log, and the admin Retention page |
 | `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, and linked-item groups (data only for now) |
 | `templates/` | The HTML pages |
 | `static/` | Stylesheet |
@@ -176,6 +180,42 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
 
 ---
 
+## Data retention
+
+The job runs every night as a Render cron job (`bfs-orders-retention`, 02:15 UTC).
+
+- **Orders more than 30 days past their delivery date** (submitted or cancelled)
+  have these details removed:
+  - the requester's name, which is replaced by a random anonymous ID (a different one for each order);
+  - the link to the user account;
+  - the job number;
+  - the property address;
+  - the special instructions.
+
+  The same details are also removed from the order's history and email log.
+- **Kept for analysis:** order number, order date, items, quantities, units,
+  trade prices, sections, property type, delivery date and order value.
+  Anonymised orders appear under **Orders > Historic Orders** and can no longer
+  be amended or cancelled.
+- **Drafts not saved for 30 days are deleted.**
+- **Every run is logged**, including the order numbers it anonymised and the
+  number of drafts it deleted. To see the log, go to **Retention** in the admin top bar.
+- This applies only to this app's records. Stores keep their own copies under
+  their own process.
+
+**Running it by hand:**
+
+- On the website: **Retention > Run now**.
+- From the command line (locally, or from the web service's **Shell** tab in Render):
+
+  ```bash
+  python manage.py run_retention --dry-run   # show what would happen, change nothing
+  python manage.py run_retention --manual    # run it now
+  ```
+- In the Render dashboard: open the `bfs-orders-retention` cron job and press **Trigger Run**.
+
+---
+
 ## Local setup
 
 You need Python 3.12 or newer and PostgreSQL 14 or newer.
@@ -239,12 +279,15 @@ Secrets are never stored in the code or in this repository.
 
 ## Deploying to Render
 
+A beginner's step-by-step guide is in [`docs/RENDER_SETUP.md`](docs/RENDER_SETUP.md). In short:
+
 Render has no UK region, so the app uses **Frankfurt (EU)**.
 
 1. In Render, choose **New > Blueprint** and select this repository. Render reads
    `render.yaml` and creates:
    - `bfs-orders`: the web service (Starter plan)
    - `bfs-orders-db`: PostgreSQL (Basic 256 MB plan)
+   - `bfs-orders-retention`: the daily retention cron job
 2. When asked, enter **`EMAIL_HOST_PASSWORD`** (the IONOS mailbox password).
 3. Wait for the first deploy. Database migrations run automatically before each deploy.
 4. Create the first admin. Open the web service's **Shell** tab and run:
@@ -255,13 +298,15 @@ Render has no UK region, so the app uses **Frankfurt (EU)**.
    **Request an account**, and you approve them under **Users**.
 
 Estimated cost: about $7/month for the web service plus about $6/month for the
-database. The daily cron job (stage 5) adds a few cents.
+database. The daily cron job adds a few cents per month, with a minimum charge of about $1.
 
 **To be confirmed:** the region and plan once the Render account is set up (open item).
 
 ---
 
-## Still to come
+## Still to come (after launch)
 
-- Stage 4: order email with PDF
-- Stage 5: retention job, run daily by a Render cron job: anonymises orders 30 days after delivery and deletes drafts not saved for 30 days
+- PDF and print layout refinements (brief stage 6). Amendment and cancellation emails (stage 7) are already built.
+- Linked-item reminders (stage 8). The data structure (`LinkedItemGroup`) is already in place.
+- Admin reports on order value.
+- An API for the future job management system.

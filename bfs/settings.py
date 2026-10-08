@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "catalogue",
     "orders",
     "notifications",
+    "retention",
 ]
 
 MIDDLEWARE = [
