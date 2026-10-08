@@ -346,3 +346,41 @@ def test_cut_to_order_items_need_a_catalogue_length(admin_client):
     resp = admin_client.post(url, data)
     assert resp.status_code == 200
     assert "catalogue_length_m" in resp.context["adminform"].form.errors
+
+
+@pytest.mark.parametrize("filename,section", [
+    ("f7411c88-Bathrooms__Kitchens.csv", Section.BATHROOMS_KITCHENS),
+    ("451e36e6-Flammable_Items.csv", Section.FLAMMABLE),
+    ("ece420e9-Flooring.csv", Section.FLOORING),
+    ("10d62a05-Miscellaneous.csv", Section.MISC),
+])
+def test_section_taken_from_uploaded_file_name(filename, section):
+    data = "Part No.,Name,Trade Price\r\nX001,Thing,1.00\r\n".encode()
+    importer.apply_run(importer.preview_upload(filename, data, None), None)
+    assert item("X001").section_id == section
+
+
+@pytest.mark.parametrize("code,name,section,expected", [
+    ("ELE111", "UNIVOLT SAE16/25 TRUNKING EXTERNAL ANGLE 16 x 25", Section.ELECTRICAL, ("each", 1, "each")),
+    ("ELE043", "APPLEBY SB619 1-GANG DRY LINING INSTALLATION BOX 35MM", Section.ELECTRICAL, ("each", 1, "each")),
+    ("ELE058", "KRIMPTERM VIAS VCT8-W CABLE TIES 300 x 4.8mm (PACK 100) NATURAL", Section.ELECTRICAL, ("pack", 100, "pack")),
+    ("ELE039", "UNICRIMP FIRE CLIP FOR MINI TRUNKING 25mm PK10", Section.ELECTRICAL, ("pack", 10, "pack")),
+    ("ELE067", "UNIVOLT MIKA2 SELF ADHESIVE TRUNKING 16 x 25mm PER MTR", Section.ELECTRICAL, ("each", 1, "metre")),
+    ("JOI009", "COARSE 55MM COLLATED DRYWALL SCREW PK 1000", Section.JOINERY, ("pack", 1000, "pack")),
+    ("JOI086", "OWLETT FINE THREAD DRYWALL SCREW ZINC YELLOW 25MM (BOX 1000)", Section.JOINERY, ("pack", 1000, "pack")),
+    ("JOI113", "SELF DRILL 38mm BULK DRYWALL SCREWPER 1000", Section.JOINERY, ("pack", 1000, "pack")),
+    ("JOI103", "GALV COLLATED BRADS F16X32MM (BOX2000)", Section.JOINERY, ("pack", 2000, "pack")),
+    ("JOI059", "METAL ECLIPSE 34MM CUTTING MULTI TOOL BLADE PK OF 5", Section.JOINERY, ("pack", 5, "pack")),
+    ("JOI101", "Blue Spot Tools 29190 Utility Blade Set in Dispenser (50 Pieces)", Section.JOINERY, ("pack", 50, "pack")),
+    ("JOI080", "Black Granite Effect Bullnose Worktop 3m 38mm/8mm (600 Deep)", Section.JOINERY, ("cut", 1, "m")),
+    ("JOI081", "Black Worktop Joint Strip 38mm/6mm/8mm", Section.JOINERY, ("each", 1, "each")),
+    ("JOI083", "Black Worktop End Cap 38mm/6mm/8mm", Section.JOINERY, ("each", 1, "each")),
+    ("PLA003", "BRITISH GYPSUM THISTLE BONDING PLASTER BAG 25kg (CARLITE) 06055/7", Section.PLASTERING, ("each", 1, "each")),
+    ("V0003", "POLYSAFE HYDRO 4930 WHITE STONE", Section.FLOORING, ("area", 1, "m²")),
+    ("V0002", "Cove Former BLACK 2M LENGTH X 40 BOX", Section.FLOORING, ("each", 1, "2m length")),
+])
+def test_setup_rules_on_real_catalogue_names(code, name, section, expected):
+    from catalogue.setup_rules import initial_setup
+
+    fields, _ = initial_setup(code, name, "", section)
+    assert (fields["measure_type"], fields["pack_size"], fields["unit"]) == expected

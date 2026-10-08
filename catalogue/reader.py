@@ -28,7 +28,7 @@ FIELD_ALIASES = {
 SECTION_ALIASES = {
     Section.ADHESIVES: {"adhesive", "adhesives"},
     Section.BATHROOMS_KITCHENS: {"bathroomsandkitchens", "bathroomandkitchen", "bathroomsandkitchen",
-                                "kitchensandbathrooms", "kitchenandbathroom", "bandk", "bathrooms", "kitchens"},
+                                "kitchensandbathrooms", "bathroomskitchens", "kitchensbathrooms", "kitchenandbathroom", "bandk", "bathrooms", "kitchens"},
     Section.ELECTRICAL: {"electrical", "electric", "electrics"},
     Section.FLAMMABLE: {"flammableitems", "flammable", "flammables", "flammableitem"},
     Section.FLOORING: {"flooring", "floor", "floors"},
@@ -86,6 +86,20 @@ def match_section(text):
     norm = re.sub(r"[^a-z]", "", str(text).lower().replace("&", "and"))
     for key, aliases in SECTION_ALIASES.items():
         if norm in aliases:
+            return key
+    return None
+
+
+def match_section_in_name(text):
+    """Find a section inside a file or sheet name, e.g. 'f7411c88-Bathrooms__Kitchens' or 'BFS Plumbing list'."""
+    exact = match_section(text)
+    if exact or not text:
+        return exact
+    norm = re.sub(r"[^a-z]", "", str(text).lower().replace("&", "and"))
+    candidates = sorted(((alias, key) for key, aliases in SECTION_ALIASES.items() for alias in aliases
+                         if len(alias) >= 4), key=lambda pair: -len(pair[0]))
+    for alias, key in candidates:
+        if alias in norm:
             return key
     return None
 
@@ -149,7 +163,7 @@ def _read_table(sheet_name, rows, result):
         if col not in result.ignored_columns:
             result.ignored_columns.append(col)
 
-    current_section = match_section(sheet_name)
+    current_section = match_section_in_name(sheet_name)
     current_section_text = sheet_name if current_section else ""
 
     def get(cells, field_name):

@@ -30,12 +30,16 @@ CODE_RULES = {
               "note": "Wipes set to pack of 80, pending confirmation."},
 }
 
+# A number followed by a measurement (35mm, 25kg, 2.4m…) is a size, not a pack size.
+_NOT_SIZE = r"(?!\s*(?:mm|cm|m\b|mtr|kg|g\b|l\b|ltr|ml|w\b|kw|v\b|a\b|\.\d|x\b|/))"
 PACK_PATTERNS = [
-    re.compile(r"\bper\s+(\d{1,5})\b", re.I),
-    re.compile(r"\b(?:pack|box|bag|tub)\s+of\s+(\d{1,5})\b", re.I),
-    re.compile(r"\b(\d{1,5})\s*(?:pk|pack|pcs?)\b", re.I),
-    re.compile(r"\bx\s*(\d{2,5})\s*$", re.I),
+    re.compile(r"per\s*(\d{1,5})\b" + _NOT_SIZE, re.I),                                  # per 100, SCREWPER 1000
+    re.compile(r"\b(?:pack|pk|pkt|box|bag)\s*(?:of\s*)?(\d{1,5})\b" + _NOT_SIZE, re.I),     # PK 1000, BOX2000, PACK OF 2
+    re.compile(r"\b(\d{1,5})\s*(?:pk|pack|pcs|pieces)\b", re.I),                          # 100 pk, 50 Pieces
 ]
+PER_METRE = re.compile(r"\bper\s*(?:mtr|metre|meter|m)\b", re.I)
+WORKTOP_ACCESSORY = re.compile(r"joint|strip|end cap|\bcap\b|bracket|connector|clip|trim", re.I)
+
 AREA_UNITS = {"m2", "m²", "sqm", "sq m", "m sq", "square metre", "square metres", "per m2", "per m²"}
 
 
@@ -75,15 +79,19 @@ def initial_setup(code, name, unit_text, section_key):
         note = rule.get("note", note)
         return fields, note
 
-    if "worktop" in lower_name or "splashback" in lower_name:
+    if ("worktop" in lower_name or "splashback" in lower_name) and not WORKTOP_ACCESSORY.search(lower_name):
         return {"measure_type": MeasureType.CUT_TO_ORDER, "unit": "m", "pack_size": 1,
                 "catalogue_length_m": WORKTOP_LENGTH_M}, None
 
-    # Vinyl and sheet flooring is cut to the exact size ordered: length x width, priced per m².
-    if section_key == Section.FLOORING and (unit == "m²" or "vinyl" in lower_name):
+    # Flooring (vinyl, safety sheet) is cut to the exact size ordered: length x width, priced per m².
+    # Cove former and weld rod are handled by CODE_RULES above.
+    if section_key == Section.FLOORING:
         return {"measure_type": MeasureType.AREA, "unit": "m²", "pack_size": 1}, None
 
     if pack:
         return {"measure_type": MeasureType.PACK, "unit": "pack", "pack_size": pack}, None
+
+    if PER_METRE.search(name or "") or PER_METRE.search(unit_text or ""):
+        return {"measure_type": MeasureType.EACH, "unit": "metre", "pack_size": 1}, None
 
     return {"measure_type": MeasureType.EACH, "unit": unit, "pack_size": 1}, None
