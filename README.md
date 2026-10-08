@@ -6,9 +6,10 @@ Orders are emailed to the stores team and can be printed.
 Built with **Django 5 (Python)** and **PostgreSQL**, hosted on **Render**.
 Pages are plain server-rendered HTML with no separate front-end build.
 
-> Status: **Stages 1–3** are complete: sign-in, approval and roles; the
-> catalogue import and admin editing; and ordering with drafts, measure types,
-> submit, amend and cancel. The order email and the retention job follow.
+> Status: **Stages 1–4** are complete: sign-in, approval and roles; the
+> catalogue import and admin editing; ordering with drafts, measure types,
+> submit, amend and cancel; and the order email to stores (HTML body + PDF),
+> with retry of failed sends and a printable page. The retention job follows.
 >
 > Decisions agreed with BFS during the build are recorded in
 > [`docs/DECISIONS.md`](docs/DECISIONS.md).
@@ -23,6 +24,7 @@ Pages are plain server-rendered HTML with no separate front-end build.
 | `accounts/` | Users, sign-in, registration, approval, roles and password reset. Its users table is designed to be shared with a future job management system. |
 | `audit/` | One shared audit history ("who did what, when") used by every module |
 | `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`) and the ordering screens |
+| `notifications/` | The order document (one template for email, PDF and print), sending, and the failed-email list with retry |
 | `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, and linked-item groups (data only for now) |
 | `templates/` | The HTML pages |
 | `static/` | Stylesheet |
@@ -152,8 +154,25 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   - Each line is rounded to the penny. Non-stocked items are excluded.
   - The code is in `orders/pricing.py`.
 
-> Until stage 4, submitting, amending and cancelling are saved and logged, but
-> no email is sent yet.
+## Order emails
+
+- **Sent to `STORES_EMAIL`** (stores@bfsuk.org) from materialorders@bfsuk.org on
+  submit, on **Send amended order to stores** (subject starts `AMENDED:`), and on
+  cancel (subject starts `CANCELLED:`).
+- **Reply-To** is the person who placed the order, so a reply from stores goes to them.
+- **Body:** a print-friendly HTML table, with a PDF of the same content attached.
+  - Each item shows its Part No. and display name. Non-stocked items show NON-STOCKED.
+  - Flammable items are marked.
+  - Worktops show a cut instruction (e.g. "cut to 1.9m"), and flooring shows
+    "Cut to L × W = A m²".
+  - **No prices or totals.**
+- **Print / PDF:** every order has **Print** and **PDF** buttons with the same content.
+  The template is `templates/notifications/order_document.html`.
+- **If sending fails:** the order is still saved, and the user sees a warning.
+  The send is listed under **Emails** in the admin top bar (with a red count),
+  where an admin can **Retry**.
+- **Checking the mail settings after deploying:** in the Render Shell, run
+  `python manage.py sendtestemail you@bfsuk.org`.
 
 ---
 

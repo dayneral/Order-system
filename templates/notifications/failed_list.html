@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Order emails · BFS Material Orders{% endblock %}
+{% block help %}<p class="help">Orders are always saved, even if the email to stores fails. Failed emails are listed here. Press <b>Retry</b> to send again: the email uses the order as it is now. Check the mail settings in Render if every send fails.</p>{% endblock %}
+{% block content %}
+<h1>Order emails</h1>
+<h2>Failed ({{ failed|length }})</h2>
+<table class="grid">
+  <thead><tr><th>First tried</th><th>Order</th><th>Type</th><th>Attempts</th><th>Last error</th><th></th></tr></thead>
+  <tbody>
+  {% for e in failed %}
+    <tr>
+      <td>{{ e.created_at|date:"d M Y H:i" }}</td>
+      <td><a href="{% url 'orders:detail' e.order.pk %}">{{ e.order.order_number }}</a></td>
+      <td>{{ e.get_kind_display }}</td>
+      <td>{{ e.attempts }}</td>
+      <td class="hint">{{ e.last_error|truncatechars:160 }}</td>
+      <td><form method="post" action="{% url 'notifications:retry' e.pk %}">{% csrf_token %}<button class="primary">Retry</button></form></td>
+    </tr>
+  {% empty %}<tr><td colspan="6">No failed emails.</td></tr>{% endfor %}
+  </tbody>
+</table>
+<h2>Recently sent</h2>
+<table class="grid">
+  <thead><tr><th>Date</th><th>Subject</th><th>To</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for e in recent %}
+    <tr><td>{{ e.created_at|date:"d M Y H:i" }}</td><td><a href="{% url 'orders:detail' e.order.pk %}">{{ e.subject }}</a></td><td>{{ e.recipient }}</td><td>{{ e.get_status_display }}</td></tr>
+  {% empty %}<tr><td colspan="4">None yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

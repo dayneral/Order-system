@@ -5,6 +5,8 @@
 <div class="row-between">
   <h1>{% if order.order_number %}Order {{ order.order_number }}{% else %}Draft order{% endif %} {% include "orders/_status.html" %}</h1>
   <div class="actions">
+    {% if not order.is_draft %}<a class="button" href="{% url 'orders:print' order.pk %}" target="_blank">Print</a>
+    <a class="button" href="{% url 'orders:pdf' order.pk %}" target="_blank">PDF</a>{% endif %}
     {% if can_edit %}<a class="button" href="{% url 'orders:edit' order.pk %}">{% if order.is_draft %}Continue draft{% else %}Amend order{% endif %}</a>{% endif %}
     {% if can_cancel %}<a class="button danger" href="{% url 'orders:cancel' order.pk %}">Cancel order</a>{% endif %}
   </div>
@@ -13,6 +15,9 @@
 {% if order.amendment_pending and can_edit %}
 <div class="msg msg-warning">This order has been changed but the amended order has not been sent to stores yet.
   <a href="{% url 'orders:edit' order.pk %}">Open it</a> and press <b>Send amended order to stores</b>.</div>
+{% endif %}
+{% if email_failed %}
+<div class="msg msg-error">The latest email to stores for this order failed to send. {% if user.is_admin %}<a href="{% url 'notifications:failed' %}">Retry it from Failed emails</a>.{% else %}It is listed for an admin to resend.{% endif %}</div>
 {% endif %}
 {% if order.is_anonymised %}
 <div class="msg msg-info">Personal details were removed from this order on {{ order.anonymised_at|date:"d M Y" }} (30 days after delivery). It can no longer be changed.</div>

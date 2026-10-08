@@ -14,4 +14,6 @@ build brief. Newest first.
 | Anonymous ID | A different random ID is used for each order, so anonymised orders cannot be linked to one person. |
 | Old drafts | Drafts not saved for 30 days are deleted automatically by the daily job. Users with drafts due for deletion within the next 5 days get an alert when they sign in. |
 | Temporary codes | Items with temporary codes (duplicates and placeholders) are orderable. Incomplete items (no price or name) are not. A fresh catalogue will be uploaded once the BFS team has resolved the codes. |
+| Order email Reply-To | Order emails to stores carry the requester's email address as Reply-To, so stores can reply directly. Recipients are unchanged: stores@bfsuk.org only. |
+| Email failure alert | A failed send shows the user a warning and a red count on **Emails** in the admin top bar. Admins are not emailed, because a mail fault would usually stop that email too. |
 | Hosting region | Render has no UK region, so Frankfurt (EU) is used. |

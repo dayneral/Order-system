@@ -98,3 +98,4 @@ table.details td { padding: .35rem .5rem; vertical-align: top; }
 .msg ul { margin: .3rem 0 0; }
 #lines input.qty { width: 4.2rem; }
 #lines .inline-fields { flex-wrap: nowrap; }
+.badge.bad { background: #b42318; color: #fff; }

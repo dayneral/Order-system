@@ -1,0 +1,21 @@
+{% autoescape off %}{% if label %}*** {{ label }} *** {% endif %}BFS material order {{ order.order_number }}
+{% if kind == "cancelled" %}
+THIS ORDER HAS BEEN CANCELLED. Please do not pick or deliver it.
+{% endif %}{% if kind == "amended" %}
+THIS ORDER HAS BEEN AMENDED. It replaces all earlier versions.
+{% endif %}
+Order number:         {{ order.order_number }}
+Order date:           {{ order.submitted_at|date:"d M Y H:i" }}
+Requested by:         {{ order.requester_display }}
+Job number:           {{ order.job_number }}
+Property address:     {{ order.property_address }}
+Property type:        {{ order.get_property_type_display }}
+Delivery date:        {{ order.delivery_date|date:"l d F Y" }}
+Special instructions: {{ order.special_instructions|default:"None" }}
+
+Items:
+{% for line in lines %}{{ forloop.counter }}. {{ line.code }} - {{ line.description }}{% if line.is_flammable %} [FLAMMABLE]{% endif %}
+   Quantity: {{ line.quantity }}   Section: {{ line.section|default:"-" }}
+{% endfor %}
+The full order is attached as a PDF.
+{% endautoescape %}

@@ -1,22 +1,19 @@
 """
-Hooks called when stores need to hear about an order.
-
-Stage 4 connects these to the order email (HTML body + PDF attachment).
-Until then they only write a log line.
+Hooks called when stores need to hear about an order. Each sends the order
+email (HTML body with a PDF attached) and returns the OrderEmail record, so
+the caller can warn the user if sending failed.
 """
 
-import logging
-
-logger = logging.getLogger(__name__)
+from notifications.sending import send_order_email
 
 
 def order_submitted(order):
-    logger.info("Order %s submitted (email not yet connected)", order.order_number)
+    return send_order_email(order, "submitted")
 
 
 def order_amended(order):
-    logger.info("Order %s amended (email not yet connected)", order.order_number)
+    return send_order_email(order, "amended")
 
 
 def order_cancelled(order):
-    logger.info("Order %s cancelled (email not yet connected)", order.order_number)
+    return send_order_email(order, "cancelled")

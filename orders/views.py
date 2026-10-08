@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -12,11 +12,28 @@ from audit.models import AuditEntry
 from catalogue.models import Item, Section
 
 from . import services
+from notifications import documents
+from notifications.models import OrderEmail
+
 from .forms import OrderHeaderForm
 from .models import Order, OrderLine
 from .services import OrderError
 
 ITEM_RESULTS_LIMIT = 150
+
+
+def _report_email(request, order, success_text):
+    """Tell the user whether stores were emailed. The order is saved either way."""
+    email = order.emails.order_by("-created_at").first()
+    if email is None or email.status == OrderEmail.Status.SENT:
+        messages.success(request, success_text)
+    else:
+        messages.warning(
+            request,
+            f"{order.order_number} has been saved, but the email to stores could NOT be sent. "
+            "It is listed for an admin to resend. If it is urgent, phone stores, or print this order "
+            "and pass it on.",
+        )
 
 
 def _is_htmx(request):
@@ -128,11 +145,11 @@ def order_edit(request, order_id):
                 services.update_header(order, request.user, form.cleaned_data)
                 if action == "submit":
                     services.submit(order, request.user)
-                    messages.success(request, f"Order {order.order_number} submitted.")
+                    _report_email(request, order, f"Order {order.order_number} submitted and sent to stores.")
                     return redirect("orders:detail", order.pk)
                 if action == "send_amendment":
                     services.finish_amendment(order, request.user)
-                    messages.success(request, f"Amended order {order.order_number} sent to stores.")
+                    _report_email(request, order, f"Amended order {order.order_number} sent to stores.")
                     return redirect("orders:detail", order.pk)
                 messages.success(request, "Draft saved." if order.is_draft else "Changes saved.")
                 return redirect("orders:edit", order.pk)
@@ -224,6 +241,7 @@ def order_detail(request, order_id):
         "history": history,
         "can_edit": services.can_edit(order, request.user),
         "can_cancel": services.can_cancel(order, request.user),
+        "email_failed": order.emails.filter(status=OrderEmail.Status.FAILED).exists(),
     })
 
 
@@ -234,7 +252,7 @@ def order_cancel(request, order_id):
         raise PermissionDenied
     if request.method == "POST":
         services.cancel(order, request.user, request.POST.get("reason", ""))
-        messages.success(request, f"Order {order.order_number} cancelled. Stores will be told.")
+        _report_email(request, order, f"Order {order.order_number} cancelled. Stores have been sent a CANCELLED notice.")
         return redirect("orders:detail", order.pk)
     return render(request, "orders/order_cancel.html", {"order": order})
 
@@ -256,3 +274,22 @@ def draft_delete(request, order_id):
 def home(request):
     return redirect("orders:list")
 
+
+
+@login_required
+def order_print(request, order_id):
+    """Print-friendly page with the same content as the stores email."""
+    order = _get_order(request, order_id)
+    kind = "cancelled" if order.status == Order.Status.CANCELLED else ("amended" if order.amended_at else "submitted")
+    html = documents.render_to_string_for_print(order, kind, back_url=reverse("orders:detail", args=[order.pk]))
+    return HttpResponse(html)
+
+
+@login_required
+def order_pdf(request, order_id):
+    order = _get_order(request, order_id)
+    kind = "cancelled" if order.status == Order.Status.CANCELLED else ("amended" if order.amended_at else "submitted")
+    response = HttpResponse(documents.render_pdf(order, kind), content_type="application/pdf")
+    name = documents.pdf_filename(order, kind) if order.order_number else "draft-order.pdf"
+    response["Content-Disposition"] = f'inline; filename="{name}"'
+    return response

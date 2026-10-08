@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "audit",
     "catalogue",
     "orders",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -73,6 +74,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.pending_accounts",
+                "notifications.context_processors.failed_emails",
             ],
         },
     },
