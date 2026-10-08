@@ -57,7 +57,7 @@
   <thead><tr>
     <th>Order number</th><th>Order date</th>
     {% if view == "historic" %}<th>Anonymous ID</th>{% else %}<th>Job number</th><th>Address</th><th>Requested by</th>{% endif %}
-    <th>Property</th><th>Delivery</th><th>Items</th><th class="num">Value</th><th>Status</th>
+    <th>Property</th><th>Delivery</th><th>Items</th>{% if show_values %}<th class="num">Value</th>{% endif %}<th>Status</th>
   </tr></thead>
   <tbody>
   {% for o in page %}
@@ -69,7 +69,7 @@
       <td>{{ o.get_property_type_display }}</td>
       <td>{{ o.delivery_date|date:"d M Y" }}</td>
       <td>{{ o.line_count }}</td>
-      <td class="num">£{{ o.order_value }}</td>
+      {% if show_values %}<td class="num">£{{ o.order_value }}</td>{% endif %}
       <td>{% include "orders/_status.html" with order=o %}</td>
     </tr>
   {% empty %}

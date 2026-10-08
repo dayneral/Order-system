@@ -3,8 +3,8 @@ Data retention (decisions in docs/DECISIONS.md):
 
 - 30 days after an order's requested delivery date, its personal data is
   removed: requester name (replaced by a random anonymous ID, different for
-  every order), link to the user account, job number, property address and
-  special instructions. The same details are removed from the order's
+  every order), link to the user account, job number, property address,
+  operative name and special instructions. The same details are removed from the order's
   history and email log.
 - Kept for analysis: order number, order date, items, quantities, units,
   prices, sections, property type, delivery date and order value.
@@ -71,6 +71,7 @@ def anonymise_order(order, now=None):
     order.job_number_key = ""
     order.property_address = ""
     order.special_instructions = ""
+    order.operative_name = ""
     order.cancelled_by = None
     order.amendment_pending = False
     order.anonymised_at = now

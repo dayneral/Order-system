@@ -9,11 +9,13 @@ class OrderHeaderForm(forms.ModelForm):
 
     class Meta:
         model = Order
-        fields = ["job_number", "property_address", "property_type", "delivery_date", "special_instructions"]
+        fields = ["job_number", "property_address", "property_type", "operative_name", "delivery_date",
+                  "special_instructions"]
         labels = {
             "job_number": "Job number",
             "property_address": "Property address",
             "property_type": "Property type",
+            "operative_name": "Operative name",
             "delivery_date": "Requested delivery date",
             "special_instructions": "Special instructions (optional)",
         }

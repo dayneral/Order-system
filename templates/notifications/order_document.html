@@ -42,6 +42,7 @@
   <tr><td class="k">Job number</td><td>{{ order.job_number|default:"—" }}</td></tr>
   <tr><td class="k">Property address</td><td>{{ order.property_address|default:"—"|linebreaksbr }}</td></tr>
   <tr><td class="k">Property type</td><td>{{ order.get_property_type_display|default:"—" }}</td></tr>
+  {% if order.operative_name %}<tr><td class="k">Operative</td><td><b>{{ order.operative_name }}</b></td></tr>{% endif %}
   <tr><td class="k">Delivery date</td><td><b>{{ order.delivery_date|date:"l d F Y"|default:"—" }}</b></td></tr>
   <tr><td class="k">Special instructions</td><td>{{ order.special_instructions|default:"None"|linebreaksbr }}</td></tr>
 </table>

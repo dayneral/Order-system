@@ -147,7 +147,8 @@ def _require_editable(order, user):
 
 # --- Drafts and header ------------------------------------------------------------
 
-HEADER_FIELDS = ["job_number", "property_address", "property_type", "delivery_date", "special_instructions"]
+HEADER_FIELDS = ["job_number", "property_address", "property_type", "operative_name", "delivery_date",
+                 "special_instructions"]
 
 
 def create_draft(user, **header):
@@ -171,6 +172,8 @@ def header_errors(order, today=None):
         errors.append("Enter the property address.")
     if order.property_type not in Order.PropertyType.values:
         errors.append("Choose the property type: Void or Occupied.")
+    elif order.property_type == Order.PropertyType.OCCUPIED and not order.operative_name.strip():
+        errors.append("Enter the operative's name: it is required for occupied properties.")
     if order.delivery_date is None:
         errors.append("Enter the requested delivery date.")
     return errors
@@ -201,6 +204,7 @@ def update_header(order, user, data, today=None):
             setattr(order, name, data[name] if data[name] is not None else ("" if name != "delivery_date" else None))
     order.job_number = order.job_number.strip()
     order.job_number_key = normalise_job_number(order.job_number)
+    order.operative_name = order.operative_name.strip() if order.property_type == Order.PropertyType.OCCUPIED else ""
 
     if order.delivery_date and order.delivery_date != old["delivery_date"] and order.delivery_date < today:
         raise OrderError("The delivery date cannot be in the past.")
@@ -269,6 +273,28 @@ def add_item_line(order, user, item, data, kit_name="", audit=True):
     if item.is_incomplete:
         raise OrderError(f"{item.part_no} cannot be ordered yet: its catalogue details are incomplete.")
     measurement = parse_measurement(item.measure_type, data)
+
+    # Counted items already on the order: increase that line rather than adding another.
+    # (Measured items stay separate: each line is a different piece to cut.)
+    if item.measure_type in WHOLE_NUMBER_TYPES:
+        existing = order.lines.filter(item=item, is_non_stocked=False, measure_type=item.measure_type).first()
+        if existing is not None:
+            before = existing.measurement_text
+            new_quantity = existing.quantity + measurement["quantity"]
+            if new_quantity > MAX_QUANTITY:
+                raise OrderError(f"Quantity: the total would be more than {MAX_QUANTITY}.")
+            existing.quantity = new_quantity
+            if kit_name and not existing.kit_name:
+                existing.kit_name = kit_name
+            _price(existing)  # keeps the price the line was first added at
+            existing.save()
+            recalculate_total(order)
+            if audit:
+                _touch(order, user, f"changed {existing.part_no} {existing.name}",
+                       {"quantity": {"from": before, "to": existing.measurement_text}})
+            existing.merged = True
+            return existing
+
     line = OrderLine(order=order, position=_next_position(order), kit_name=kit_name, **measurement)
     _copy_item(line, item)
     _price(line)

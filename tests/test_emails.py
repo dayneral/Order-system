@@ -30,7 +30,7 @@ def order(make_user):
     spirit = make("FLA001", "White spirit 1L", Section.FLAMMABLE)
     screws = make("JOI050", "Screws M4 x 50mm", Section.JOINERY, measure_type=MeasureType.PACK, pack_size=100)
     o = services.create_draft(user, job_number="J-24017", property_address="14 Mill Lane\nLeeds",
-                              property_type="occupied", delivery_date=TOMORROW,
+                              property_type="occupied", operative_name="Jo Fitter", delivery_date=TOMORROW,
                               special_instructions="Side gate code 1234")
     services.add_item_line(o, user, silicone, {"quantity": "3"})
     services.add_item_line(o, user, worktop, {"length": "1.9"})
@@ -93,7 +93,7 @@ def test_send_failure_keeps_order_warns_user_and_lists_for_retry(order, admin_cl
 
     monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
     client.force_login(order.owner)
-    data = {"job_number": "J-24017", "property_address": "14 Mill Lane", "property_type": "occupied",
+    data = {"job_number": "J-24017", "property_address": "14 Mill Lane", "property_type": "occupied", "operative_name": "Jo Fitter",
             "delivery_date": TOMORROW.isoformat(), "action": "submit"}
     resp = client.post(reverse("orders:edit", args=[order.pk]), data, follow=True)
     order.refresh_from_db()

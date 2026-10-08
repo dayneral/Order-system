@@ -195,7 +195,9 @@ def line_add(request, order_id):
         line = services.add_item_line(order, request.user, item, request.POST)
     except OrderError as exc:
         return _lines_response(request, order, error=f"{item.part_no}: {exc}")
-    return _lines_response(request, order, notice=f"Added {line.part_no} {line.name}.",
+    notice = (f"{line.part_no} {line.name} was already on the order: quantity is now {line.measurement_text}."
+              if getattr(line, "merged", False) else f"Added {line.part_no} {line.name}.")
+    return _lines_response(request, order, notice=notice,
                            extra=suggestions.after_add(order, item))
 
 

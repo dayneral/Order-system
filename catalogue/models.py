@@ -184,7 +184,8 @@ class Item(models.Model):
     def save(self, *args, **kwargs):
         if not self.display_name:
             self.display_name = self.catalogue_name
-        self.is_incomplete = not self.name.strip() or self.trade_price is None
+        # A missing price only blocks ordering while order values are in use (settings.ORDER_VALUES_ENABLED).
+        self.is_incomplete = not self.name.strip() or (settings.ORDER_VALUES_ENABLED and self.trade_price is None)
         if self.subsection_id and self.subsection.section_id != self.section_id:
             self.section_id = self.subsection.section_id
         if self.section_id and self.section.is_flammable:

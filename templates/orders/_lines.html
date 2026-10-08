@@ -26,7 +26,7 @@
   {% if order.amendment_pending %}<div class="msg msg-warning">This order has changes that have not been sent to stores yet.</div>{% endif %}
   {% if lines %}
   <table class="grid lines">
-    <thead><tr><th>Part No.</th><th>Item</th><th>Quantity / measurement</th><th class="num">Value</th><th></th></tr></thead>
+    <thead><tr><th>Part No.</th><th>Item</th><th>Quantity / measurement</th>{% if show_values %}<th class="num">Value</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for line in lines %}
       <tr>
@@ -48,7 +48,7 @@
           </form>
           {% if line.measure_type == "area" %}<div class="hint">= {{ line.area_m2 }} m²</div>{% endif %}
         </td>
-        <td class="num">{% if line.line_value is not None %}£{{ line.line_value }}{% if line.is_estimate %}*{% endif %}{% else %}—{% endif %}</td>
+        {% if show_values %}<td class="num">{% if line.line_value is not None %}£{{ line.line_value }}{% if line.is_estimate %}*{% endif %}{% else %}—{% endif %}</td>{% endif %}
         <td>
           <form method="post" action="{% url 'orders:line_remove' order.pk line.pk %}"
                 hx-post="{% url 'orders:line_remove' order.pk line.pk %}" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}
@@ -58,12 +58,12 @@
       </tr>
     {% endfor %}
     </tbody>
-    <tfoot>
+    {% if show_values %}<tfoot>
       <tr><th colspan="3" class="num">Order value</th><th class="num">£{{ order.order_value }}</th><th></th></tr>
-    </tfoot>
+    </tfoot>{% endif %}
   </table>
-  <p class="hint">Order value uses trade prices and excludes non-stocked items. It is not shown to stores.
-    {% if order.has_estimates %}* Estimate: cut-to-order items are priced pro rata.{% endif %}</p>
+  {% if show_values %}<p class="hint">Order value uses trade prices and excludes non-stocked items. It is not shown to stores.
+    {% if order.has_estimates %}* Estimate: cut-to-order items are priced pro rata.{% endif %}</p>{% endif %}
   {% else %}
   <p class="hint">No items yet. Add items from the list.</p>
   {% endif %}

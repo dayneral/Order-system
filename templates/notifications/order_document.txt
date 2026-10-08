@@ -10,7 +10,8 @@ Requested by:         {{ order.requester_display }}
 Job number:           {{ order.job_number }}
 Property address:     {{ order.property_address }}
 Property type:        {{ order.get_property_type_display }}
-Delivery date:        {{ order.delivery_date|date:"l d F Y" }}
+{% if order.operative_name %}Operative:            {{ order.operative_name }}
+{% endif %}Delivery date:        {{ order.delivery_date|date:"l d F Y" }}
 Special instructions: {{ order.special_instructions|default:"None" }}
 
 Items:

@@ -27,7 +27,7 @@
   <tr><th>Order date</th><td>{{ order.submitted_at|date:"d M Y H:i"|default:"Not submitted" }}</td>
       <th>Requested by</th><td>{{ order.requester_display|default:"—" }}</td></tr>
   <tr><th>Job number</th><td>{{ order.job_number|default:"—" }}</td>
-      <th>Property type</th><td>{{ order.get_property_type_display|default:"—" }}</td></tr>
+      <th>Property type</th><td>{{ order.get_property_type_display|default:"—" }}{% if order.operative_name %}<br>Operative: <b>{{ order.operative_name }}</b>{% endif %}</td></tr>
   <tr><th>Property address</th><td>{{ order.property_address|default:"—"|linebreaksbr }}</td>
       <th>Delivery date</th><td>{{ order.delivery_date|date:"l d M Y"|default:"—" }}</td></tr>
   <tr><th>Special instructions</th><td colspan="3">{{ order.special_instructions|default:"None"|linebreaksbr }}</td></tr>
@@ -36,7 +36,7 @@
 </div>
 
 <table class="grid">
-  <thead><tr><th>Part No.</th><th>Item</th><th>Section</th><th>Quantity / measurement</th><th class="num">Trade price</th><th class="num">Value</th></tr></thead>
+  <thead><tr><th>Part No.</th><th>Item</th><th>Section</th><th>Quantity / measurement</th>{% if show_values %}<th class="num">Trade price</th><th class="num">Value</th>{% endif %}</tr></thead>
   <tbody>
   {% for line in lines %}
     <tr>
@@ -44,14 +44,14 @@
       <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
       <td>{{ line.section_name|default:"—" }}</td>
       <td>{{ line.measurement_text }}</td>
-      <td class="num">{% if line.trade_price is not None %}£{{ line.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>
-      <td class="num">{% if line.line_value is not None %}£{{ line.line_value }}{% if line.is_estimate %}*{% endif %}{% else %}—{% endif %}</td>
+      {% if show_values %}<td class="num">{% if line.trade_price is not None %}£{{ line.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td class="num">{% if line.line_value is not None %}£{{ line.line_value }}{% if line.is_estimate %}*{% endif %}{% else %}—{% endif %}</td>{% endif %}
     </tr>
   {% empty %}<tr><td colspan="6">No items.</td></tr>{% endfor %}
   </tbody>
-  <tfoot><tr><th colspan="5" class="num">Order value</th><th class="num">£{{ order.order_value }}</th></tr></tfoot>
+  {% if show_values %}<tfoot><tr><th colspan="5" class="num">Order value</th><th class="num">£{{ order.order_value }}</th></tr></tfoot>{% endif %}
 </table>
-<p class="hint">Trade prices as at the time each item was ordered. Non-stocked items are excluded from the order value.{% if order.has_estimates %} * Estimate (cut to order).{% endif %}</p>
+{% if show_values %}<p class="hint">Trade prices as at the time each item was ordered. Non-stocked items are excluded from the order value.{% if order.has_estimates %} * Estimate (cut to order).{% endif %}</p>{% endif %}
 
 {% if history %}
 <h2>History</h2>

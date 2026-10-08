@@ -148,9 +148,9 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
 - **New order** opens the order page straight away. Add items first (browse
   by section, or search across all sections), then fill in the job details on
   the right: job number, property address, property type (Void/Occupied),
-  requested delivery date (not in the past) and any special instructions.
+  requested delivery date (not in the past), the operative's name (required for occupied properties) and any special instructions.
   How you enter each item depends on its measure type:
-  - **Each, pack and whole items:** a whole number (for packs, the number of packs).
+  - **Each, pack and whole items:** a whole number (for packs, the number of packs). Adding the same item again increases its quantity.
   - **Area (vinyl and other flooring):** the exact length and width to be cut, in metres
     to 0.1 m. Stores cut to size. The app works out the m², with no waste allowance.
   - **Cut to order (worktops, splashbacks):** a length in metres, to 0.1 m.
@@ -312,6 +312,7 @@ user needs the `CREATEDB` permission (`ALTER USER bfs CREATEDB;`).
 | `EMAIL_HOST_USER` | No | Default `materialorders@bfsuk.org`. |
 | `EMAIL_HOST_PASSWORD` | Yes (production) | Password for the mailbox above. Set it only in the Render dashboard. |
 | `DEFAULT_FROM_EMAIL` | No | Default `BFS Material Orders <materialorders@bfsuk.org>`. |
+| `ORDER_VALUES_ENABLED` | No | Default off: prices and order values are hidden and don't block ordering. Set to `1` to show them. |
 | `STORES_EMAIL` | No | Where orders are sent. Default `stores@bfsuk.org`. |
 | `LOG_LEVEL` | No | Default `INFO`. |
 

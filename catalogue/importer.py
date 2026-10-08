@@ -24,6 +24,7 @@ from decimal import Decimal
 from itertools import product
 from string import ascii_uppercase
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -157,7 +158,10 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
     for e in entries:
         row = e.row
         where = f"{row.sheet} row {row.row_number}"
-        missing = [label for label, ok in (("name", e.name), ("trade price", e.trade_price is not None)) if not ok]
+        # A missing trade price only makes an item incomplete while order values are in use.
+        missing = [label for label, ok in (("name", e.name),
+                                          ("trade price", e.trade_price is not None or not settings.ORDER_VALUES_ENABLED))
+                   if not ok]
         if missing:
             report["incomplete"].append({"part_no": e.part_no, "name": e.name or "(no name)", "where": where,
                                          "missing": ", ".join(missing), "price_text": row.price_text})

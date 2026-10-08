@@ -37,6 +37,8 @@ class Order(models.Model):
     requester_name = models.CharField(max_length=150, blank=True)
     job_number = models.CharField(max_length=30, blank=True)
     property_address = models.TextField(blank=True)
+    operative_name = models.CharField(
+        max_length=150, blank=True, help_text="Required for occupied properties: who stores are delivering to.")
 
     # Normalised job number used for the one-order-per-job rule.
     job_number_key = models.CharField(max_length=30, blank=True, db_index=True)

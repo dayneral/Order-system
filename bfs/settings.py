@@ -77,6 +77,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.pending_accounts",
                 "notifications.context_processors.failed_emails",
+                "orders.context_processors.order_values",
             ],
         },
     },
@@ -141,6 +142,11 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "BFS Material Orders <materialorders@bfsuk.org>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Prices and order values. Shelved for now (BFS, Oct 2026): trade prices stay stored
+# as information, but users see no prices or values and a missing price does not
+# stop an item being ordered. Set ORDER_VALUES_ENABLED=1 to bring them back.
+ORDER_VALUES_ENABLED = env_bool("ORDER_VALUES_ENABLED", False)
 
 # Where submitted orders are sent.
 STORES_EMAIL = os.environ.get("STORES_EMAIL", "stores@bfsuk.org")

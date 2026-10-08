@@ -115,7 +115,7 @@ class ItemAdmin(admin.ModelAdmin):
             return format_html('<span style="color:#888">(same)</span>')
         return obj.catalogue_name
 
-    @admin.display(description="Trade £", ordering="trade_price")
+    @admin.display(description="Trade £ (info)", ordering="trade_price")
     def price(self, obj):
         return "—" if obj.trade_price is None else f"{obj.trade_price:.2f}"
 

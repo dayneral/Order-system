@@ -1,6 +1,6 @@
-{% if item.measure_type == "pack" %}Pack of {{ item.pack_size }}. Price is per pack. Enter the number of packs.
-{% elif item.measure_type == "area" %}Cut to size. Enter the exact length and width in metres. Priced per m², no waste allowance.
-{% elif item.measure_type == "cut" %}Cut to order. Enter the length in metres.{% if item.catalogue_length_m %} Price shown is per {{ item.catalogue_length_m|floatformat:1 }}m length; the value is an estimate.{% else %} Price is per metre; the value is an estimate.{% endif %}
-{% elif item.measure_type == "linear" %}Priced per metre. Enter the length in metres.
+{% if item.measure_type == "pack" %}Pack of {{ item.pack_size }}.{% if show_values %} Price is per pack.{% endif %} Enter the number of packs.
+{% elif item.measure_type == "area" %}Cut to size. Enter the exact length and width in metres.{% if show_values %} Priced per m², no waste allowance.{% endif %}
+{% elif item.measure_type == "cut" %}Cut to order. Enter the length in metres.{% if not show_values %}{% elif item.catalogue_length_m %} Price shown is per {{ item.catalogue_length_m|floatformat:1 }}m length; the value is an estimate.{% else %} Price is per metre; the value is an estimate.{% endif %}
+{% elif item.measure_type == "linear" %}Enter the length in metres.
 {% elif item.measure_type == "whole" %}Sold as whole {{ item.unit }}s only.
 {% else %}Per {{ item.unit }}.{% endif %}

@@ -30,14 +30,14 @@
     {% for offer in kit_offers %}
       <div class="kit-card">
         <div class="row-between"><b>{{ offer.kit.name }}</b>
-          <span class="hint">Est. £{{ offer.estimated_value }}{% if offer.has_measured_items %} + measured items{% endif %}</span></div>
+          {% if show_values %}<span class="hint">Est. £{{ offer.estimated_value }}{% if offer.has_measured_items %} + measured items{% endif %}</span>{% endif %}</div>
         {% if offer.kit.description %}<div class="hint">{{ offer.kit.description }}</div>{% endif %}
         {% include "orders/_kit_form.html" %}
       </div>
     {% empty %}<p>No kits have been set up yet.</p>{% endfor %}
   {% else %}
   <table class="grid items">
-    <thead><tr><th>Part No.</th><th>Item</th><th class="num">Price</th><th>Quantity / measurement</th></tr></thead>
+    <thead><tr><th>Part No.</th><th>Item</th>{% if show_values %}<th class="num">Price</th>{% endif %}<th>Quantity / measurement</th></tr></thead>
     <tbody>
     {% for item in items %}
       <tr class="{% if not item.is_orderable %}muted{% endif %}">
@@ -47,7 +47,7 @@
           {% if q %}<div class="hint">{{ item.section.name|default:"Other" }}{% if item.subsection %} › {{ item.subsection.name }}{% endif %}</div>{% endif %}
           <div class="hint">{% include "orders/_unit_hint.html" %}</div>
         </td>
-        <td class="num">{% if item.trade_price is not None %}£{{ item.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>
+        {% if show_values %}<td class="num">{% if item.trade_price is not None %}£{{ item.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>{% endif %}
         <td>
         {% if item.is_orderable %}
           {% include "orders/_add_form.html" %}

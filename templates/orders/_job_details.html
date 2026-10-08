@@ -12,6 +12,22 @@
   <div class="field span2">
     <label>Property type <span class="req">*</span></label>{{ f.property_type }}
   </div>
+  <div class="field span2 operative{% if f.operative_name.errors %} has-error{% endif %}" id="operative-field">
+    <label for="{{ f.operative_name.id_for_label }}">Operative name <span class="req">*</span></label>{{ f.operative_name }}
+    <div class="hint">Required for occupied properties.</div>
+  </div>
+  <script>
+    (function () {
+      var box = document.getElementById("operative-field");
+      var form = box.closest("form");
+      function sync() {
+        var chosen = form.querySelector('input[name="property_type"]:checked');
+        box.hidden = !(chosen && chosen.value === "occupied");
+      }
+      form.addEventListener("change", function (e) { if (e.target.name === "property_type") sync(); });
+      sync();
+    })();
+  </script>
   <details class="span2"{% if f.special_instructions.value %} open{% endif %}>
     <summary>Special instructions (optional)</summary>
     {{ f.special_instructions }}
