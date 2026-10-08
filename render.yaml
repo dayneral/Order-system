@@ -14,9 +14,9 @@ services:
     region: frankfurt
     plan: starter
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    preDeployCommand: python manage.py migrate --noinput
+    preDeployCommand: python manage.py wait_for_db && python manage.py migrate --noinput
     startCommand: gunicorn bfs.wsgi --workers 2 --timeout 60
-    healthCheckPath: /accounts/sign-in/
+    healthCheckPath: /healthz
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -43,7 +43,7 @@ services:
     plan: starter
     schedule: "15 2 * * *"
     buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py run_retention
+    startCommand: python manage.py wait_for_db && python manage.py run_retention
     envVars:
       - key: DATABASE_URL
         fromDatabase:

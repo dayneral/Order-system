@@ -116,3 +116,13 @@ To use an address like `orders.bfsuk.org` instead of `…onrender.com`:
 - **Secrets** (passwords, keys) live only in Render's Environment tab, never in the code.
 - **If the site is down:** check **bfs-orders** > **Logs** and **Events**.
   A failed deploy leaves the previous version running.
+
+## Troubleshooting
+
+| Message in the deploy log | Meaning and fix |
+|---|---|
+| `Pre-deploy has failed` … `connection to server at "10.x.x.x", port 5432 failed: Connection refused` | The database wasn't ready yet. This is common on the very first deploy. The pre-deploy step now waits up to 5 minutes. If it still fails, check that **bfs-orders-db** shows *Available*, then on **bfs-orders** click **Manual Deploy > Deploy latest commit**. |
+| `Database still not reachable after 300s` | The database is down or in a different region. Check **bfs-orders-db** is *Available* and in **Frankfurt**, the same region as the web service. |
+| `SECRET_KEY environment variable is required` | Add `SECRET_KEY` under **Environment**, using **Generate**. |
+| `DisallowedHost` | Add your web address to `ALLOWED_HOSTS` under **Environment**. |
+| Health check failing | The check uses `/healthz`, which should return `ok`. Look in **Logs** for an error during start-up. |
