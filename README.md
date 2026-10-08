@@ -204,7 +204,7 @@ submitting is never blocked.
 ## Order emails
 
 - **Sent to `STORES_EMAIL`** (stores@bfsuk.org) from materialorders@bfsuk.org on
-  submit, on **Send amended order to stores** (subject starts `AMENDED:`), and on
+  submit, on **Send amended order to stores** (subject starts `AMENDED:`, or `AMENDED (NEW DATE):` when the delivery date changed), and on
   cancel (subject starts `CANCELLED:`). Amended emails show what changed since
   the last version: a summary box, lines marked NEW, CHANGED (with the old value)
   or REMOVED (do not supply), and changed job details highlighted.

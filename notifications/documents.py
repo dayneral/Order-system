@@ -134,8 +134,11 @@ def group_by_section(lines):
     return [{"section": name, "lines": group} for name, group in ranked]
 
 
-def subject(order, kind="submitted"):
+def subject(order, kind="submitted", previous=None):
     label = LABELS.get(kind, "")
+    if kind == "amended" and previous and \
+            previous.get("header", {}).get("delivery_date", "") != _header_dict(order)["delivery_date"]:
+        label = "AMENDED (NEW DATE)"
     delivery = f"{order.delivery_date:%d %b %Y}" if order.delivery_date else "no date"
     text = f"Material order {order.order_number} - Job {order.job_number} - deliver {delivery}"
     return f"{label}: {text}" if label else text

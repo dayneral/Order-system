@@ -90,6 +90,7 @@ def test_amended_email_marks_new_changed_and_removed_lines_and_header(setup):
     assert "was: 2 each" in html and "was: Item JOI80, cut to 1.9m" in html
     assert "do not supply" in html and "Item PLU2" in html
     assert "Delivery date (was:" in html and 'class="chg"' in html
+    assert msg.subject.startswith("AMENDED (NEW DATE): ")
     assert "[NEW] PLU3" in text and "[CHANGED] PLU1" in text and "REMOVED - do not supply: PLU2" in text
 
 
@@ -123,3 +124,10 @@ def test_print_view_of_amended_order_shows_changes(client, setup):
     client.force_login(user)
     page = client.get(reverse("orders:print", args=[order.pk])).content.decode()
     assert "Changes since the last version" in page and "1 NEW" in page
+
+
+def test_subject_says_new_date_only_when_the_date_changes(setup):
+    user, items, order = setup
+    services.add_item_line(order, user, items["c"], {"quantity": "1"})
+    services.finish_amendment(order, user)
+    assert mail.outbox[-1].subject.startswith("AMENDED: ")

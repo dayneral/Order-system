@@ -33,7 +33,7 @@ def last_sent_snapshot(order, before=None):
 def _build_message(order, kind, previous=None):
     reply_to = [order.owner.email] if order.owner_id and order.owner and order.owner.email else None
     message = EmailMultiAlternatives(
-        subject=documents.subject(order, kind),
+        subject=documents.subject(order, kind, previous),
         body=documents.render_text(order, kind, previous),
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[settings.STORES_EMAIL],
@@ -60,9 +60,10 @@ def _resolve_earlier_failures(order, kind):
 
 
 def send_order_email(order, kind):
-    ok, error = _attempt(order, kind, last_sent_snapshot(order) if kind == "amended" else None)
+    previous = last_sent_snapshot(order) if kind == "amended" else None
+    ok, error = _attempt(order, kind, previous)
     log = OrderEmail.objects.create(
-        order=order, kind=kind, recipient=settings.STORES_EMAIL, subject=documents.subject(order, kind),
+        order=order, kind=kind, recipient=settings.STORES_EMAIL, subject=documents.subject(order, kind, previous),
         status=OrderEmail.Status.SENT if ok else OrderEmail.Status.FAILED,
         last_error=error, sent_at=timezone.now() if ok else None, snapshot=documents.snapshot(order),
     )
@@ -80,7 +81,7 @@ def retry(log):
     ok, error = _attempt(order, log.kind, previous)
     log.attempts += 1
     log.snapshot = documents.snapshot(order)
-    log.subject = documents.subject(order, log.kind)
+    log.subject = documents.subject(order, log.kind, previous)
     if ok:
         log.status = OrderEmail.Status.SENT
         log.sent_at = timezone.now()
