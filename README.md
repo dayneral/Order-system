@@ -109,7 +109,7 @@ column, or from a heading row such as "Plumbing", or from the worksheet name.
 | Temporary code corrected by an admin | Still matched to its spreadsheet row on the next import, so it isn't duplicated. |
 
 New items get starting values from the decisions recorded in the brief: worktops
-and splashbacks are cut to order (3.0 m), flooring priced per m² uses area,
+and splashbacks are cut to order (3.0 m), vinyl and flooring priced per m² use area (cut to the exact length and width ordered),
 "per 100" and similar become packs, PLU037 is a pack of 8, BFS05 a pack of 80,
 PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
 `catalogue/setup_rules.py`.
@@ -127,8 +127,9 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   instructions. Then add items, browsing by section or searching across all
   sections. How you enter each item depends on its measure type:
   - **Each, pack and whole items:** a whole number (for packs, the number of packs).
-  - **Area:** length and width in metres, to 0.1 m. The app works out the m².
-  - **Cut to order:** a length in metres, to 0.1 m.
+  - **Area (vinyl and other flooring):** the exact length and width to be cut, in metres
+    to 0.1 m. Stores cut to size. The app works out the m², with no waste allowance.
+  - **Cut to order (worktops, splashbacks):** a length in metres, to 0.1 m.
   - **Non-stocked items:** typed in by name, unit and quantity. They are marked
     NON-STOCKED and have no price.
 - **Drafts:** saved at any time and visible only to their owner. A draft is
@@ -146,9 +147,8 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
   be ordered again.
 - **Order value:** shown in the app only, never to stores.
   - Each, pack and whole items: quantity × trade price.
-  - Area: m² (to 2 decimal places) × price per m².
+  - Area (vinyl and other flooring): m² (to 2 decimal places) × price per m², no waste allowance.
   - Worktops and splashbacks: length ÷ catalogue length × price (an estimate).
-  - Vinyl cut to length: length × roll width × price per m² (an estimate).
   - Each line is rounded to the penny. Non-stocked items are excluded.
   - The code is in `orders/pricing.py`.
 

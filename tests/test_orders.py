@@ -60,7 +60,7 @@ def test_lines_for_each_measure_type_and_order_value(make_user, items):
     cut = services.add_item_line(order, user, items["worktop"], {"length": "1.9"})  # 57.00 estimate
     services.add_non_stocked_line(order, user, "Special hinge", "each", "4")
     order.refresh_from_db()
-    assert area.area_m2 == D("6.40") and area.measurement_text == "3.2m × 2.0m = 6.40 m²"
+    assert area.area_m2 == D("6.40") and area.measurement_text == "cut to 3.2m × 2.0m = 6.40 m²"
     assert cut.is_estimate and cut.measurement_text == "cut to 1.9m"
     assert order.order_value == D("194.98")
     assert order.lines.get(is_non_stocked=True).line_value is None

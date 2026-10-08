@@ -14,7 +14,7 @@
           <form method="post" action="{% url 'orders:line_update' order.pk line.pk %}" class="inline-fields"
                 hx-post="{% url 'orders:line_update' order.pk line.pk %}" hx-trigger="change" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}
           {% if line.measure_type == "area" %}
-            <input name="length" type="number" min="0.1" step="0.1" value="{{ line.length_m }}" class="qty" aria-label="Length"> ×
+            cut to <input name="length" type="number" min="0.1" step="0.1" value="{{ line.length_m }}" class="qty" aria-label="Length"> ×
             <input name="width" type="number" min="0.1" step="0.1" value="{{ line.width_m }}" class="qty" aria-label="Width"> m
           {% elif line.measure_type == "cut" or line.measure_type == "linear" %}
             {% if line.measure_type == "cut" %}cut to {% endif %}<input name="length" type="number" min="0.1" step="0.1" value="{{ line.length_m }}" class="qty" aria-label="Length"> m

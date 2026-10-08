@@ -105,7 +105,6 @@ class OrderLine(models.Model):
     pack_size = models.PositiveIntegerField(default=1)
     trade_price = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
     catalogue_length_m = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    roll_width_m = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     is_flammable = models.BooleanField(default=False)
 
     # What was asked for.
@@ -127,7 +126,7 @@ class OrderLine(models.Model):
     def measurement_text(self):
         """Plain description of what was ordered, as shown on the order and to stores."""
         if self.measure_type == MeasureType.AREA:
-            return f"{self.length_m}m × {self.width_m}m = {self.area_m2} m²"
+            return f"cut to {self.length_m}m × {self.width_m}m = {self.area_m2} m²"
         if self.measure_type == MeasureType.CUT_TO_ORDER:
             return f"cut to {self.length_m}m"
         if self.measure_type == MeasureType.LINEAR:

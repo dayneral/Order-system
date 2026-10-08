@@ -112,7 +112,6 @@ def _copy_item(line, item):
     line.pack_size = item.pack_size
     line.trade_price = item.trade_price
     line.catalogue_length_m = item.catalogue_length_m
-    line.roll_width_m = item.roll_width_m
     line.is_flammable = item.is_flammable
 
 
@@ -121,7 +120,7 @@ def _price(line):
         line.line_value, line.area_m2, line.is_estimate = None, None, False
         return
     result = price_line(line.measure_type, line.trade_price, quantity=line.quantity, length=line.length_m,
-                        width=line.width_m, catalogue_length=line.catalogue_length_m, roll_width=line.roll_width_m)
+                        width=line.width_m, catalogue_length=line.catalogue_length_m)
     line.line_value, line.area_m2, line.is_estimate = result.value, result.area_m2, result.is_estimate
 
 

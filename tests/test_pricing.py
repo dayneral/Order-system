@@ -49,13 +49,14 @@ def test_cut_to_order_pro_rata_rounding():
     assert price_line(M.CUT_TO_ORDER, D("100"), length=D("1.0"), catalogue_length=D("3.0")).value == D("33.33")
 
 
-def test_cut_to_order_vinyl_uses_roll_width_and_price_per_m2():
-    # 4.5m off a 2m roll at £18.50/m2 = 9 m2 x 18.50 = 166.50
-    result = price_line(M.CUT_TO_ORDER, D("18.50"), length=D("4.5"), roll_width=D("2.0"))
-    assert result.value == D("166.50") and result.is_estimate
+def test_vinyl_cut_to_exact_size_is_area_with_no_waste():
+    # 4.5m x 2.0m cut to size at £18.50/m2 = 9.00 m2 x 18.50 = 166.50, not an estimate.
+    result = price_line(M.AREA, D("18.50"), length=D("4.5"), width=D("2.0"))
+    assert result.area_m2 == D("9.00")
+    assert result.value == D("166.50") and not result.is_estimate
 
 
-def test_cut_to_order_vinyl_without_roll_width_is_length_times_price():
+def test_cut_to_order_without_catalogue_length_is_priced_per_metre():
     assert price_line(M.CUT_TO_ORDER, D("18.50"), length=D("4.5")).value == D("83.25")
 
 

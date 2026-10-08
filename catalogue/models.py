@@ -102,12 +102,6 @@ class Item(models.Model):
         "Catalogue length (m)", max_digits=6, decimal_places=2, null=True, blank=True,
         help_text="Cut-to-order items only: the length the trade price covers (e.g. 3.0 for worktops).",
     )
-    roll_width_m = models.DecimalField(
-        "Roll width (m)", max_digits=5, decimal_places=2, null=True, blank=True,
-        help_text="Vinyl and other roll goods cut to length: the roll width. "
-                  "Cut length × roll width × price per m² gives the line value.",
-    )
-
     is_active = models.BooleanField("Active", default=True)
     is_flammable = models.BooleanField("Flammable", default=False)
     is_incomplete = models.BooleanField(

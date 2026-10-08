@@ -79,7 +79,8 @@ def initial_setup(code, name, unit_text, section_key):
         return {"measure_type": MeasureType.CUT_TO_ORDER, "unit": "m", "pack_size": 1,
                 "catalogue_length_m": WORKTOP_LENGTH_M}, None
 
-    if section_key == Section.FLOORING and unit == "m²":
+    # Vinyl and sheet flooring is cut to the exact size ordered: length x width, priced per m².
+    if section_key == Section.FLOORING and (unit == "m²" or "vinyl" in lower_name):
         return {"measure_type": MeasureType.AREA, "unit": "m²", "pack_size": 1}, None
 
     if pack:

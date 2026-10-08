@@ -12,7 +12,7 @@ from .models import ImportRun, Item, MeasureType, Section
 # Fields an admin can change, with friendly labels for the audit history.
 AUDITED_FIELDS = [
     "part_no", "display_name", "catalogue_name", "section", "trade_price", "measure_type", "unit", "pack_size",
-    "catalogue_length_m", "roll_width_m", "is_active", "is_flammable", "code_to_confirm", "name_check",
+    "catalogue_length_m", "is_active", "is_flammable", "code_to_confirm", "name_check",
 ]
 
 
@@ -58,8 +58,10 @@ class ItemForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         measure = cleaned.get("measure_type")
-        if cleaned.get("catalogue_length_m") and cleaned.get("roll_width_m"):
-            self.add_error("roll_width_m", "Set either a catalogue length (worktops) or a roll width (vinyl), not both.")
+        if measure == MeasureType.CUT_TO_ORDER and not cleaned.get("catalogue_length_m"):
+            self.add_error("catalogue_length_m",
+                           "Cut-to-order items need the length the trade price covers (e.g. 3.0). "
+                           "Flooring cut to size by length and width should use Area (m²).")
         if measure != MeasureType.PACK and cleaned.get("pack_size", 1) > 1:
             self.add_error("measure_type", "Items with a pack size above 1 should use the Pack measure type.")
         if not (cleaned.get("display_name") or cleaned.get("catalogue_name")):
@@ -85,10 +87,11 @@ class ItemAdmin(admin.ModelAdmin):
                    "description": "Users see the display name. The original name comes from the catalogue "
                                   "file and is updated by each import; the display name never is."}),
         ("Ordering", {"fields": ("section", "trade_price", "measure_type", "unit", "pack_size",
-                                 "catalogue_length_m", "roll_width_m"),
-                      "description": "Cut to order: worktops and splashbacks use the catalogue length "
-                                     "(price × length ÷ catalogue length). Vinyl cut from a roll uses the roll "
-                                     "width (length × roll width × price per m²)."}),
+                                 "catalogue_length_m"),
+                      "description": "Area (m²): vinyl and other flooring. Users enter the exact length and width "
+                                     "to be cut; value = m² × price per m², no waste allowance. "
+                                     "Cut to order: worktops and splashbacks. Users enter a length; "
+                                     "value = length ÷ catalogue length × price (an estimate)."}),
         ("Status", {"fields": ("is_active", "is_flammable", "is_incomplete", "created_at", "updated_at")}),
         ("History", {"fields": ("history",)}),
     )

@@ -247,7 +247,7 @@ def test_recorded_item_setup_decisions():
                      row("PLU020", "Solvent cement 250ml", 4.0)],
         "Plastering": [row("PLA007", "Angle bead 2.4m", 1.5), row("PLA015", "Scrim tape 90m", 2.0)],
         "Flooring": [row("V0002", "Cove former", 3.0), row("V0004", "Weld rod", 8.0),
-                     row("V0020", "Safety vinyl", 18.0, unit="m2")],
+                     row("V0020", "Safety vinyl", 18.0, unit="m2"), row("V0021", "Vinyl sheet 2m wide", 15.0)],
         "Misc": [row("BFS05", "Wipes", 6.0)],
     })
     assert (item("PLU037").measure_type, item("PLU037").pack_size) == (MeasureType.PACK, 8)
@@ -256,6 +256,7 @@ def test_recorded_item_setup_decisions():
     assert item("V0002").measure_type == MeasureType.EACH and item("V0002").unit == "2m length"
     assert item("V0004").measure_type == MeasureType.EACH
     assert item("V0020").measure_type == MeasureType.AREA and item("V0020").unit == "m²"
+    assert item("V0021").measure_type == MeasureType.AREA
     solvent = item("PLU020")
     assert solvent.section_id == Section.PLUMBING and not solvent.is_flammable
     notes = {x["part_no"]: x["note"] for x in report["setup_notes"]}
@@ -331,3 +332,17 @@ def test_admin_editing_part_no_confirms_temporary_code(admin_client):
     assert resp.status_code == 302
     temp.refresh_from_db()
     assert temp.part_no == "ELE130" and not temp.code_to_confirm
+
+
+def test_cut_to_order_items_need_a_catalogue_length(admin_client):
+    run_import({"Bathrooms & Kitchens": [row("BK010", "Black granite bullnose worktop 3m", 90.0)]})
+    worktop = item("BK010")
+    url = reverse("admin:catalogue_item_change", args=[worktop.pk])
+    form = admin_client.get(url).context["adminform"].form
+    data = {k: v for k, v in form.initial.items() if v is not None and k in form.fields}
+    data.update({"is_active": "on", "catalogue_length_m": ""})
+    for key in ("is_flammable", "code_to_confirm", "name_check"):
+        data.pop(key, None)
+    resp = admin_client.post(url, data)
+    assert resp.status_code == 200
+    assert "catalogue_length_m" in resp.context["adminform"].form.errors

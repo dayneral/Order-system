@@ -8,7 +8,7 @@ build brief. Newest first.
 | Topic | Decision |
 |---|---|
 | Order lists | Users can switch between **My Orders**, **All Orders** and **Historic Orders**. All Orders shows every user's submitted and cancelled orders (read only unless you own the order or are an admin). Historic Orders shows orders whose personal data has been anonymised. Drafts are only ever visible to their owner. |
-| Vinyl cut to length (pricing) | Line value = length (m) × roll width (m) × trade price per m². The roll width is set per item by an admin. If no roll width is set, the line is priced as length × price per m² (that is, a width of 1 m), and the line is shown as an estimate. *Awaiting confirmation that this matches the intended rule.* |
+| Vinyl and flooring (pricing) | The person ordering enters the **exact length and width** to be cut; stores cut to size. Value = length × width (m², 2 decimal places) × trade price per m². Wastage is disregarded. These items use the Area measure type. (Replaces an earlier roll-width proposal, which was not adopted.) |
 | Rounding | Area is worked out to 2 decimal places of m². Each line value is rounded to the penny (half up). The order total is the sum of the rounded lines. |
 | Retention timing | Personal data (job number, property address, requester name) is cleared **30 days after the requested delivery date**, not the order date. Once cleared, the order can no longer be amended or cancelled. |
 | Anonymous ID | A different random ID is used for each order, so anonymised orders cannot be linked to one person. |
