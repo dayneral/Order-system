@@ -6,8 +6,8 @@ Orders are emailed to the stores team and can be printed.
 Built with **Django 5 (Python)** and **PostgreSQL**, hosted on **Render**.
 Pages are plain server-rendered HTML with no separate front-end build.
 
-> Status: **Stage 1** (sign-in, account approval and roles) is complete.
-> The catalogue, ordering, email and retention stages follow.
+> Status: **Stages 1–2** are complete: sign-in, approval and roles, plus the
+> catalogue import and admin editing. Ordering, email and retention follow.
 
 ---
 
@@ -18,6 +18,7 @@ Pages are plain server-rendered HTML with no separate front-end build.
 | `bfs/` | Project settings, top-level URLs and the home page |
 | `accounts/` | Users, sign-in, registration, approval, roles and password reset. Its users table is designed to be shared with a future job management system. |
 | `audit/` | One shared audit history ("who did what, when") used by every module |
+| `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, and linked-item groups (data only for now) |
 | `templates/` | The HTML pages |
 | `static/` | Stylesheet |
 | `tests/` | Automated tests (run with `pytest`) |
@@ -40,6 +41,73 @@ Pages are plain server-rendered HTML with no separate front-end build.
 - Passwords are stored hashed (PBKDF2). The minimum length is 10 characters.
 - Approvals, rejections, role changes, disabling and reset links are written to
   the audit history (**Data admin > Audit entries**).
+
+---
+
+## The catalogue
+
+Each item has: Part No. (the store code), the original catalogue name, a
+display name, a section, a trade price, a measure type, a unit, a pack size,
+and active, flammable, incomplete and "code to be confirmed" flags. Sell price,
+stock levels and stores locations are never stored.
+
+**Editing items:** go to **Catalogue** in the top bar. Use the **needs attention**
+filter to find codes to confirm, incomplete items, garbled names, and packs
+whose pack size is still 1. Click a Part No. to edit it. The display name can
+also be changed directly in the list (press **Save** at the bottom). Every
+change is recorded in the item's **Change history**.
+
+- Changing a temporary Part No. (for example ELE118-B to ELE130) clears
+  "code to be confirmed" automatically. You can also select items and choose
+  **Mark codes as confirmed**.
+- Items cannot be deleted, so past orders stay intact. Select them and choose
+  **Deactivate selected items** instead.
+- An item is **incomplete**, and cannot be ordered, while it has no name or no trade price.
+- Measure types: *Each*, *Pack* (the price is per pack and the pack size is
+  stored), *Area (m²)*, *Linear (m)* (not used yet), *Cut to order (m)* (needs
+  the catalogue length the price covers, e.g. 3.0 for worktops), and
+  *Whole items only*.
+
+### How to import the catalogue
+
+1. Go to **Import** in the top bar, choose the `.xlsx` or `.csv` file and press
+   **Upload and preview**.
+2. Read the report. **Nothing is saved yet.** It lists new items, updates,
+   items that will be deactivated, temporary codes, incomplete rows, sell prices
+   below trade, names that were repaired or still look garbled, and ignored columns.
+3. Press **Apply import**, or **Discard**.
+
+From the command line (the same rules apply):
+
+```bash
+python manage.py import_catalogue catalogue.xlsx            # preview only
+python manage.py import_catalogue catalogue.xlsx --apply    # apply as well
+```
+
+**What the file needs:** a heading row with at least **Part No.** and
+**Description**. Also read if present: **Trade Price**, **Sell Price**, **Unit**,
+**Section**, **Flammable**. All other columns are ignored (Order, Est. Time,
+Stock, Stores Location, supplier columns). The section comes from a Section
+column, or from a heading row such as "Plumbing", or from the worksheet name.
+
+**Import rules**
+
+| Situation | What happens |
+|---|---|
+| Part No. appears more than once | The first keeps the code. Later ones become `-B`, `-C`… (e.g. `ELE118-B`), flagged *code to be confirmed* and listed in the report. |
+| Placeholder code (e.g. `PLU0`) | Each one becomes `PLU0-A`, `PLU0-B`…, flagged *code to be confirmed*. |
+| Missing name or trade price | Imported, flagged *incomplete*, listed in the report, and not orderable until completed. |
+| Sell price below trade price | Listed for review only. Sell price is otherwise ignored. |
+| Garbled characters (`âˆ’`, `Â²`…) | Repaired automatically (`-`, `²`). Names still garbled are flagged *check name*. |
+| Item already exists | Original name, trade price and section are updated. **Display name, unit, pack size and measure type are never overwritten.** |
+| Item no longer in the file | Deactivated (not deleted), but only for sections included in the file. Items added by an admin are never deactivated by an import. |
+| Temporary code corrected by an admin | Still matched to its spreadsheet row on the next import, so it isn't duplicated. |
+
+New items get starting values from the decisions recorded in the brief: worktops
+and splashbacks are cut to order (3.0 m), flooring priced per m² uses area,
+"per 100" and similar become packs, PLU037 is a pack of 8, BFS05 a pack of 80,
+PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
+`catalogue/setup_rules.py`.
 
 ---
 
@@ -130,7 +198,6 @@ database. The daily cron job (stage 5) adds a few cents.
 
 ## Still to come
 
-- Stage 2: catalogue import and admin editing
 - Stage 3: ordering, drafts and measure types
 - Stage 4: order email with PDF
 - Stage 5: 30-day retention job, run daily by a Render cron job

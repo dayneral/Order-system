@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Catalogue import · BFS Material Orders{% endblock %}
+{% block help %}<p class="help">Upload the catalogue spreadsheet to add new items and update names and prices. You will see a report of every change <strong>before</strong> anything is saved. Display names, units and pack sizes you have set are never overwritten.</p>{% endblock %}
+{% block content %}
+<h1>Catalogue import</h1>
+
+<div class="cards">
+  <div class="card"><div class="num">{{ item_count }}</div>active items</div>
+  <a class="card" href="{% url 'admin:catalogue_item_changelist' %}?attention=code"><div class="num">{{ attention.code }}</div>codes to confirm</a>
+  <a class="card" href="{% url 'admin:catalogue_item_changelist' %}?attention=incomplete"><div class="num">{{ attention.incomplete }}</div>incomplete items</a>
+  <a class="card" href="{% url 'admin:catalogue_item_changelist' %}?attention=name"><div class="num">{{ attention.name }}</div>names to check</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="panel">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <p class="hint">The file needs a heading row with at least <b>Part No.</b> and <b>Description</b> columns. Also read if present: Trade Price, Sell Price, Unit, Section, Flammable.
+    Other columns (Order, Est. Time, Stock, Stores Location, supplier details) are ignored. If there is no Section column, the section is taken from section heading rows or the worksheet name.</p>
+  <button class="primary">Upload and preview</button>
+</form>
+
+<h2>Recent imports</h2>
+<table class="grid">
+  <thead><tr><th>Uploaded</th><th>File</th><th>By</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for run in runs %}
+    <tr><td>{{ run.created_at|date:"d M Y H:i" }}</td><td>{{ run.filename }}</td><td>{{ run.uploaded_by.full_name|default:"Command line" }}</td>
+        <td><span class="pill pill-{{ run.status }}">{{ run.get_status_display }}</span></td>
+        <td><a href="{% url 'catalogue:import_detail' run.pk %}">Report</a></td></tr>
+  {% empty %}<tr><td colspan="5">No imports yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

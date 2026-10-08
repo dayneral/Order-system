@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Import report · BFS Material Orders{% endblock %}
+{% block help %}
+{% if run.status == "preview" %}
+<p class="help">This is a preview. <strong>Nothing has been changed yet.</strong> Check the report, then press <b>Apply import</b> or <b>Discard</b>.</p>
+{% endif %}
+{% endblock %}
+{% block content %}
+<p><a href="{% url 'catalogue:import_start' %}">&larr; Catalogue import</a></p>
+<h1>Import report: {{ run.filename }}</h1>
+<p>Uploaded {{ run.created_at|date:"d M Y H:i" }} by {{ run.uploaded_by.full_name|default:"command line" }} ·
+  <span class="pill pill-{{ run.status }}">{{ run.get_status_display }}</span>
+  {% if run.applied_at %} on {{ run.applied_at|date:"d M Y H:i" }} by {{ run.applied_by.full_name|default:"command line" }}{% endif %}</p>
+
+{% with s=r.summary %}
+<div class="cards">
+  <div class="card"><div class="num">{{ s.rows }}</div>rows read</div>
+  <div class="card ok"><div class="num">{{ s.additions }}</div>new items</div>
+  <div class="card"><div class="num">{{ s.updates }}</div>updated</div>
+  <div class="card"><div class="num">{{ s.unchanged }}</div>unchanged</div>
+  <div class="card{% if s.removals %} bad{% endif %}"><div class="num">{{ s.removals }}</div>to deactivate</div>
+  <div class="card{% if s.temp_codes %} warn{% endif %}"><div class="num">{{ s.temp_codes }}</div>temporary codes</div>
+  <div class="card{% if s.incomplete %} warn{% endif %}"><div class="num">{{ s.incomplete }}</div>incomplete</div>
+  <div class="card{% if s.garbled_names %} warn{% endif %}"><div class="num">{{ s.garbled_names }}</div>names to check</div>
+</div>
+{% endwith %}
+
+{% if run.status == "preview" %}
+<div class="actions panel">
+  <form method="post" action="{% url 'catalogue:import_apply' run.pk %}">{% csrf_token %}<button class="primary">Apply import</button></form>
+  <form method="post" action="{% url 'catalogue:import_discard' run.pk %}">{% csrf_token %}<button>Discard</button></form>
+</div>
+{% endif %}
+
+{% if r.sections_in_file %}<p>Sections in this file: {{ r.sections_in_file|join:", " }}. Only items in these sections can be deactivated by this import.</p>{% endif %}
+
+{% if r.temp_codes %}
+<details open><summary>Temporary codes ({{ r.temp_codes|length }}): flagged "code to be confirmed"</summary>
+<table class="grid"><thead><tr><th>Code in file</th><th>Temporary code</th><th>Name</th><th>Why</th></tr></thead><tbody>
+{% for x in r.temp_codes %}<tr><td>{{ x.original }}</td><td><b>{{ x.new }}</b></td><td>{{ x.name }}</td><td>{{ x.reason }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.removals %}
+<details open><summary>To be deactivated ({{ r.removals|length }}): no longer in the file</summary>
+<p class="hint">Items are deactivated, never deleted, so past orders are unaffected. Re-importing them later reactivates them.</p>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Section</th></tr></thead><tbody>
+{% for x in r.removals %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.section }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.incomplete %}
+<details open><summary>Incomplete ({{ r.incomplete|length }}): imported, but not orderable until completed</summary>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Missing</th><th>Where</th></tr></thead><tbody>
+{% for x in r.incomplete %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.missing }}{% if x.price_text %} (price cell: "{{ x.price_text }}"){% endif %}</td><td>{{ x.where }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.sell_below_trade %}
+<details open><summary>Sell price below trade price ({{ r.sell_below_trade|length }}): for review only</summary>
+<p class="hint">The app ignores sell prices and always uses trade price. These are listed so the spreadsheet can be checked.</p>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Trade £</th><th>Sell £</th></tr></thead><tbody>
+{% for x in r.sell_below_trade %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.trade }}</td><td>{{ x.sell }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.garbled_names %}
+<details open><summary>Names still garbled after repair ({{ r.garbled_names|length }})</summary>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th></tr></thead><tbody>
+{% for x in r.garbled_names %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.setup_notes %}
+<details open><summary>Setup notes ({{ r.setup_notes|length }})</summary>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Note</th></tr></thead><tbody>
+{% for x in r.setup_notes %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.note }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.no_section or r.unknown_sections %}
+<details open><summary>Section problems</summary>
+{% if r.unknown_sections %}<p>Section names not recognised: {{ r.unknown_sections|join:", " }}</p>{% endif %}
+{% if r.no_section %}<p class="hint">These rows had no recognisable section and will be placed in Miscellaneous. Move them in the catalogue screen if needed.</p>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Section in file</th><th>Where</th></tr></thead><tbody>
+{% for x in r.no_section %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.section_text|default:"(none)" }}</td><td>{{ x.where }}</td></tr>{% endfor %}
+</tbody></table>{% endif %}
+</details>
+{% endif %}
+
+{% if r.additions %}
+<details><summary>New items ({{ r.additions|length }})</summary>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Section</th><th>Trade £</th><th>Measure</th><th>Unit</th><th>Pack size</th></tr></thead><tbody>
+{% for x in r.additions %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{{ x.section }}</td><td>{{ x.price|default:"—" }}</td><td>{{ x.measure }}</td><td>{{ x.unit }}</td><td>{{ x.pack_size }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.updates %}
+<details><summary>Updated items ({{ r.updates|length }})</summary>
+<table class="grid"><thead><tr><th>Part No.</th><th>Name</th><th>Changes</th></tr></thead><tbody>
+{% for x in r.updates %}<tr><td>{{ x.part_no }}</td><td>{{ x.name }}</td><td>{% for field, ch in x.changes.items %}{{ field }}: {{ ch.from|default:"(none)" }} &rarr; {{ ch.to|default:"(none)" }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.repaired_names %}
+<details><summary>Names repaired automatically ({{ r.repaired_names|length }})</summary>
+<table class="grid"><thead><tr><th>Part No.</th><th>Before</th><th>After</th></tr></thead><tbody>
+{% for x in r.repaired_names %}<tr><td>{{ x.part_no }}</td><td>{{ x.from }}</td><td>{{ x.to }}</td></tr>{% endfor %}
+</tbody></table></details>
+{% endif %}
+
+{% if r.skipped %}
+<details><summary>Skipped rows ({{ r.skipped|length }})</summary>
+<ul>{% for x in r.skipped %}<li>{{ x.where }}: {{ x.reason }}</li>{% endfor %}</ul></details>
+{% endif %}
+
+{% if r.ignored_columns %}<p class="hint">Ignored columns: {{ r.ignored_columns|join:", " }}</p>{% endif %}
+{% endblock %}

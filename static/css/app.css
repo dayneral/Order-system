@@ -41,3 +41,14 @@ table.grid th { background: #eef1f4; font-size: .85rem; text-transform: uppercas
 .pill-rejected, .pill-disabled { background: #f1f1f1; color: var(--muted); }
 .tag { background: rgba(255,255,255,.2); border-radius: 3px; padding: 0 .35rem; font-size: .8rem; }
 .badge { background: #f5b700; color: #000; border-radius: 999px; padding: 0 .45rem; font-size: .8rem; font-weight: 700; }
+h2 { font-size: 1.15rem; margin: 2rem 0 .75rem; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+.cards { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: .6rem 1rem; min-width: 120px; color: var(--muted); text-decoration: none; font-size: .9rem; }
+.card .num { font-size: 1.5rem; font-weight: 700; color: var(--ink); }
+.card.ok .num { color: var(--ok); } .card.warn .num { color: var(--warn); } .card.bad .num { color: var(--bad); }
+details { margin-bottom: 1rem; }
+details summary { cursor: pointer; font-weight: 600; padding: .4rem 0; }
+.pill-preview { background: #fff1c2; color: var(--warn); }
+.pill-applied { background: #dff3e5; color: var(--ok); }
+.pill-discarded { background: #f1f1f1; color: var(--muted); }
