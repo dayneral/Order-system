@@ -13,6 +13,8 @@ from orders import services
 pytestmark = pytest.mark.django_db
 
 CSV = "Part No.,Name,Trade Price\r\n{code},{name},1.00\r\n"
+NO_SUBS = {"subsections-TOTAL_FORMS": "0", "subsections-INITIAL_FORMS": "0",
+           "subsections-MIN_NUM_FORMS": "0", "subsections-MAX_NUM_FORMS": "1000"}
 
 
 def imp(filename, code="X001", name="Thing"):
@@ -22,7 +24,7 @@ def imp(filename, code="X001", name="Thing"):
 
 def test_admin_can_add_a_section_and_import_matches_it_by_name(admin_client):
     resp = admin_client.post(reverse("admin:catalogue_section_add"),
-                             {"name": "Decorating", "sort_order": 55, "is_flammable": ""})
+                             {"name": "Decorating", "sort_order": 55, "is_flammable": "", **NO_SUBS})
     assert resp.status_code == 302
     section = Section.objects.get(name="Decorating")
     assert section.key == "decorating"
@@ -34,7 +36,7 @@ def test_renaming_keeps_items_and_import_recognises_old_and_new_names(admin_clie
     item = imp("Plumbing.csv", "PLU001", "Tap")
     plumbing = Section.objects.get(key=Section.PLUMBING)
     admin_client.post(reverse("admin:catalogue_section_change", args=[plumbing.pk]),
-                      {"name": "Plumbing & Heating", "sort_order": plumbing.sort_order})
+                      {"name": "Plumbing & Heating", "sort_order": plumbing.sort_order, **NO_SUBS})
     plumbing.refresh_from_db()
     item.refresh_from_db()
     assert plumbing.name == "Plumbing & Heating" and item.section == plumbing
@@ -50,7 +52,7 @@ def test_removing_a_section_keeps_its_items_as_unsectioned(admin_client, make_us
     assert not Section.objects.filter(key=Section.JOINERY).exists()
     item.refresh_from_db()
     assert item.section is None and item.is_active and item.is_orderable
-    assert "moved to Unsectioned" in AuditEntry.objects.get(action="section.delete").summary
+    assert "moved to Unsectioned" in AuditEntry.objects.get(action="section.delete", target_id=Section.JOINERY).summary
 
     # Still orderable, shown under "Other" on the order page.
     user = make_user()

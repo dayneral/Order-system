@@ -31,7 +31,7 @@ def items(db):
         "screws": make("JOI050", "Screws M4 x 50mm, per 100", "3.49", Section.JOINERY,
                        measure_type=MeasureType.PACK, pack_size=100, unit="pack"),
         "vinyl": make("V0010", "Safety vinyl grey", "18.50", Section.FLOORING, measure_type=MeasureType.AREA, unit="m²"),
-        "worktop": make("BK010", "Black granite bullnose worktop", "90.00", Section.BATHROOMS_KITCHENS,
+        "worktop": make("BK010", "Black granite bullnose worktop", "90.00", Section.KITCHENS,
                         measure_type=MeasureType.CUT_TO_ORDER, unit="m", catalogue_length_m=D("3.0")),
         "spirit": make("FLA001", "White spirit 1L", "3.00", Section.FLAMMABLE),
         "incomplete": make("PLA001", "Bonding plaster", None, Section.PLASTERING),

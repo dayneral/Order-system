@@ -121,3 +121,6 @@ table.details td { padding: .35rem .5rem; vertical-align: top; }
 .kit-card { border: 1px solid #93c5fd; border-radius: 6px; padding: .6rem .8rem; margin-bottom: .8rem; background: #f8fbff; }
 table.kit-items td { padding: .3rem .4rem; }
 table.kit-items .inline-fields { display: table-cell; }
+.sub-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: -.35rem 0 .75rem; padding-left: .6rem; border-left: 3px solid var(--line); }
+.sub-tabs a { padding: .15rem .55rem; border-radius: 4px; text-decoration: none; color: var(--muted); font-size: .85rem; }
+.sub-tabs a.active { background: #e2eef3; color: var(--brand); font-weight: 600; }

@@ -27,8 +27,7 @@ FIELD_ALIASES = {
 
 SECTION_ALIASES = {
     Section.ADHESIVES: {"adhesive", "adhesives"},
-    Section.BATHROOMS_KITCHENS: {"bathroomsandkitchens", "bathroomandkitchen", "bathroomsandkitchen",
-                                "kitchensandbathrooms", "bathroomskitchens", "kitchensbathrooms", "kitchenandbathroom", "bandk", "bathrooms", "kitchens"},
+    Section.KITCHENS: {"kitchens", "kitchen"},
     Section.ELECTRICAL: {"electrical", "electric", "electrics"},
     Section.FLAMMABLE: {"flammableitems", "flammable", "flammables", "flammableitem"},
     Section.FLOORING: {"flooring", "floor", "floors"},

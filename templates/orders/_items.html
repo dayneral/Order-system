@@ -14,6 +14,16 @@
     <a href="?section=kits" class="kits-tab{% if current_section == 'kits' %} active{% endif %}"
        hx-get="{% url 'orders:items' order.pk %}?section=kits" hx-target="#items" hx-swap="outerHTML">Kits</a>
   </div>
+  {% if subsections %}
+  <div class="sub-tabs">
+    <a href="?section={{ current_section }}" class="{% if not current_sub %}active{% endif %}"
+       hx-get="{% url 'orders:items' order.pk %}?section={{ current_section }}" hx-target="#items" hx-swap="outerHTML">All</a>
+    {% for sub in subsections %}
+      <a href="?section={{ current_section }}&sub={{ sub.pk }}" class="{% if current_sub == sub.pk|stringformat:'s' %}active{% endif %}"
+         hx-get="{% url 'orders:items' order.pk %}?section={{ current_section }}&sub={{ sub.pk }}" hx-target="#items" hx-swap="outerHTML">{{ sub.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% if q %}<p class="hint">Results for "{{ q }}" across all sections.</p>{% endif %}
   {% if kits_tab %}
     <p class="hint">Add a whole kit in one go. Untick anything you don't need and adjust quantities before pressing <b>Add selected</b>.</p>
@@ -34,7 +44,7 @@
         <td class="code">{{ item.part_no }}</td>
         <td>{{ item.name }}
           {% if item.is_flammable %}<span class="flag flam">FLAMMABLE</span>{% endif %}
-          {% if q %}<div class="hint">{{ item.section.name|default:"Other" }}</div>{% endif %}
+          {% if q %}<div class="hint">{{ item.section.name|default:"Other" }}{% if item.subsection %} › {{ item.subsection.name }}{% endif %}</div>{% endif %}
           <div class="hint">{% include "orders/_unit_hint.html" %}</div>
         </td>
         <td class="num">{% if item.trade_price is not None %}£{{ item.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>

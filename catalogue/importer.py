@@ -187,6 +187,8 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
             "section_id": e.section_key,
             "original_part_no": row.part_no,
         }
+        if item.section_locked:
+            del new_values["section_id"]  # an admin placed this item: imports leave its section alone
         changes = {}
         for attr, new in new_values.items():
             old = getattr(item, attr)
@@ -212,7 +214,8 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
     report["sections_in_file"] = [s.name for k, s in sections.items() if k in file_sections]
     removals = [
         i for i in items
-        if i.source == Item.Source.IMPORT and i.is_active and i.pk not in claimed and i.section_id in file_sections
+        if i.source == Item.Source.IMPORT and i.is_active and i.pk not in claimed
+        and (i.import_section or i.section_id) in file_sections
     ]
     for i in removals:
         report["removals"].append({"part_no": i.part_no, "name": i.name,
@@ -266,6 +269,7 @@ def apply_plan(plan, actor, run=None):
                 part_no=e.part_no, original_part_no=e.row.part_no, import_key=e.key, source=Item.Source.IMPORT,
                 catalogue_name=e.name, display_name=e.name, section_id=e.section_key, trade_price=e.trade_price,
                 is_flammable=flammable, code_to_confirm=e.needs_temp, name_check=looks_garbled(e.name),
+                import_section=e.section_key or "",
                 **e.changes,
             )
             item.save()
@@ -275,6 +279,7 @@ def apply_plan(plan, actor, run=None):
 
         item = e.item
         item.import_key = e.key
+        item.import_section = e.section_key or ""
         item.source = Item.Source.IMPORT
         item.name_check = looks_garbled(e.name)
         if e.changes:

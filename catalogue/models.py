@@ -21,7 +21,8 @@ class Section(models.Model):
     """
 
     ADHESIVES = "adhesives"
-    BATHROOMS_KITCHENS = "bathrooms-kitchens"
+    BATHROOMS_KITCHENS = "bathrooms-kitchens"  # original section, replaced by KITCHENS (Oct 2026)
+    KITCHENS = "kitchens"
     ELECTRICAL = "electrical"
     FLAMMABLE = "flammable"
     FLOORING = "flooring"
@@ -66,6 +67,24 @@ class Section(models.Model):
         super().save(*args, **kwargs)
 
 
+class Subsection(models.Model):
+    """One level of grouping inside a section, e.g. Electrical > Sockets and Switches.
+
+    Removing a subsection keeps its items in the parent section.
+    """
+
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="subsections")
+    name = models.CharField(max_length=60)
+    sort_order = models.PositiveSmallIntegerField("Order", default=100)
+
+    class Meta:
+        ordering = ["section__sort_order", "sort_order", "name"]
+        constraints = [models.UniqueConstraint(fields=["section", "name"], name="subsection_name_once")]
+
+    def __str__(self):
+        return f"{self.section.name} > {self.name}"
+
+
 class MeasureType(models.TextChoices):
     EACH = "each", "Each"
     PACK = "pack", "Pack"
@@ -104,6 +123,14 @@ class Item(models.Model):
     )
     section = models.ForeignKey(Section, null=True, blank=True, on_delete=models.SET_NULL, related_name="items",
                                 help_text="Blank = Unsectioned (its section was removed).")
+    subsection = models.ForeignKey(Subsection, null=True, blank=True, on_delete=models.SET_NULL, related_name="items")
+    section_locked = models.BooleanField(
+        default=False, editable=False,
+        help_text="Section set by an admin: re-imports leave the section alone.")
+    import_section = models.CharField(
+        max_length=40, blank=True, editable=False,
+        help_text="Internal: the section of the file this item was last imported from. A re-import of that "
+                  "file can deactivate the item if it is no longer listed, wherever the item now sits.")
 
     trade_price = models.DecimalField(
         max_digits=10, decimal_places=4, null=True, blank=True,
@@ -158,6 +185,8 @@ class Item(models.Model):
         if not self.display_name:
             self.display_name = self.catalogue_name
         self.is_incomplete = not self.name.strip() or self.trade_price is None
+        if self.subsection_id and self.subsection.section_id != self.section_id:
+            self.section_id = self.subsection.section_id
         if self.section_id and self.section.is_flammable:
             self.is_flammable = True
         super().save(*args, **kwargs)

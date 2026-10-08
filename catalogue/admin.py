@@ -7,11 +7,11 @@ from django.utils.html import format_html, format_html_join
 
 from audit.models import AuditEntry, record
 
-from .models import ImportRun, Item, Kit, KitItem, LinkedItemRule, MeasureType, Section
+from .models import ImportRun, Item, Kit, KitItem, LinkedItemRule, MeasureType, Section, Subsection
 
 # Fields an admin can change, with friendly labels for the audit history.
 AUDITED_FIELDS = [
-    "part_no", "display_name", "catalogue_name", "section", "trade_price", "measure_type", "unit", "pack_size",
+    "part_no", "display_name", "catalogue_name", "section", "subsection", "trade_price", "measure_type", "unit", "pack_size",
     "catalogue_length_m", "is_active", "is_flammable", "code_to_confirm", "name_check",
 ]
 
@@ -68,6 +68,9 @@ class ItemForm(forms.ModelForm):
                            "Flooring cut to size by length and width should use Area (m²).")
         if measure != MeasureType.PACK and cleaned.get("pack_size", 1) > 1:
             self.add_error("measure_type", "Items with a pack size above 1 should use the Pack measure type.")
+        sub, section = cleaned.get("subsection"), cleaned.get("section")
+        if sub and section and sub.section_id != section.pk:
+            self.add_error("subsection", f"{sub.name} belongs to {sub.section.name}, not {section.name}.")
         if not (cleaned.get("display_name") or cleaned.get("catalogue_name")):
             self.add_error("display_name", "Enter a name.")
         return cleaned
@@ -76,21 +79,21 @@ class ItemForm(forms.ModelForm):
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
     form = ItemForm
-    list_display = ("part_no", "display_name", "original_name", "section", "price", "measure_type", "unit",
+    list_display = ("part_no", "display_name", "original_name", "section", "subsection", "price", "measure_type", "unit",
                     "pack_size", "flags", "is_active")
     list_display_links = ("part_no",)
     list_editable = ("display_name",)
-    list_filter = (NeedsAttentionFilter, "section", "measure_type", "is_active", "is_flammable", "source")
+    list_filter = (NeedsAttentionFilter, "section", "subsection", "measure_type", "is_active", "is_flammable", "source")
     search_fields = ("part_no", "original_part_no", "display_name", "catalogue_name")
     list_per_page = 100
-    actions = ["deactivate", "activate", "confirm_codes"]
+    actions = ["move_to_section", "deactivate", "activate", "confirm_codes"]
     readonly_fields = ("original_part_no", "source", "is_incomplete", "created_at", "updated_at", "history")
     fieldsets = (
         ("Code", {"fields": ("part_no", "original_part_no", "code_to_confirm", "source")}),
         ("Names", {"fields": ("display_name", "catalogue_name", "name_check"),
                    "description": "Users see the display name. The original name comes from the catalogue "
                                   "file and is updated by each import; the display name never is."}),
-        ("Ordering", {"fields": ("section", "trade_price", "measure_type", "unit", "pack_size",
+        ("Ordering", {"fields": ("section", "subsection", "trade_price", "measure_type", "unit", "pack_size",
                                  "catalogue_length_m"),
                       "description": "Area (m²): vinyl and other flooring. Users enter the exact length and width "
                                      "to be cut; value = m² × price per m², no waste allowance. "
@@ -150,6 +153,8 @@ class ItemAdmin(admin.ModelAdmin):
             obj.code_to_confirm = False  # a new code has been entered, so it is now confirmed
         if not change:
             obj.source = Item.Source.MANUAL
+        if change and ("section" in form.changed_data or "subsection" in form.changed_data):
+            obj.section_locked = True  # re-imports keep the admin's choice
         old = Item.objects.get(pk=obj.pk) if change else None
         super().save_model(request, obj, form, change)
         if old is None:
@@ -179,6 +184,39 @@ class ItemAdmin(admin.ModelAdmin):
             count += 1
         self.message_user(request, f"{verb} {count} item(s).", messages.SUCCESS)
 
+    @admin.action(description="Move to section / subsection…")
+    def move_to_section(self, request, queryset):
+        from django.template.response import TemplateResponse
+
+        choices = [(f"s:{s.pk}", s.name) for s in Section.objects.all()]
+        choices += [(f"u:{u.pk}", f"{u.section.name} > {u.name}") for u in Subsection.objects.select_related("section")]
+        choices.sort(key=lambda c: c[1])
+        target = request.POST.get("target")
+        if "apply" in request.POST and target:
+            kind, pk = target.split(":")
+            if kind == "u":
+                sub = Subsection.objects.select_related("section").get(pk=pk)
+                section, label = sub.section, f"{sub.section.name} > {sub.name}"
+            else:
+                sub, section = None, Section.objects.get(pk=pk)
+                label = section.name
+            count = 0
+            for item in queryset.select_related("section", "subsection"):
+                before = f"{item.section.name if item.section else 'Unsectioned'}" + (
+                    f" > {item.subsection.name}" if item.subsection else "")
+                item.section, item.subsection, item.section_locked = section, sub, True
+                item.save()
+                record(request.user, "item.edit", item, f"Moved {item.part_no} to {label}",
+                       {"section": {"from": before, "to": label}})
+                count += 1
+            self.message_user(request, f"Moved {count} item(s) to {label}.", messages.SUCCESS)
+            return None
+        return TemplateResponse(request, "admin/catalogue/move_items.html", {
+            **self.admin_site.each_context(request), "title": "Move items", "items": queryset,
+            "choices": choices, "opts": self.model._meta,
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+        })
+
     @admin.action(description="Deactivate selected items")
     def deactivate(self, request, queryset):
         self._bulk_set(request, queryset, "is_active", False, "Deactivated")
@@ -192,11 +230,19 @@ class ItemAdmin(admin.ModelAdmin):
         self._bulk_set(request, queryset, "code_to_confirm", False, "Confirmed code of")
 
 
+class SubsectionInline(admin.TabularInline):
+    model = Subsection
+    extra = 2
+    fields = ("name", "sort_order")
+    verbose_name_plural = "Subsections (removing one keeps its items in this section)"
+
+
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):
+    inlines = [SubsectionInline]
     """Rename, reorder, add and remove sections. Removing a section never deletes its items."""
 
-    list_display = ("name", "sort_order", "is_flammable", "item_count")
+    list_display = ("name", "sort_order", "is_flammable", "item_count", "subsection_list")
     list_editable = ("sort_order",)
     fields = ("name", "sort_order", "is_flammable")
     actions = None
@@ -204,6 +250,10 @@ class SectionAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         from django.db.models import Count
         return super().get_queryset(request).annotate(n_items=Count("items"))
+
+    @admin.display(description="Subsections")
+    def subsection_list(self, obj):
+        return ", ".join(s.name for s in obj.subsections.all()) or "—"
 
     @admin.display(description="Items", ordering="n_items")
     def item_count(self, obj):

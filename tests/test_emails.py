@@ -24,7 +24,7 @@ def order(make_user):
     make = lambda code, name, section, **kw: Item.objects.create(  # noqa: E731
         part_no=code, catalogue_name=name, section_id=section, trade_price=D("10.00"), **kw)
     silicone = make("ADH014", "Multi-purpose silicone 270ml white", Section.ADHESIVES)
-    worktop = make("BK010", "Black granite bullnose worktop", Section.BATHROOMS_KITCHENS,
+    worktop = make("BK010", "Black granite bullnose worktop", Section.KITCHENS,
                    measure_type=MeasureType.CUT_TO_ORDER, catalogue_length_m=D("3.0"), unit="m")
     vinyl = make("V0010", "Safety vinyl grey", Section.FLOORING, measure_type=MeasureType.AREA, unit="m²")
     spirit = make("FLA001", "White spirit 1L", Section.FLAMMABLE)

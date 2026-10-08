@@ -65,7 +65,14 @@ stock levels and stores locations are never stored.
 **Sections** (admin top bar > **Sections**): rename, reorder (the **Order**
 number: lower comes first), add or remove sections. Tick **Flammable store** on
 any section whose items should be flagged FLAMMABLE.
+- **Subsections:** on a section's page, add, rename, reorder or remove subsections
+  (one level, e.g. Electrical > Sockets and Switches). They appear as a second
+  row of buttons on the order page. Removing a subsection keeps its items in the section.
+- **Moving items:** in Catalogue, tick the items, choose **Move to section /
+  subsection…** and press Go. You can also edit an item's Section/Subsection
+  directly. Items moved by an admin stay put when the catalogue is re-imported.
 - Renamed sections still match their old names on import.
+- An import only deactivates items that came from the same file, wherever they have since been moved.
 - **Removing a section never deletes its items.** They become *Unsectioned*,
   are listed under **Other** on the order page, and can be found in Catalogue
   with the *needs attention > No section* filter. Edit an item's **Section** to move it.
@@ -199,7 +206,7 @@ submitting is never blocked.
   submit, on **Send amended order to stores** (subject starts `AMENDED:`), and on
   cancel (subject starts `CANCELLED:`).
 - **Reply-To** is the person who placed the order, so a reply from stores goes to them.
-- **Body:** a print-friendly HTML table. There is no PDF attachment: stores print the email itself.
+- **Body:** a print-friendly HTML table, with items grouped under section headings in catalogue order. There is no PDF attachment: stores print the email itself.
   - Each item shows its Part No. and display name. Non-stocked items show NON-STOCKED.
   - Flammable items are marked.
   - Worktops show a cut instruction (e.g. "cut to 1.9m"), and flooring shows

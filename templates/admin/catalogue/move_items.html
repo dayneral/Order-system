@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<p>Move these {{ items|length }} item{{ items|length|pluralize }} to:</p>
+<form method="post">{% csrf_token %}
+  <select name="target" required>
+    <option value="">— choose a section or subsection —</option>
+    {% for value, label in choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+  </select>
+  {% for item in items %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ item.pk }}">{% endfor %}
+  <input type="hidden" name="action" value="move_to_section">
+  <input type="submit" name="apply" value="Move items">
+  <a href="">Cancel</a>
+</form>
+<ul>{% for item in items %}<li>{{ item.part_no }} — {{ item.name }} <span style="color:#888">({{ item.section|default:"Unsectioned" }}{% if item.subsection %} &gt; {{ item.subsection.name }}{% endif %})</span></li>{% endfor %}</ul>
+<p>Moved items keep their new place when the catalogue is re-imported.</p>
+{% endblock %}

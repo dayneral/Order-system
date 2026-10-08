@@ -12,6 +12,10 @@ build brief. Newest first.
 | Linked items | One-directional rules ("when X is added, suggest Y") with an optional **two-way** setting. Rules are created by admins by hand. The prompt appears as soon as the trigger item is added. Replaces the unused stage 2 group structure. |
 | Kits | Named sets of items with default quantities. Chosen items prompt the rest of the kit, and a Kits tab adds a whole kit in one go, with an estimated kit value. Kit items are normal order lines, highlighted as **KIT: name** in the app and in the stores email. |
 | Sections | No longer fixed. Admins can rename, reorder, add and remove sections. Removing a section keeps its items as *Unsectioned*, shown under **Other** when ordering. The flammable flag is now a per-section setting. |
+| Subsections | One level of subsections per section, managed by admins. Starting sets: Electrical (Sockets and Switches, Smoke Alarms, Fans, Back Boxes, Cable); Plumbing (Sanitary Wear, Wet Floors, Showers and Accessories, Other Common Items, Fixtures and Fittings); Joinery (Internal Doors and Ironmongery, Sheet Products, Wet Wall and Trims, Timber). |
+| Kitchens | A new **Kitchens** section (Wall Units, Base Units, Worktops, Splashbacks, Trims) replaces Bathrooms & Kitchens. Bathroom items BK0002–BK0012 moved to Plumbing > Sanitary Wear, sink BK0001 to Kitchens, and JOI080/JOI088/JOI081/JOI083/JOI091 to Kitchens > Worktops/Splashbacks/Trims. |
+| Manual moves and imports | Items moved by an admin keep their section on re-import. Removal on re-import is judged by the file an item came from, not its current section. |
+| Stores email layout | Items grouped under section headings, in catalogue order, numbered top to bottom. |
 | New order flow | The separate "new order" details page is removed. **New order** opens the order page directly with **Add items** first. The job details sit in a compact panel beside the order lines. An untouched empty draft is reused, not duplicated. |
 
 ## 2026-10-08

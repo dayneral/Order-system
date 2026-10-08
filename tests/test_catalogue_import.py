@@ -228,7 +228,7 @@ def test_sections_from_heading_rows_and_flammable_flag():
     ws.append(HEADERS)
     ws.append(["Flammable Items"])
     ws.append(row("FLA001", "White spirit 1L", 3.0))
-    ws.append(["Bathrooms & Kitchens"])
+    ws.append(["Kitchens"])
     ws.append(row("BK001", "Basin 500mm", 40.0))
     ws.append(row("BK002", "Black granite bullnose worktop 3m", 90.0))
     buf = io.BytesIO()
@@ -236,7 +236,7 @@ def test_sections_from_heading_rows_and_flammable_flag():
     run = importer.preview_upload("all.xlsx", buf.getvalue(), None)
     importer.apply_run(run, None)
     assert item("FLA001").section_id == Section.FLAMMABLE and item("FLA001").is_flammable
-    assert item("BK001").section_id == Section.BATHROOMS_KITCHENS and not item("BK001").is_flammable
+    assert item("BK001").section_id == Section.KITCHENS and not item("BK001").is_flammable
     worktop = item("BK002")
     assert worktop.measure_type == MeasureType.CUT_TO_ORDER and worktop.catalogue_length_m == Decimal("3.00")
 
@@ -335,7 +335,7 @@ def test_admin_editing_part_no_confirms_temporary_code(admin_client):
 
 
 def test_cut_to_order_items_need_a_catalogue_length(admin_client):
-    run_import({"Bathrooms & Kitchens": [row("BK010", "Black granite bullnose worktop 3m", 90.0)]})
+    run_import({"Kitchens": [row("BK010", "Black granite bullnose worktop 3m", 90.0)]})
     worktop = item("BK010")
     url = reverse("admin:catalogue_item_change", args=[worktop.pk])
     form = admin_client.get(url).context["adminform"].form
@@ -349,7 +349,7 @@ def test_cut_to_order_items_need_a_catalogue_length(admin_client):
 
 
 @pytest.mark.parametrize("filename,section", [
-    ("f7411c88-Bathrooms__Kitchens.csv", Section.BATHROOMS_KITCHENS),
+    ("f7411c88-Kitchens.csv", Section.KITCHENS),
     ("451e36e6-Flammable_Items.csv", Section.FLAMMABLE),
     ("ece420e9-Flooring.csv", Section.FLOORING),
     ("10d62a05-Miscellaneous.csv", Section.MISC),

@@ -26,9 +26,9 @@ def cat(db):
         "sealant": make("ADH014", "Silicone sealant", "4.20", Section.ADHESIVES),
         "gun": make("ADH090", "Sealant gun", "6.00", Section.ADHESIVES),
         "nozzle": make("ADH091", "Spare nozzles", "1.00", Section.ADHESIVES),
-        "pan": make("BK100", "Close-coupled WC pan", "55.00", Section.BATHROOMS_KITCHENS),
-        "cistern": make("BK101", "Close-coupled cistern", "45.00", Section.BATHROOMS_KITCHENS),
-        "seat": make("BK102", "Toilet seat", "12.00", Section.BATHROOMS_KITCHENS),
+        "pan": make("BK100", "Close-coupled WC pan", "55.00", Section.KITCHENS),
+        "cistern": make("BK101", "Close-coupled cistern", "45.00", Section.KITCHENS),
+        "seat": make("BK102", "Toilet seat", "12.00", Section.KITCHENS),
         "connector": make("PLU200", "Pan connector", "4.50"),
         "valve": make("PLU201", "Isolation valve", "2.25"),
         "hose": make("PLU202", "Flexi connector", None),  # incomplete: not orderable

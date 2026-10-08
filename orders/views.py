@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from audit.models import AuditEntry
-from catalogue.models import Item, Kit, Section
+from catalogue.models import Item, Kit, Section, Subsection
 
 from . import services, suggestions
 from notifications import documents
@@ -106,7 +106,7 @@ def _item_browser(request, order):
     if section_key == "kits" and not q:
         return {"sections": sections, "current_section": "kits", "q": "", "items": [], "more_items": False,
                 "kit_offers": suggestions.all_kit_offers(order), "kits_tab": True}
-    items = Item.objects.filter(is_active=True).select_related("section")
+    items = Item.objects.filter(is_active=True).select_related("section", "subsection")
     if q:
         terms = q.split()
         for term in terms:
@@ -116,10 +116,15 @@ def _item_browser(request, order):
         items = items.filter(section__isnull=True)
     else:
         items = items.filter(section_id=section_key)
+        sub = request.GET.get("sub")
+        if sub and sub.isdigit():
+            items = items.filter(subsection_id=int(sub))
     items = list(items.order_by("section__sort_order", "display_name")[:ITEM_RESULTS_LIMIT + 1])
     return {
         "sections": sections,
         "has_unsectioned": Item.objects.filter(is_active=True, section__isnull=True).exists(),
+        "subsections": list(Subsection.objects.filter(section_id=section_key)) if section_key and not q else [],
+        "current_sub": request.GET.get("sub", ""),
         "current_section": section_key,
         "q": q,
         "items": items[:ITEM_RESULTS_LIMIT],

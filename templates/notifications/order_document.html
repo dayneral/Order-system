@@ -15,6 +15,7 @@
   table.items { margin-top: 10pt; }
   table.items th { background: #e6e6e6; text-align: left; padding: 4pt; border: 1px solid #999; font-size: 9pt; }
   table.items td { padding: 4pt; border: 1px solid #999; vertical-align: top; }
+  td.group { background: #f2f2f2; font-weight: bold; font-size: 9pt; text-transform: uppercase; letter-spacing: .03em; }
   .code { font-family: Courier, monospace; white-space: nowrap; }
   .flam { color: #b42318; font-weight: bold; }
   .nonstock { font-weight: bold; }
@@ -46,15 +47,17 @@
 </table>
 
 <table class="items">
-  <thead><tr><th style="width:4%">#</th><th style="width:54%">Item</th><th style="width:26%">Quantity</th><th style="width:16%">Section</th></tr></thead>
+  <thead><tr><th style="width:5%">#</th><th style="width:65%">Item</th><th style="width:30%">Quantity</th></tr></thead>
   <tbody>
-  {% for line in lines %}
+  {% for group in groups %}
+    <tr><td colspan="3" class="group{% if group.lines.0.is_flammable %} flam{% endif %}">{{ group.section }}</td></tr>
+    {% for line in group.lines %}
     <tr>
-      <td>{{ forloop.counter }}</td>
+      <td>{{ line.number }}</td>
       <td>{% if line.is_non_stocked %}<span class="nonstock">NON-STOCKED</span>{% else %}<span class="code">{{ line.code }}</span>{% endif %}&nbsp;&mdash;&nbsp;{{ line.description }}{% if line.is_flammable %} <span class="flam">[FLAMMABLE]</span>{% endif %}{% if line.kit_name %} <span class="kit">[KIT: {{ line.kit_name }}]</span>{% endif %}</td>
       <td>{{ line.quantity }}</td>
-      <td>{% if line.is_flammable %}<span class="flam">{{ line.section|default:"—" }}</span>{% else %}{{ line.section|default:"—" }}{% endif %}</td>
     </tr>
+    {% endfor %}
   {% endfor %}
   </tbody>
 </table>

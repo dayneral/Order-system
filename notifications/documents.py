@@ -49,11 +49,30 @@ def document_context(order, kind="submitted"):
         "kind": kind,
         "label": LABELS.get(kind, ""),
         "lines": lines,
+        "groups": group_by_section(lines),
         "has_flammable": any(line["is_flammable"] for line in lines),
         "has_non_stocked": any(line["is_non_stocked"] for line in lines),
         "generated_at": timezone.localtime(),
         "stores_email": settings.STORES_EMAIL,
     }
+
+
+def group_by_section(lines):
+    """Lines grouped under section headings for stores, in catalogue section order."""
+    from catalogue.models import Section
+
+    order = {name: index for index, name in enumerate(Section.objects.values_list("name", flat=True))}
+    groups = {}
+    for line in lines:
+        name = line["section"] or ("Non-stocked" if line["is_non_stocked"] else "Other")
+        groups.setdefault(name, []).append(line)
+    ranked = sorted(groups.items(), key=lambda g: (order.get(g[0], len(order) + (g[0] == "Non-stocked")),))
+    number = 0
+    for _, group in ranked:
+        for line in group:
+            number += 1
+            line["number"] = number  # numbered top to bottom as stores read it
+    return [{"section": name, "lines": group} for name, group in ranked]
 
 
 def subject(order, kind="submitted"):
