@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<h1>Cancel order {{ order.order_number }}?</h1>
+<p>Job {{ order.job_number }}, {{ order.property_address|linebreaksbr }}</p>
+<p>Stores will be sent a <b>CANCELLED</b> notice. A cancelled order cannot be reopened, but you can then place a new order for the same job.</p>
+<form method="post">{% csrf_token %}
+  <div class="field"><label for="reason">Reason (optional)</label><input id="reason" name="reason" maxlength="200"></div>
+  <button class="danger">Yes, cancel the order</button>
+  <a href="{% url 'orders:detail' order.pk %}">No, go back</a>
+</form>
+{% endblock %}

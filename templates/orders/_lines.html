@@ -1,0 +1,48 @@
+<div id="lines">
+  {% if line_error %}<div class="msg msg-error">{{ line_error }}</div>{% endif %}
+  {% if line_notice %}<div class="msg msg-success">{{ line_notice }}</div>{% endif %}
+  {% if order.amendment_pending %}<div class="msg msg-warning">This order has changes that have not been sent to stores yet.</div>{% endif %}
+  {% if lines %}
+  <table class="grid lines">
+    <thead><tr><th>Part No.</th><th>Item</th><th>Quantity / measurement</th><th class="num">Value</th><th></th></tr></thead>
+    <tbody>
+    {% for line in lines %}
+      <tr>
+        <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">NON-STOCKED</span>{% else %}{{ line.part_no }}{% endif %}</td>
+        <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}</td>
+        <td>
+          <form method="post" action="{% url 'orders:line_update' order.pk line.pk %}" class="inline-fields"
+                hx-post="{% url 'orders:line_update' order.pk line.pk %}" hx-trigger="change" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}
+          {% if line.measure_type == "area" %}
+            <input name="length" type="number" min="0.1" step="0.1" value="{{ line.length_m }}" class="qty" aria-label="Length"> ×
+            <input name="width" type="number" min="0.1" step="0.1" value="{{ line.width_m }}" class="qty" aria-label="Width"> m
+          {% elif line.measure_type == "cut" or line.measure_type == "linear" %}
+            {% if line.measure_type == "cut" %}cut to {% endif %}<input name="length" type="number" min="0.1" step="0.1" value="{{ line.length_m }}" class="qty" aria-label="Length"> m
+          {% else %}
+            <input name="quantity" type="number" min="{% if line.is_non_stocked %}0.1{% else %}1{% endif %}" step="{% if line.is_non_stocked %}0.1{% else %}1{% endif %}" value="{{ line.quantity|floatformat:'-1' }}" class="qty" aria-label="Quantity">
+            {% if line.measure_type == "pack" %}packs of {{ line.pack_size }}{% else %}{{ line.unit }}{% endif %}
+          {% endif %}
+          <noscript><button>Update</button></noscript>
+          </form>
+          {% if line.measure_type == "area" %}<div class="hint">= {{ line.area_m2 }} m²</div>{% endif %}
+        </td>
+        <td class="num">{% if line.line_value is not None %}£{{ line.line_value }}{% if line.is_estimate %}*{% endif %}{% else %}—{% endif %}</td>
+        <td>
+          <form method="post" action="{% url 'orders:line_remove' order.pk line.pk %}"
+                hx-post="{% url 'orders:line_remove' order.pk line.pk %}" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}
+            <button class="link danger-text" title="Remove">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="3" class="num">Order value</th><th class="num">£{{ order.order_value }}</th><th></th></tr>
+    </tfoot>
+  </table>
+  <p class="hint">Order value uses trade prices and excludes non-stocked items. It is not shown to stores.
+    {% if order.has_estimates %}* Estimate: cut-to-order items are priced pro rata.{% endif %}</p>
+  {% else %}
+  <p class="hint">No items yet. Add items from the list.</p>
+  {% endif %}
+</div>

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Orders · BFS Material Orders{% endblock %}
+{% block help %}
+<p class="help">
+{% if view == "mine" %}Your drafts and the orders you have placed. Open an order to view, amend, print or cancel it.
+{% elif view == "all" %}Every order placed by anyone at BFS. You can open any order; only its owner or an admin can change it.
+{% else %}Orders more than 30 days past their delivery date. Job numbers, addresses and names have been removed; each order shows an anonymous ID instead.{% endif %}
+</p>
+{% endblock %}
+{% block content %}
+<div class="row-between">
+  <h1>Orders</h1>
+  <a class="button primary" href="{% url 'orders:new' %}">+ New order</a>
+</div>
+
+<div class="tabs">
+  {% for key, label in views.items %}
+    <a href="?view={{ key }}" class="{% if key == view %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if view == "mine" %}
+<h2>My drafts</h2>
+{% if drafts %}
+<table class="grid">
+  <thead><tr><th>Job number</th><th>Address</th><th>Items</th><th>Last saved</th><th>Deleted on</th><th></th></tr></thead>
+  <tbody>
+  {% for d in drafts %}
+    <tr>
+      <td>{{ d.job_number|default:"—" }}</td>
+      <td>{{ d.property_address|default:"—"|truncatechars:60 }}</td>
+      <td>{{ d.line_count }}</td>
+      <td>{{ d.updated_at|date:"d M Y H:i" }}</td>
+      <td>{{ d.expires|date:"d M Y" }}</td>
+      <td class="actions">
+        <a class="button" href="{% url 'orders:edit' d.pk %}">Continue</a>
+        <form method="post" action="{% url 'orders:draft_delete' d.pk %}" class="inline" onsubmit="return confirm('Delete this draft?')">{% csrf_token %}<button class="danger">Delete</button></form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="hint">Drafts are only visible to you and are not sent to stores. A draft is deleted automatically 30 days after it was last saved.</p>
+{% else %}
+<p class="hint">No drafts.</p>
+{% endif %}
+<h2>My orders</h2>
+{% endif %}
+
+<form method="get" class="search">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="{% if view == 'historic' %}Search order number or anonymous ID{% else %}Search order number, job number, address or name{% endif %}">
+  <button>Search</button>{% if q %} <a href="?view={{ view }}">Clear</a>{% endif %}
+</form>
+
+<table class="grid">
+  <thead><tr>
+    <th>Order number</th><th>Order date</th>
+    {% if view == "historic" %}<th>Anonymous ID</th>{% else %}<th>Job number</th><th>Address</th><th>Requested by</th>{% endif %}
+    <th>Property</th><th>Delivery</th><th>Items</th><th class="num">Value</th><th>Status</th>
+  </tr></thead>
+  <tbody>
+  {% for o in page %}
+    <tr>
+      <td><a href="{% url 'orders:detail' o.pk %}">{{ o.order_number }}</a></td>
+      <td>{{ o.submitted_at|date:"d M Y" }}</td>
+      {% if view == "historic" %}<td>{{ o.anonymous_id }}</td>
+      {% else %}<td>{{ o.job_number }}</td><td>{{ o.property_address|truncatechars:50 }}</td><td>{{ o.requester_name }}</td>{% endif %}
+      <td>{{ o.get_property_type_display }}</td>
+      <td>{{ o.delivery_date|date:"d M Y" }}</td>
+      <td>{{ o.line_count }}</td>
+      <td class="num">£{{ o.order_value }}</td>
+      <td>{% include "orders/_status.html" with order=o %}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="10">No orders{% if q %} match your search{% endif %}.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if page.has_other_pages %}
+<p class="pager">
+  {% if page.has_previous %}<a href="?view={{ view }}&q={{ q|urlencode }}&page={{ page.previous_page_number }}">&larr; Newer</a>{% endif %}
+  Page {{ page.number }} of {{ page.paginator.num_pages }}
+  {% if page.has_next %}<a href="?view={{ view }}&q={{ q|urlencode }}&page={{ page.next_page_number }}">Older &rarr;</a>{% endif %}
+</p>
+{% endif %}
+{% endblock %}

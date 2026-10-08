@@ -6,8 +6,12 @@ Orders are emailed to the stores team and can be printed.
 Built with **Django 5 (Python)** and **PostgreSQL**, hosted on **Render**.
 Pages are plain server-rendered HTML with no separate front-end build.
 
-> Status: **Stages 1–2** are complete: sign-in, approval and roles, plus the
-> catalogue import and admin editing. Ordering, email and retention follow.
+> Status: **Stages 1–3** are complete: sign-in, approval and roles; the
+> catalogue import and admin editing; and ordering with drafts, measure types,
+> submit, amend and cancel. The order email and the retention job follow.
+>
+> Decisions agreed with BFS during the build are recorded in
+> [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ---
 
@@ -18,6 +22,7 @@ Pages are plain server-rendered HTML with no separate front-end build.
 | `bfs/` | Project settings, top-level URLs and the home page |
 | `accounts/` | Users, sign-in, registration, approval, roles and password reset. Its users table is designed to be shared with a future job management system. |
 | `audit/` | One shared audit history ("who did what, when") used by every module |
+| `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`) and the ordering screens |
 | `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, and linked-item groups (data only for now) |
 | `templates/` | The HTML pages |
 | `static/` | Stylesheet |
@@ -111,6 +116,47 @@ PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
 
 ---
 
+## Ordering
+
+- **Orders** has three tabs:
+  - **My Orders:** your drafts and the orders you have placed.
+  - **All Orders:** everyone's orders. Anyone can view them; only the owner or an admin can change them.
+  - **Historic Orders:** orders whose personal details have been anonymised.
+- **New order:** enter the job number, property address, property type
+  (Void/Occupied), requested delivery date (not in the past) and any special
+  instructions. Then add items, browsing by section or searching across all
+  sections. How you enter each item depends on its measure type:
+  - **Each, pack and whole items:** a whole number (for packs, the number of packs).
+  - **Area:** length and width in metres, to 0.1 m. The app works out the m².
+  - **Cut to order:** a length in metres, to 0.1 m.
+  - **Non-stocked items:** typed in by name, unit and quantity. They are marked
+    NON-STOCKED and have no price.
+- **Drafts:** saved at any time and visible only to their owner. A draft is
+  deleted 30 days after it was last saved. Users are warned at sign-in when a
+  draft will be deleted within 5 days.
+- **Submit:** the order gets the next number in the form `BFS-YYYY-NNNNNN` and
+  an order date. Trade prices are fixed on the order at that moment.
+- **One order per job:** a job number can have only one submitted order. Drafts
+  and cancelled orders don't count. This is checked on submit and also
+  enforced by the database.
+- **Amend:** the owner or an admin can change a submitted order. Each change is
+  recorded in the order's history. **Send amended order to stores** sends the
+  updated order.
+- **Cancel:** the owner or an admin. Recorded in the history. The job can then
+  be ordered again.
+- **Order value:** shown in the app only, never to stores.
+  - Each, pack and whole items: quantity × trade price.
+  - Area: m² (to 2 decimal places) × price per m².
+  - Worktops and splashbacks: length ÷ catalogue length × price (an estimate).
+  - Vinyl cut to length: length × roll width × price per m² (an estimate).
+  - Each line is rounded to the penny. Non-stocked items are excluded.
+  - The code is in `orders/pricing.py`.
+
+> Until stage 4, submitting, amending and cancelling are saved and logged, but
+> no email is sent yet.
+
+---
+
 ## Local setup
 
 You need Python 3.12 or newer and PostgreSQL 14 or newer.
@@ -198,6 +244,5 @@ database. The daily cron job (stage 5) adds a few cents.
 
 ## Still to come
 
-- Stage 3: ordering, drafts and measure types
 - Stage 4: order email with PDF
-- Stage 5: 30-day retention job, run daily by a Render cron job
+- Stage 5: retention job, run daily by a Render cron job: anonymises orders 30 days after delivery and deletes drafts not saved for 30 days

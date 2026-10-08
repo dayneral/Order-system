@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{% if order.is_draft %}Draft order{% else %}Amend {{ order.order_number }}{% endif %} · BFS Material Orders{% endblock %}
+{% block main_class %}page wide{% endblock %}
+{% block help %}
+<p class="help">
+{% if order.is_draft %}
+  Fill in the job details, then add items: pick a section or search, enter the quantity or measurements, and press <b>Add</b>.
+  Flooring sold by area needs length and width; cut-to-order items need a length, to the nearest 0.1m.
+  Can't find an item? Add it as a non-stocked item at the bottom of the list. Press <b>Save draft</b> to finish later.
+{% else %}
+  You are amending a submitted order. Changes are saved as you make them and recorded in the order history.
+  When you have finished, press <b>Send amended order to stores</b>.
+{% endif %}
+</p>
+{% endblock %}
+{% block content %}
+<div class="row-between">
+  <h1>{% if order.is_draft %}Draft order{% else %}Amend order {{ order.order_number }}{% endif %}</h1>
+  <a href="{% if order.is_draft %}{% url 'orders:list' %}{% else %}{% url 'orders:detail' order.pk %}{% endif %}">&larr; Back</a>
+</div>
+
+{% if errors %}
+<div class="msg msg-error"><b>{% if order.is_draft %}The order could not be submitted:{% else %}The changes could not be saved:{% endif %}</b>
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<form method="post" id="header-form" class="panel">{% csrf_token %}
+  <h2 class="first">Job details</h2>
+  {% include "orders/_header_fields.html" %}
+  <button name="action" value="save">{% if order.is_draft %}Save draft{% else %}Save job details{% endif %}</button>
+</form>
+
+<div class="builder">
+  <section class="panel browser">
+    <h2 class="first">Add items</h2>
+    {% include "orders/_items.html" %}
+    <details class="nonstock" {% if not lines %}{% endif %}>
+      <summary>Can't find an item? Add a non-stocked item</summary>
+      <p class="hint">Non-stocked items are marked NON-STOCKED for stores and are not included in the order value.</p>
+      <form method="post" action="{% url 'orders:line_add_non_stocked' order.pk %}"
+            hx-post="{% url 'orders:line_add_non_stocked' order.pk %}" hx-target="#lines" hx-swap="outerHTML"
+            hx-on::after-request="if(event.detail.successful) this.reset()" class="inline-fields">{% csrf_token %}
+        <label>Name <input name="name" maxlength="300" required size="30"></label>
+        <label>Unit <input name="unit" maxlength="40" required size="8" placeholder="each"></label>
+        <label>Quantity <input name="quantity" type="number" min="0.1" step="0.1" required class="qty"></label>
+        <button>Add</button>
+      </form>
+    </details>
+  </section>
+
+  <section class="panel lines-panel">
+    <h2 class="first">This order</h2>
+    {% include "orders/_lines.html" %}
+  </section>
+</div>
+
+<div class="submit-bar">
+  {% if order.is_draft %}
+    <button form="header-form" name="action" value="save">Save draft</button>
+    <button form="header-form" name="action" value="submit" class="primary big">Submit order</button>
+    <span class="hint">Submitting sends the order to stores@bfsuk.org.</span>
+  {% else %}
+    <button form="header-form" name="action" value="send_amendment" class="primary big">Send amended order to stores</button>
+    <span class="hint">Stores will receive the order marked AMENDED.</span>
+  {% endif %}
+</div>
+{% endblock %}

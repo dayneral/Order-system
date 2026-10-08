@@ -1,0 +1,5 @@
+{% if order.is_anonymised %}<span class="pill pill-disabled">Historic</span>
+{% elif order.status == "cancelled" %}<span class="pill pill-rejected">Cancelled</span>
+{% elif order.status == "draft" %}<span class="pill pill-pending">Draft</span>
+{% elif order.amendment_pending %}<span class="pill pill-pending">Amended – not yet sent</span>
+{% else %}<span class="pill pill-approved">Submitted</span>{% endif %}

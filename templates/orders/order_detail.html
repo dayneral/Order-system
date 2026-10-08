@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ order }} · BFS Material Orders{% endblock %}
+{% block content %}
+<p><a href="{% url 'orders:list' %}">&larr; Orders</a></p>
+<div class="row-between">
+  <h1>{% if order.order_number %}Order {{ order.order_number }}{% else %}Draft order{% endif %} {% include "orders/_status.html" %}</h1>
+  <div class="actions">
+    {% if can_edit %}<a class="button" href="{% url 'orders:edit' order.pk %}">{% if order.is_draft %}Continue draft{% else %}Amend order{% endif %}</a>{% endif %}
+    {% if can_cancel %}<a class="button danger" href="{% url 'orders:cancel' order.pk %}">Cancel order</a>{% endif %}
+  </div>
+</div>
+
+{% if order.amendment_pending and can_edit %}
+<div class="msg msg-warning">This order has been changed but the amended order has not been sent to stores yet.
+  <a href="{% url 'orders:edit' order.pk %}">Open it</a> and press <b>Send amended order to stores</b>.</div>
+{% endif %}
+{% if order.is_anonymised %}
+<div class="msg msg-info">Personal details were removed from this order on {{ order.anonymised_at|date:"d M Y" }} (30 days after delivery). It can no longer be changed.</div>
+{% endif %}
+
+<div class="panel">
+<table class="details">
+  <tr><th>Order date</th><td>{{ order.submitted_at|date:"d M Y H:i"|default:"Not submitted" }}</td>
+      <th>Requested by</th><td>{{ order.requester_display|default:"—" }}</td></tr>
+  <tr><th>Job number</th><td>{{ order.job_number|default:"—" }}</td>
+      <th>Property type</th><td>{{ order.get_property_type_display|default:"—" }}</td></tr>
+  <tr><th>Property address</th><td>{{ order.property_address|default:"—"|linebreaksbr }}</td>
+      <th>Delivery date</th><td>{{ order.delivery_date|date:"l d M Y"|default:"—" }}</td></tr>
+  <tr><th>Special instructions</th><td colspan="3">{{ order.special_instructions|default:"None"|linebreaksbr }}</td></tr>
+  {% if order.status == "cancelled" %}<tr><th>Cancelled</th><td colspan="3">{{ order.cancelled_at|date:"d M Y H:i" }}{% if order.cancelled_by and not order.is_anonymised %} by {{ order.cancelled_by.full_name }}{% endif %}</td></tr>{% endif %}
+</table>
+</div>
+
+<table class="grid">
+  <thead><tr><th>Part No.</th><th>Item</th><th>Section</th><th>Quantity / measurement</th><th class="num">Trade price</th><th class="num">Value</th></tr></thead>
+  <tbody>
+  {% for line in lines %}
+    <tr>
+      <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">NON-STOCKED</span>{% else %}{{ line.part_no }}{% endif %}</td>
+      <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}</td>
+      <td>{{ line.section_name|default:"—" }}</td>
+      <td>{{ line.measurement_text }}</td>
+      <td class="num">{% if line.trade_price is not None %}£{{ line.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td class="num">{% if line.line_value is not None %}£{{ line.line_value }}{% if line.is_estimate %}*{% endif %}{% else %}—{% endif %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="6">No items.</td></tr>{% endfor %}
+  </tbody>
+  <tfoot><tr><th colspan="5" class="num">Order value</th><th class="num">£{{ order.order_value }}</th></tr></tfoot>
+</table>
+<p class="hint">Trade prices as at the time each item was ordered. Non-stocked items are excluded from the order value.{% if order.has_estimates %} * Estimate (cut to order).{% endif %}</p>
+
+{% if history %}
+<h2>History</h2>
+<table class="grid">
+  <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+  <tbody>
+  {% for e in history %}
+    <tr><td>{{ e.timestamp|date:"d M Y H:i" }}</td><td>{% if order.is_anonymised %}—{% else %}{{ e.actor.full_name|default:"System" }}{% endif %}</td>
+        <td>{{ e.summary }}{% for field, ch in e.changes.items %}<div class="hint">{{ field }}: {{ ch.from|default:"(blank)" }} &rarr; {{ ch.to|default:"(blank)" }}</div>{% endfor %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

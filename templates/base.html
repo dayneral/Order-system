@@ -4,14 +4,17 @@
   <meta charset="utf-8">
   <title>{% block title %}BFS Material Orders{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="{% static 'js/htmx-2.0.4.min.js' %}" defer></script>
 </head>
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <header class="topbar">
   <a class="brand" href="{% url 'home' %}">BFS Material Orders</a>
   {% if user.is_authenticated %}
   <nav>
-    <a href="{% url 'home' %}">Home</a>
+    <a href="{% url 'orders:list' %}">Orders</a>
+    <a href="{% url 'orders:new' %}">New order</a>
     {% if user.is_admin %}
+      <span class="sep"></span>
       <a href="{% url 'accounts:user_list' %}">Users{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}</a>
       <a href="{% url 'admin:catalogue_item_changelist' %}">Catalogue</a>
       <a href="{% url 'catalogue:import_start' %}">Import</a>

@@ -95,9 +95,9 @@ def test_rejected_and_disabled_users_cannot_sign_in(client, make_user):
 def test_disabling_a_user_ends_their_session(client, admin_user, make_user):
     user = make_user()
     client.force_login(user)
-    assert client.get(reverse("home")).status_code == 200
+    assert client.get(reverse("orders:list")).status_code == 200
     services.disable(user, admin_user)
-    resp = client.get(reverse("home"))
+    resp = client.get(reverse("orders:list"))
     assert resp.status_code == 302 and reverse("accounts:login") in resp.url
 
 

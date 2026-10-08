@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}New order · BFS Material Orders{% endblock %}
+{% block help %}<p class="help">Start with the job details. You can save at any point and finish later: your draft stays in <b>My Orders</b>. Nothing is sent to stores until you press <b>Submit order</b>.</p>{% endblock %}
+{% block content %}
+<h1>New order</h1>
+<form method="post" class="panel narrow-form">{% csrf_token %}
+  {% include "orders/_header_fields.html" %}
+  <button class="primary">Continue to add items</button>
+  <a href="{% url 'orders:list' %}">Cancel</a>
+</form>
+{% endblock %}
