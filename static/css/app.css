@@ -124,3 +124,8 @@ table.kit-items .inline-fields { display: table-cell; }
 .sub-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: -.35rem 0 .75rem; padding-left: .6rem; border-left: 3px solid var(--line); }
 .sub-tabs a { padding: .15rem .55rem; border-radius: 4px; text-decoration: none; color: var(--muted); font-size: .85rem; }
 .sub-tabs a.active { background: #e2eef3; color: var(--brand); font-weight: 600; }
+/* Item list scrolls inside its own box; search and section buttons stay in view. */
+.items-scroll { max-height: calc(100vh - 420px); min-height: 280px; overflow-y: auto; border: 1px solid var(--line); border-radius: 4px; }
+.items-scroll table.items { margin: 0; }
+.items-scroll table.items thead th { position: sticky; top: 0; z-index: 1; }
+.items-scroll .kit-card { margin: .6rem; }

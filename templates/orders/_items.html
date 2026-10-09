@@ -25,6 +25,7 @@
   </div>
   {% endif %}
   {% if q %}<p class="hint">Results for "{{ q }}" across all sections.</p>{% endif %}
+  <div class="items-scroll">
   {% if kits_tab %}
     <p class="hint">Add a whole kit in one go. Untick anything you don't need and adjust quantities before pressing <b>Add selected</b>.</p>
     {% for offer in kit_offers %}
@@ -62,5 +63,6 @@
     </tbody>
   </table>
   {% endif %}
+  </div>
   {% if more_items %}<p class="hint">Showing the first {{ items|length }} items. Search to narrow the list.</p>{% endif %}
 </div>

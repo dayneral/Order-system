@@ -1,17 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{% if order.is_draft %}New order{% else %}Amend {{ order.order_number }}{% endif %} · BFS Material Orders{% endblock %}
 {% block main_class %}page wide{% endblock %}
-{% block help %}
-<p class="help">
-{% if order.is_draft %}
-  Pick a section or search, enter the quantity or measurements, and press <b>Add</b>. Flooring is cut to size: enter the exact length and width.
-  Then fill in the job details on the right and press <b>Submit order</b>. Your draft is kept if you leave: press <b>Save draft</b> to save the job details.
-{% else %}
-  You are amending a submitted order. Item changes are saved as you make them and recorded in the order history.
-  When you have finished, press <b>Send amended order to stores</b>.
-{% endif %}
-</p>
-{% endblock %}
 {% block content %}
 <div class="row-between">
   <h1>{% if order.is_draft %}New order{% else %}Amend order {{ order.order_number }}{% endif %}</h1>
