@@ -22,6 +22,7 @@ FIELD_ALIASES = {
     "sell_price": {"sell price", "sell", "selling price", "sale price"},
     "unit": {"unit", "uom", "unit of measure", "units", "unit of issue"},
     "section": {"section", "category", "department"},
+    "subsection": {"subsection", "sub section", "sub-section", "sub category", "subcategory"},
     "flammable": {"flammable"},
 }
 
@@ -53,6 +54,8 @@ class SourceRow:
     unit: str = ""
     section: str | None = None  # Section key
     section_text: str = ""  # what the spreadsheet said, for the report
+    new_section: str = ""  # Section column value matching no section: created (hidden) on apply
+    subsection: str = ""  # Subsection column value (new items only)
     flammable: bool = False
     price_text: str = ""  # raw price cell when it could not be read
 
@@ -221,6 +224,8 @@ def _read_table(sheet_name, rows, result):
             unit=_cell_text(get(cells, "unit")),
             section=section,
             section_text=section_text or current_section_text,
+            new_section=section_text if section_text and section is None else "",
+            subsection=_cell_text(get(cells, "subsection"))[:60],
             flammable=flammable_cell in ("y", "yes", "true", "1", "x"),
             price_text="" if trade is not None else _cell_text(price_cell),
         ))

@@ -30,7 +30,7 @@ from django.utils import timezone
 
 from audit.models import AuditEntry, record
 
-from .models import ImportRun, Item, Section
+from .models import ImportRun, Item, Section, Subsection
 from .reader import SourceRow
 from .setup_rules import initial_setup
 from .text import looks_garbled, repair_text
@@ -82,6 +82,20 @@ def _temp_code(code, start_index, used):
     raise ValueError(f"Ran out of temporary codes for {code}")
 
 
+def _next_tbc(used):
+    """Next free TBC-0001 style code (same scheme as items added by hand without a Part No.)."""
+    numbers = [int(m.group(1)) for code in used if (m := re.fullmatch(r"TBC-(\d+)", code))]
+    return f"TBC-{(max(numbers) + 1 if numbers else 1):04d}"
+
+
+def section_label(key, sections):
+    if not key:
+        return "Unsectioned"
+    if key.startswith("new:"):
+        return f"{key[4:]} (new, hidden)"
+    return sections[key].name if key in sections else key
+
+
 def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
     sections = {s.key: s for s in Section.objects.all()}
     default_section = Section.MISC if Section.MISC in sections else None
@@ -95,6 +109,7 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
         "incomplete": [], "sell_below_trade": [], "repaired_names": [], "garbled_names": [],
         "no_section": [], "unknown_sections": list(unknown_sections), "setup_notes": [],
         "skipped": list(skipped), "ignored_columns": list(ignored_columns), "sections_in_file": [],
+        "new_sections": [], "new_subsections": [],
     }
 
     # 1. Work out each row's code, stable key and cleaned values.
@@ -107,7 +122,7 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
         where = f"{row.sheet} row {row.row_number}"
         if name != (row.name or "").strip():
             report["repaired_names"].append({"part_no": code, "from": row.name, "to": name})
-        if row.section is None:
+        if row.section is None and not row.new_section:
             report["no_section"].append({"part_no": code, "name": name, "where": where,
                                          "section_text": row.section_text})
         entries.append(Entry(
@@ -115,7 +130,8 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
             placeholder=code == NO_CODE or bool(PLACEHOLDER_RE.match(code)),
             name=name,
             trade_price=Decimal(row.trade_price) if row.trade_price is not None else None,
-            section_key=row.section if row.section in sections else default_section,
+            section_key=(row.section if row.section in sections
+                         else f"new:{row.new_section}" if row.new_section else default_section),
         ))
     incoming_keys = {e.key for e in entries}
 
@@ -143,6 +159,8 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
             continue
         if not e.needs_temp and e.code not in used_codes:
             e.part_no = e.code
+        elif e.code == NO_CODE:
+            e.part_no = _next_tbc(used_codes)
         else:
             e.part_no = _temp_code(e.code, e.occurrence - 1, used_codes)
             reason = ("no Part No. in file" if e.code == NO_CODE
@@ -178,7 +196,7 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
                 report["setup_notes"].append({"part_no": e.part_no, "name": e.name, "note": note})
             report["additions"].append({
                 "part_no": e.part_no, "name": e.name or "(no name)",
-                "section": sections[e.section_key].name if e.section_key else "Unsectioned",
+                "section": section_label(e.section_key, sections),
                 "price": _money(e.trade_price), "measure": fields["measure_type"], "unit": fields["unit"],
                 "pack_size": fields["pack_size"],
             })
@@ -215,6 +233,12 @@ def build_plan(rows, ignored_columns=(), skipped=(), unknown_sections=()):
 
     # 5. Items that have dropped out of the file (only in sections the file covers).
     file_sections = {e.section_key for e in entries}
+    report["new_sections"] = sorted({k[4:] for k in file_sections if k and k.startswith("new:")})
+    existing_subs = {(s.section_id, s.name.lower()) for s in Subsection.objects.all()}
+    wanted = sorted({(e.section_key, e.row.subsection) for e in entries if e.item is None and e.row.subsection
+                     and e.section_key and (e.section_key, e.row.subsection.lower()) not in existing_subs})
+    report["new_subsections"] = [f"{section_label(k, sections).replace(' (new, hidden)', '')} > {name}"
+                                 for k, name in wanted]
     report["sections_in_file"] = [s.name for k, s in sections.items() if k in file_sections]
     removals = [
         i for i in items
@@ -250,7 +274,7 @@ def _readable(attr, change, sections):
         if attr == "trade_price":
             return _money(value) if value is not None else "(none)"
         if attr == "section_id":
-            return sections[value].name if value in sections else (value or "Unsectioned")
+            return section_label(value, sections)
         return value
     return {"from": fmt(change["from"]), "to": fmt(change["to"])}
 
@@ -266,14 +290,44 @@ def apply_plan(plan, actor, run=None):
     audit = []
     now = timezone.now()
 
+    # Sections named in the file that don't exist yet are created hidden, for review.
+    created = {}
+    for e in plan.entries:
+        if e.section_key and e.section_key.startswith("new:"):
+            name = e.section_key[4:]
+            if name not in created:
+                section = Section.objects.filter(name__iexact=name).first() or Section.objects.create(
+                    name=name[:60], is_active=False, sort_order=200)
+                created[name] = section
+                sections[section.pk] = section
+                audit.append(AuditEntry(actor=actor, action="section.add", target_type="catalogue.section",
+                                        target_id=section.pk, summary=f"Import created hidden section {section.name}"))
+            e.section_key = created[name].pk
+            if "section_id" in e.changes:
+                e.changes["section_id"]["to"] = e.section_key
+    subsections = {}
+
+    def subsection_for(section_key, name):
+        if not (section_key and name):
+            return None
+        cache_key = (section_key, name.lower())
+        if cache_key not in subsections:
+            sub = Subsection.objects.filter(section_id=section_key, name__iexact=name).first()
+            if sub is None:
+                top = Subsection.objects.filter(section_id=section_key).count()
+                sub = Subsection.objects.create(section_id=section_key, name=name, sort_order=(top + 1) * 10)
+            subsections[cache_key] = sub
+        return subsections[cache_key]
+
     for e in plan.entries:
         flammable = e.row.flammable or bool(e.section_key and sections[e.section_key].is_flammable)
+        new_subsection = subsection_for(e.section_key, e.row.subsection) if e.item is None else None
         if e.item is None:
             item = Item(
                 part_no=e.part_no, original_part_no=e.row.part_no, import_key=e.key, source=Item.Source.IMPORT,
                 catalogue_name=e.name, display_name=e.name, section_id=e.section_key, trade_price=e.trade_price,
                 is_flammable=flammable, code_to_confirm=e.needs_temp, name_check=looks_garbled(e.name),
-                import_section=e.section_key or "",
+                import_section=e.section_key or "", subsection=new_subsection,
                 **e.changes,
             )
             item.save()

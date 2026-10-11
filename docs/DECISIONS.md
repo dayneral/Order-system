@@ -44,3 +44,4 @@ build brief. Newest first.
 | Order email Reply-To | Order emails to stores carry the requester's email address as Reply-To, so stores can reply directly. Recipients are unchanged: stores@bfsuk.org only. |
 | Email failure alert | A failed send shows the user a warning and a red count on **Emails** in the admin top bar. Admins are not emailed, because a mail fault would usually stop that email too. |
 | Hosting region | Render has no UK region, so Frankfurt (EU) is used. |
+| Original form items | Old HTML form items import into hidden "(draft)" sections (Doors, Kitchens, Plumbing, Joinery, Sealants & Misc) with TBC codes, so they don't enter live subsections before review. Electrical and Flooring omitted. |

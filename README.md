@@ -142,6 +142,9 @@ column, or from a heading row such as "Plumbing", or from the worksheet name.
 | Garbled characters (`âˆ’`, `Â²`…) | Repaired automatically (`-`, `²`). Names still garbled are flagged *check name*. |
 | Item already exists | Original name, trade price and section are updated. **Display name, unit, pack size and measure type are never overwritten.** |
 | Item no longer in the file | Deactivated (not deleted), but only for sections included in the file. Items added by an admin are never deactivated by an import. |
+| No Part No. | Given a TBC-0001 style code and flagged *code to be confirmed* (same as items added by hand). |
+| Section name that doesn't exist | A new section is created on Apply, **hidden from staff**, and listed in the preview. |
+| Subsection column | New items go into that subsection of their section (created if missing). Existing items are never moved. |
 | Temporary code corrected by an admin | Still matched to its spreadsheet row on the next import, so it isn't duplicated. |
 
 New items get starting values from the decisions recorded in the brief: worktops
@@ -149,6 +152,10 @@ and splashbacks are cut to order (3.0 m), vinyl and flooring priced per m² use 
 "per 100" and similar become packs, PLU037 is a pack of 8, BFS05 a pack of 80,
 PLA007/PLA012/PLA015 are whole items, and so on. The rules are in
 `catalogue/setup_rules.py`.
+
+`docs/original_form_items.csv` holds the 133 items from the old HTML order form
+(Electrical and Flooring left out). Importing it creates five hidden "(draft)" sections
+for review before items are moved into live sections with Sort catalogue.
 
 ---
 
