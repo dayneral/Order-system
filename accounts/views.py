@@ -1,8 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import login_required
 from django.db.models import Case, IntegerField, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from . import services
@@ -98,3 +100,20 @@ def user_action(request, user_id):
     except services.AccountActionError as exc:
         messages.error(request, str(exc))
     return redirect("accounts:user_list")
+
+
+@login_required
+@require_POST
+def display(request):
+    """Save the signed-in user's Display options and go back to the page they were on."""
+    user = request.user
+    for field, choices in (("display_background", User.Background), ("display_font", User.Font),
+                           ("display_text_size", User.TextSize)):
+        value = request.POST.get(field)
+        if value in choices.values:
+            setattr(user, field, value)
+    user.save(update_fields=["display_background", "display_font", "display_text_size"])
+    back = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        back = "/"
+    return redirect(back)

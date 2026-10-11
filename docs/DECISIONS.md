@@ -46,3 +46,4 @@ build brief. Newest first.
 | Hosting region | Render has no UK region, so Frankfurt (EU) is used. |
 | Original form items | Old HTML form items import into hidden "(draft)" sections (Doors, Kitchens, Plumbing, Joinery, Sealants & Misc) with TBC codes, so they don't enter live subsections before review. Electrical and Flooring omitted. |
 | Hidden items for admins | Hidden sections/subsections appear to admins only in a separate "Hidden" tab on the order page, not in the normal tabs or search. |
+| Design and readability | Cream background, charcoal text, teal accent (#1E6B66), Atkinson Hyperlegible default font, following British Dyslexia Association guidance. Per-user Display options (background, font, text size) saved on the account. Print view stays white. |

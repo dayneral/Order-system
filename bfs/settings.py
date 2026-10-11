@@ -76,6 +76,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.pending_accounts",
+                "accounts.context_processors.display_options",
                 "notifications.context_processors.failed_emails",
                 "orders.context_processors.order_values",
             ],

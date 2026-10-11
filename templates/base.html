@@ -1,14 +1,15 @@
 {% load static %}<!doctype html>
-<html lang="en-GB">
+<html lang="en-GB"{% if user.is_authenticated %} data-bg="{{ user.display_background }}" data-font="{{ user.display_font }}" data-size="{{ user.display_text_size }}"{% endif %}>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}BFS Material Orders{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'js/htmx-2.0.4.min.js' %}" defer></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <header class="topbar">
-  <a class="brand" href="{% url 'home' %}">BFS Material Orders</a>
+  <a class="brand" href="{% url 'home' %}"><span class="logo" role="img" aria-label="BFS logo"></span>BFS Material Orders</a>
   {% if user.is_authenticated %}
   <nav>
     <a href="{% url 'orders:list' %}">Orders</a>
@@ -34,6 +35,22 @@
       </details>
     {% endif %}
   </nav>
+  <details class="admin-menu display-menu">
+    <summary>Display ▾</summary>
+    <form class="menu" method="post" action="{% url 'accounts:display' %}">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <fieldset><legend>Background</legend>
+        {% for value, label in display_backgrounds %}<label><input type="radio" name="display_background" value="{{ value }}"{% if user.display_background == value %} checked{% endif %}> {{ label }}</label>{% endfor %}
+      </fieldset>
+      <fieldset><legend>Font</legend>
+        {% for value, label in display_fonts %}<label class="font-{{ value }}"><input type="radio" name="display_font" value="{{ value }}"{% if user.display_font == value %} checked{% endif %}> {{ label }}</label>{% endfor %}
+      </fieldset>
+      <fieldset><legend>Text size</legend>
+        {% for value, label in display_sizes %}<label><input type="radio" name="display_text_size" value="{{ value }}"{% if user.display_text_size == value %} checked{% endif %}> {{ label }}</label>{% endfor %}
+      </fieldset>
+      <button class="primary">Save</button>
+    </form>
+  </details>
   <div class="who">
     {{ user.full_name }}{% if user.is_admin %} <span class="tag">Admin</span>{% endif %}
     <form method="post" action="{% url 'accounts:logout' %}" class="inline">{% csrf_token %}<button class="link">Sign out</button></form>

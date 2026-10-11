@@ -52,6 +52,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     full_name = models.CharField(max_length=150)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.ORDERING)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+    class Background(models.TextChoices):
+        CREAM = "cream", "Cream"
+        DARK = "dark", "Soft dark"
+        CONTRAST = "contrast", "High contrast"
+
+    class Font(models.TextChoices):
+        ATKINSON = "atkinson", "Atkinson Hyperlegible"
+        LEXEND = "lexend", "Lexend"
+        SYSTEM = "system", "Standard"
+
+    class TextSize(models.TextChoices):
+        NORMAL = "normal", "Normal"
+        LARGE = "large", "Large"
+
+    # Display options chosen from the Display menu (readability, dyslexia-friendly fonts).
+    display_background = models.CharField(max_length=10, choices=Background.choices, default=Background.CREAM)
+    display_font = models.CharField(max_length=10, choices=Font.choices, default=Font.ATKINSON)
+    display_text_size = models.CharField(max_length=10, choices=TextSize.choices, default=TextSize.NORMAL)
     # Kept in step with status on save; only approved users can sign in.
     is_active = models.BooleanField(default=False, editable=False)
     date_joined = models.DateTimeField(default=timezone.now)

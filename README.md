@@ -19,6 +19,15 @@ Pages are plain server-rendered HTML with no separate front-end build.
 
 ---
 
+## Display and readability
+
+Pages use a cream background (not white), charcoal text, a single teal accent and the
+dyslexia-friendly Atkinson Hyperlegible font, with 1.5 line spacing, bold-only emphasis and
+large controls. Each user can change **Display ▾** in the top bar: Background (Cream, Soft dark,
+High contrast), Font (Atkinson Hyperlegible, Lexend, Standard) and Text size (Normal, Large).
+Choices are saved to their account. The printable order stays plain white. Fonts are
+self-hosted in `static/fonts` (SIL Open Font License).
+
 ## How the code is organised
 
 | Folder | What it does |
