@@ -34,10 +34,26 @@ def test_inactive_section_hidden_from_users_but_shown_to_admins(client, make_use
     assert ">Flooring" not in page
     assert "Item V1" not in items_page(client, order, "?q=V1")  # search too
     assert "Item V1" not in items_page(client, order, "?section=flooring")
+    assert "Item V1" not in items_page(client, order, "?section=hidden")
+    assert "Hidden" not in page
     client.force_login(admin_user)
     admin_order = services.create_draft(admin_user)
-    page = items_page(client, admin_order, "?section=flooring")
-    assert "(hidden)" in page and "V1" in page
+    page = items_page(client, admin_order, "?section=adhesives")
+    assert ">Flooring" not in page and "?section=hidden" in page and "V1" not in page
+    page = items_page(client, admin_order, "?section=hidden")
+    assert "Flooring" in page and "V1" in page
+
+
+def test_hidden_subsection_listed_in_admin_hidden_tab(client, admin_user):
+    sub = Subsection.objects.get(section_id=Section.PLUMBING, name="Wet Floors")
+    sub.is_active = False
+    sub.save()
+    make("PLU9", Section.PLUMBING, sub)
+    client.force_login(admin_user)
+    order = services.create_draft(admin_user)
+    assert "PLU9" not in items_page(client, order, "?section=plumbing&sub=all")
+    page = items_page(client, order, f"?section=hidden&sub={sub.pk}")
+    assert "Plumbing › Wet Floors" in page and "PLU9" in page
 
 
 def test_inactive_subsection_hidden_from_users(client, make_user):

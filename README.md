@@ -87,7 +87,7 @@ reordered (drag ⠿) on the same page, and new kits created there.
 
 **Active / hidden:** untick **Active** on a section or subsection (Admin >
 Sections) to hide it, and its items, from ordering while you build it up.
-Admins still see it on the order page, marked "(hidden)".
+Admins see hidden sections and subsections only under a separate **Hidden** tab on the order page (not in the normal tabs or search).
 
 **Editing items:** go to **Catalogue** in the top bar. Use the **needs attention**
 filter to find codes to confirm, incomplete items, garbled names, and packs

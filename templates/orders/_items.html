@@ -7,10 +7,12 @@
   <div class="section-tabs">
     {% for s in sections %}
       <a href="?section={{ s.key }}" class="{% if s.key == current_section %}active{% endif %}"
-         hx-get="{% url 'orders:items' order.pk %}?section={{ s.key }}" hx-target="#items" hx-swap="outerHTML">{{ s.name }}{% if not s.is_active %} <span class="hidden-tag">(hidden)</span>{% endif %}</a>
+         hx-get="{% url 'orders:items' order.pk %}?section={{ s.key }}" hx-target="#items" hx-swap="outerHTML">{{ s.name }}</a>
     {% endfor %}
     {% if has_unsectioned %}<a href="?section=unsectioned" class="{% if current_section == 'unsectioned' %}active{% endif %}"
        hx-get="{% url 'orders:items' order.pk %}?section=unsectioned" hx-target="#items" hx-swap="outerHTML">Other</a>{% endif %}
+    {% if has_hidden %}<a href="?section=hidden" class="{% if current_section == 'hidden' %}active{% endif %}"
+       hx-get="{% url 'orders:items' order.pk %}?section=hidden" hx-target="#items" hx-swap="outerHTML">Hidden <span class="hidden-tag">(admin)</span></a>{% endif %}
   </div>
   {% if subsections %}
   <div class="sub-tabs">

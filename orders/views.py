@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -95,20 +96,25 @@ def order_new(request):
 def _item_browser(request, order):
     """Item list for the order page.
 
-    Inactive sections and subsections are hidden from users (items in them too,
-    including in search); admins still see them, marked (hidden). A section opens
-    on its first subsection; "All" is the last option. Kits are listed inside
-    their section/subsection, above the items.
+    Inactive sections and subsections (and their items) are left out of the normal
+    tabs and search. Admins get one extra "Hidden" tab listing them, with each hidden
+    section / subsection as a sub-tab. A section opens on its first subsection;
+    "All" is the last option. Kits are listed inside their section/subsection.
     """
     admin = request.user.is_admin
-    sections = list(Section.objects.all() if admin else Section.objects.filter(is_active=True))
+    sections = list(Section.objects.filter(is_active=True))
     visible = Q(section__isnull=True) | Q(section__is_active=True)
     visible &= Q(subsection__isnull=True) | Q(subsection__is_active=True)
-    items = Item.objects.filter(is_active=True).select_related("section", "subsection")
-    kits = Kit.objects.filter(is_active=True)
-    if not admin:
-        items = items.filter(visible)
-        kits = kits.filter(visible)
+    all_items = Item.objects.filter(is_active=True).select_related("section", "subsection")
+    all_kits = Kit.objects.filter(is_active=True)
+    items, kits = all_items.filter(visible), all_kits.filter(visible)
+    hidden_subs = []
+    if admin:
+        hidden_subs = [SimpleNamespace(pk=f"s-{sec.key}", name=sec.name, is_active=True)
+                       for sec in Section.objects.filter(is_active=False)]
+        hidden_subs += [SimpleNamespace(pk=sub.pk, name=f"{sub.section.name} › {sub.name}", is_active=True)
+                        for sub in Subsection.objects.filter(is_active=False, section__is_active=True)
+                        .select_related("section")]
 
     q = request.GET.get("q", "").strip()
     section_key = request.GET.get("section") or (sections[0].key if sections else None)
@@ -121,13 +127,20 @@ def _item_browser(request, order):
     elif section_key == "unsectioned":
         items = items.filter(section__isnull=True)
         kits = kits.filter(section__isnull=True)
+    elif section_key == "hidden" and admin:
+        items, kits = all_items.exclude(visible), all_kits.exclude(visible)
+        subsections = hidden_subs
+        current_sub = request.GET.get("sub") or (str(subsections[0].pk) if subsections else "all")
+        if current_sub.startswith("s-"):
+            items = items.filter(section_id=current_sub[2:])
+            kits = kits.filter(section_id=current_sub[2:])
+        elif current_sub.isdigit():
+            items = items.filter(subsection_id=int(current_sub))
+            kits = kits.filter(subsection_id=int(current_sub))
     else:
         items = items.filter(section_id=section_key)
         kits = kits.filter(section_id=section_key)
-        subsections = Subsection.objects.filter(section_id=section_key)
-        if not admin:
-            subsections = subsections.filter(is_active=True)
-        subsections = list(subsections)
+        subsections = list(Subsection.objects.filter(section_id=section_key, is_active=True))
         current_sub = request.GET.get("sub") or (str(subsections[0].pk) if subsections else "all")
         if current_sub != "all" and current_sub.isdigit():
             items = items.filter(subsection_id=int(current_sub))
@@ -136,6 +149,7 @@ def _item_browser(request, order):
     on_order = set(order.lines.exclude(item=None).values_list("item_id", flat=True))
     return {
         "sections": sections,
+        "has_hidden": bool(hidden_subs),
         "has_unsectioned": Item.objects.filter(is_active=True, section__isnull=True).exists(),
         "subsections": subsections,
         "current_sub": current_sub,

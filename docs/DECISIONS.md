@@ -45,3 +45,4 @@ build brief. Newest first.
 | Email failure alert | A failed send shows the user a warning and a red count on **Emails** in the admin top bar. Admins are not emailed, because a mail fault would usually stop that email too. |
 | Hosting region | Render has no UK region, so Frankfurt (EU) is used. |
 | Original form items | Old HTML form items import into hidden "(draft)" sections (Doors, Kitchens, Plumbing, Joinery, Sealants & Misc) with TBC codes, so they don't enter live subsections before review. Electrical and Flooring omitted. |
+| Hidden items for admins | Hidden sections/subsections appear to admins only in a separate "Hidden" tab on the order page, not in the normal tabs or search. |
