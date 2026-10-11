@@ -16,6 +16,15 @@ AUDITED_FIELDS = [
 ]
 
 
+def next_tbc_code():
+    """Next free temporary code for an item added without a Part No."""
+    import re
+
+    numbers = [int(m.group(1)) for code in Item.objects.filter(part_no__startswith="TBC-").values_list("part_no", flat=True)
+               if (m := re.fullmatch(r"TBC-(\d+)", code))]
+    return f"TBC-{(max(numbers) + 1 if numbers else 1):04d}"
+
+
 class NeedsAttentionFilter(admin.SimpleListFilter):
     title = "needs attention"
     parameter_name = "attention"
@@ -52,6 +61,19 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A new item may not have a store code yet: leave it blank and a temporary one is given.
+        self.fields["part_no"].required = False
+        self.fields["part_no"].help_text = ("The store code. Leave blank if it isn't known yet: a temporary code "
+                                            "(TBC-0001…) is given and the item is flagged 'code to be confirmed'.")
+
+    def clean_part_no(self):
+        value = (self.cleaned_data.get("part_no") or "").strip().upper()
+        if not value and self.instance.pk:
+            raise forms.ValidationError("Enter a Part No. (an existing item keeps its code until you change it).")
+        return value
 
     def clean_pack_size(self):
         value = self.cleaned_data["pack_size"]
@@ -153,6 +175,9 @@ class ItemAdmin(admin.ModelAdmin):
             obj.code_to_confirm = False  # a new code has been entered, so it is now confirmed
         if not change:
             obj.source = Item.Source.MANUAL
+            if not obj.part_no:
+                obj.part_no = next_tbc_code()
+                obj.code_to_confirm = True
         if change and ("section" in form.changed_data or "subsection" in form.changed_data):
             obj.section_locked = True  # re-imports keep the admin's choice
         old = Item.objects.get(pk=obj.pk) if change else None

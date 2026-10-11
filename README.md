@@ -95,6 +95,9 @@ whose pack size is still 1. Click a Part No. to edit it. The display name can
 also be changed directly in the list (press **Save** at the bottom). Every
 change is recorded in the item's **Change history**.
 
+- **Adding an item without a Part No.:** leave Part No. blank. The item gets a
+  temporary code (TBC-0001, TBC-0002…) and is flagged *code to be confirmed*.
+  Enter the real code later and the flag clears.
 - Changing a temporary Part No. (for example ELE118-B to ELE130) clears
   "code to be confirmed" automatically. You can also select items and choose
   **Mark codes as confirmed**.

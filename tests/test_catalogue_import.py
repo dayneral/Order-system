@@ -384,3 +384,27 @@ def test_setup_rules_on_real_catalogue_names(code, name, section, expected):
 
     fields, _ = initial_setup(code, name, "", section)
     assert (fields["measure_type"], fields["pack_size"], fields["unit"]) == expected
+
+
+def test_admin_can_add_item_without_part_no(admin_client):
+    def add(name):
+        return admin_client.post(reverse("admin:catalogue_item_add"), {
+            "part_no": "", "display_name": name, "catalogue_name": "", "section": Section.PLUMBING,
+            "subsection": "", "trade_price": "", "measure_type": "each", "unit": "each", "pack_size": 1,
+            "catalogue_length_m": "", "is_active": "on"})
+    assert add("New basin waste").status_code == 302
+    assert add("New trap").status_code == 302
+    first, second = Item.objects.get(display_name="New basin waste"), Item.objects.get(display_name="New trap")
+    assert (first.part_no, second.part_no) == ("TBC-0001", "TBC-0002")
+    assert first.code_to_confirm and first.source == Item.Source.MANUAL
+
+    # Giving it a real code later confirms it.
+    url = reverse("admin:catalogue_item_change", args=[first.pk])
+    form = admin_client.get(url).context["adminform"].form
+    data = {k: v for k, v in form.initial.items() if v is not None and k in form.fields}
+    data.update({"part_no": "PLU200", "is_active": "on", "code_to_confirm": "on", "subsection": ""})
+    for key in ("is_flammable", "name_check"):
+        data.pop(key, None)
+    assert admin_client.post(url, data).status_code == 302
+    first.refresh_from_db()
+    assert first.part_no == "PLU200" and not first.code_to_confirm
