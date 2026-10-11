@@ -15,15 +15,23 @@
     <a href="{% url 'orders:new' %}">New order</a>
     {% if user.is_admin %}
       <span class="sep"></span>
-      <a href="{% url 'accounts:user_list' %}">Users{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}</a>
-      <a href="{% url 'notifications:failed' %}">Emails{% if failed_email_count %} <span class="badge bad">{{ failed_email_count }} failed</span>{% endif %}</a>
-      <a href="{% url 'admin:catalogue_item_changelist' %}">Catalogue</a>
-      <a href="{% url 'admin:catalogue_section_changelist' %}">Sections</a>
-      <a href="{% url 'catalogue:import_start' %}">Import</a>
-      <a href="{% url 'admin:catalogue_kit_changelist' %}">Kits</a>
-      <a href="{% url 'admin:catalogue_linkeditemrule_changelist' %}">Linked items</a>
-      <a href="{% url 'retention:runs' %}">Retention</a>
-      <a href="{% url 'admin:index' %}">Data admin</a>
+      <details class="admin-menu">
+        <summary>Admin{% if pending_count %} <span class="badge">{{ pending_count }}</span>{% endif %}{% if failed_email_count %} <span class="badge bad">{{ failed_email_count }}</span>{% endif %} ▾</summary>
+        <div class="menu">
+          <a href="{% url 'accounts:user_list' %}">Users{% if pending_count %} <span class="badge">{{ pending_count }} waiting</span>{% endif %}</a>
+          <a href="{% url 'notifications:failed' %}">Emails{% if failed_email_count %} <span class="badge bad">{{ failed_email_count }} failed</span>{% endif %}</a>
+          <hr>
+          <a href="{% url 'catalogue:sort' %}">Sort catalogue</a>
+          <a href="{% url 'admin:catalogue_item_changelist' %}">Catalogue items</a>
+          <a href="{% url 'admin:catalogue_section_changelist' %}">Sections</a>
+          <a href="{% url 'admin:catalogue_kit_changelist' %}">Kits</a>
+          <a href="{% url 'admin:catalogue_linkeditemrule_changelist' %}">Linked items</a>
+          <a href="{% url 'catalogue:import_start' %}">Import</a>
+          <hr>
+          <a href="{% url 'retention:runs' %}">Retention</a>
+          <a href="{% url 'admin:index' %}">Data admin</a>
+        </div>
+      </details>
     {% endif %}
   </nav>
   <div class="who">

@@ -93,35 +93,57 @@ def order_new(request):
 
 
 def _item_browser(request, order):
-    sections = list(Section.objects.all())
+    """Item list for the order page.
+
+    Inactive sections and subsections are hidden from users (items in them too,
+    including in search); admins still see them, marked (hidden). A section opens
+    on its first subsection; "All" is the last option. Kits are listed inside
+    their section/subsection, above the items.
+    """
+    admin = request.user.is_admin
+    sections = list(Section.objects.all() if admin else Section.objects.filter(is_active=True))
+    visible = Q(section__isnull=True) | Q(section__is_active=True)
+    visible &= Q(subsection__isnull=True) | Q(subsection__is_active=True)
+    items = Item.objects.filter(is_active=True).select_related("section", "subsection")
+    kits = Kit.objects.filter(is_active=True)
+    if not admin:
+        items = items.filter(visible)
+        kits = kits.filter(visible)
+
     q = request.GET.get("q", "").strip()
     section_key = request.GET.get("section") or (sections[0].key if sections else None)
-    if section_key == "kits" and not q:
-        return {"sections": sections, "current_section": "kits", "q": "", "items": [], "more_items": False,
-                "kit_offers": suggestions.all_kit_offers(order), "kits_tab": True}
-    items = Item.objects.filter(is_active=True).select_related("section", "subsection")
+    subsections, current_sub = [], ""
     if q:
-        terms = q.split()
-        for term in terms:
+        for term in q.split():
             items = items.filter(Q(part_no__icontains=term) | Q(display_name__icontains=term))
+            kits = kits.filter(name__icontains=term)
         section_key = None
     elif section_key == "unsectioned":
         items = items.filter(section__isnull=True)
+        kits = kits.filter(section__isnull=True)
     else:
         items = items.filter(section_id=section_key)
-        sub = request.GET.get("sub")
-        if sub and sub.isdigit():
-            items = items.filter(subsection_id=int(sub))
+        kits = kits.filter(section_id=section_key)
+        subsections = Subsection.objects.filter(section_id=section_key)
+        if not admin:
+            subsections = subsections.filter(is_active=True)
+        subsections = list(subsections)
+        current_sub = request.GET.get("sub") or (str(subsections[0].pk) if subsections else "all")
+        if current_sub != "all" and current_sub.isdigit():
+            items = items.filter(subsection_id=int(current_sub))
+            kits = kits.filter(subsection_id=int(current_sub))
     items = list(items.order_by("section__sort_order", "display_name")[:ITEM_RESULTS_LIMIT + 1])
+    on_order = set(order.lines.exclude(item=None).values_list("item_id", flat=True))
     return {
         "sections": sections,
         "has_unsectioned": Item.objects.filter(is_active=True, section__isnull=True).exists(),
-        "subsections": list(Subsection.objects.filter(section_id=section_key)) if section_key and not q else [],
-        "current_sub": request.GET.get("sub", ""),
+        "subsections": subsections,
+        "current_sub": current_sub,
         "current_section": section_key,
         "q": q,
         "items": items[:ITEM_RESULTS_LIMIT],
         "more_items": len(items) > ITEM_RESULTS_LIMIT,
+        "kit_offers": [suggestions.kit_offer(kit, on_order) for kit in kits.prefetch_related("kit_items")],
     }
 
 

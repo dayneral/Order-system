@@ -61,7 +61,11 @@ def linked_suggestions(order, item):
     suggested, notes = {}, []
     forward = LinkedItemRule.objects.filter(trigger=item, is_active=True).prefetch_related("suggested_items")
     reverse = LinkedItemRule.objects.filter(suggested_items=item, two_way=True, is_active=True).select_related("trigger")
+    prompts_kits = set(KitItem.objects.filter(item=item, prompts_kit=True, kit__is_active=True)
+                       .values_list("kit_id", flat=True))
     for rule in forward:
+        if rule.kit_id and rule.kit_id in prompts_kits:
+            continue  # the kit prompt already offers these items
         for other in rule.suggested_items.all():
             suggested.setdefault(other.pk, other)
         if rule.note:

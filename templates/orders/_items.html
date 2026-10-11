@@ -7,36 +7,33 @@
   <div class="section-tabs">
     {% for s in sections %}
       <a href="?section={{ s.key }}" class="{% if s.key == current_section %}active{% endif %}"
-         hx-get="{% url 'orders:items' order.pk %}?section={{ s.key }}" hx-target="#items" hx-swap="outerHTML">{{ s.name }}</a>
+         hx-get="{% url 'orders:items' order.pk %}?section={{ s.key }}" hx-target="#items" hx-swap="outerHTML">{{ s.name }}{% if not s.is_active %} <span class="hidden-tag">(hidden)</span>{% endif %}</a>
     {% endfor %}
     {% if has_unsectioned %}<a href="?section=unsectioned" class="{% if current_section == 'unsectioned' %}active{% endif %}"
        hx-get="{% url 'orders:items' order.pk %}?section=unsectioned" hx-target="#items" hx-swap="outerHTML">Other</a>{% endif %}
-    <a href="?section=kits" class="kits-tab{% if current_section == 'kits' %} active{% endif %}"
-       hx-get="{% url 'orders:items' order.pk %}?section=kits" hx-target="#items" hx-swap="outerHTML">Kits</a>
   </div>
   {% if subsections %}
   <div class="sub-tabs">
-    <a href="?section={{ current_section }}" class="{% if not current_sub %}active{% endif %}"
-       hx-get="{% url 'orders:items' order.pk %}?section={{ current_section }}" hx-target="#items" hx-swap="outerHTML">All</a>
     {% for sub in subsections %}
       <a href="?section={{ current_section }}&sub={{ sub.pk }}" class="{% if current_sub == sub.pk|stringformat:'s' %}active{% endif %}"
-         hx-get="{% url 'orders:items' order.pk %}?section={{ current_section }}&sub={{ sub.pk }}" hx-target="#items" hx-swap="outerHTML">{{ sub.name }}</a>
+         hx-get="{% url 'orders:items' order.pk %}?section={{ current_section }}&sub={{ sub.pk }}" hx-target="#items" hx-swap="outerHTML">{{ sub.name }}{% if not sub.is_active %} <span class="hidden-tag">(hidden)</span>{% endif %}</a>
     {% endfor %}
+    <a href="?section={{ current_section }}&sub=all" class="{% if current_sub == 'all' %}active{% endif %}"
+       hx-get="{% url 'orders:items' order.pk %}?section={{ current_section }}&sub=all" hx-target="#items" hx-swap="outerHTML">All</a>
   </div>
   {% endif %}
   {% if q %}<p class="hint">Results for "{{ q }}" across all sections.</p>{% endif %}
   <div class="items-scroll">
-  {% if kits_tab %}
-    <p class="hint">Add a whole kit in one go. Untick anything you don't need and adjust quantities before pressing <b>Add selected</b>.</p>
-    {% for offer in kit_offers %}
-      <div class="kit-card">
-        <div class="row-between"><b>{{ offer.kit.name }}</b>
-          {% if show_values %}<span class="hint">Est. £{{ offer.estimated_value }}{% if offer.has_measured_items %} + measured items{% endif %}</span>{% endif %}</div>
-        {% if offer.kit.description %}<div class="hint">{{ offer.kit.description }}</div>{% endif %}
+  {% for offer in kit_offers %}
+    <div class="kit-card">
+      <div class="row-between"><b><span class="flag kit">KIT</span> {{ offer.kit.name }}</b>
+        {% if show_values %}<span class="hint">Est. £{{ offer.estimated_value }}{% if offer.has_measured_items %} + measured items{% endif %}</span>{% endif %}</div>
+      {% if offer.kit.description %}<div class="hint">{{ offer.kit.description }}</div>{% endif %}
+      <details><summary>Show kit items</summary>
         {% include "orders/_kit_form.html" %}
-      </div>
-    {% empty %}<p>No kits have been set up yet.</p>{% endfor %}
-  {% else %}
+      </details>
+    </div>
+  {% endfor %}
   <table class="grid items">
     <thead><tr><th>Part No.</th><th>Item</th>{% if show_values %}<th class="num">Price</th>{% endif %}<th>Quantity / measurement</th></tr></thead>
     <tbody>
@@ -58,11 +55,10 @@
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="4">{% if q %}No items match "{{ q }}".{% else %}No items in this section yet.{% endif %}</td></tr>
+      {% if not kit_offers %}<tr><td colspan="4">{% if q %}No items match "{{ q }}".{% else %}No items here yet.{% endif %}</td></tr>{% endif %}
     {% endfor %}
     </tbody>
   </table>
-  {% endif %}
   </div>
   {% if more_items %}<p class="hint">Showing the first {{ items|length }} items. Search to narrow the list.</p>{% endif %}
 </div>

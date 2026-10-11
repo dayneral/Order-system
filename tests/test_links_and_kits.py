@@ -168,13 +168,16 @@ def test_kit_with_measured_item_needs_measurements(order, cat):
     assert order.lines.get().area_m2 == D("6.00")
 
 
-def test_kits_tab_shows_estimated_value(client, order, cat, toilet_kit):
+def test_kit_listed_inside_its_section_with_estimated_value(client, order, cat, toilet_kit):
+    toilet_kit.section_id = Section.KITCHENS
+    toilet_kit.save()
     client.force_login(order.owner)
-    page = client.get(reverse("orders:items", args=[order.pk]) + "?section=kits").content.decode()
+    page = client.get(reverse("orders:items", args=[order.pk]) + "?section=kitchens&sub=all").content.decode()
     assert "Close-coupled toilet kit" in page and "Add selected" in page
     # 55 + 45 + 12 + 4.50 + 2 x 2.25 (hose is incomplete, so excluded)
     assert "Est. £121.00" in page
-
+    other = client.get(reverse("orders:items", args=[order.pk]) + "?section=plumbing").content.decode()
+    assert "Close-coupled toilet kit" not in other and ">Kits<" not in other
 
 def test_kit_prompt_and_add_through_website(client, order, cat, toilet_kit):
     client.force_login(order.owner)

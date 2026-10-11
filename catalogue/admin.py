@@ -233,7 +233,7 @@ class ItemAdmin(admin.ModelAdmin):
 class SubsectionInline(admin.TabularInline):
     model = Subsection
     extra = 2
-    fields = ("name", "sort_order")
+    fields = ("name", "sort_order", "is_active")
     verbose_name_plural = "Subsections (removing one keeps its items in this section)"
 
 
@@ -242,9 +242,9 @@ class SectionAdmin(admin.ModelAdmin):
     inlines = [SubsectionInline]
     """Rename, reorder, add and remove sections. Removing a section never deletes its items."""
 
-    list_display = ("name", "sort_order", "is_flammable", "item_count", "subsection_list")
-    list_editable = ("sort_order",)
-    fields = ("name", "sort_order", "is_flammable")
+    list_display = ("name", "sort_order", "is_active", "is_flammable", "item_count", "subsection_list")
+    list_editable = ("sort_order", "is_active")
+    fields = ("name", "sort_order", "is_active", "is_flammable")
     actions = None
 
     def get_queryset(self, request):
@@ -319,7 +319,12 @@ class LinkedItemRuleForm(forms.ModelForm):
 
 @admin.register(LinkedItemRule)
 class LinkedItemRuleAdmin(admin.ModelAdmin):
+    """Hand-made rules only. Rules created from kits are managed through the kit."""
+
     form = LinkedItemRuleForm
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(kit__isnull=True)
     list_display = ("trigger", "suggestions", "two_way", "is_active", "note")
     list_filter = ("is_active", "two_way")
     search_fields = ("trigger__part_no", "trigger__display_name", "suggested_items__part_no",
@@ -344,11 +349,11 @@ class KitItemInline(admin.TabularInline):
 
 @admin.register(Kit)
 class KitAdmin(admin.ModelAdmin):
-    list_display = ("name", "item_count", "prompted_by", "is_active")
+    list_display = ("name", "section", "subsection", "item_count", "prompted_by", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name", "kit_items__item__part_no", "kit_items__item__display_name")
     inlines = [KitItemInline]
-    fields = ("name", "description", "is_active")
+    fields = ("name", "description", "section", "subsection", "is_active")
 
     @admin.display(description="Items")
     def item_count(self, obj):
@@ -359,5 +364,8 @@ class KitAdmin(admin.ModelAdmin):
         return ", ".join(ki.item.part_no for ki in obj.kit_items.filter(prompts_kit=True).select_related("item")) or "—"
 
     def save_related(self, request, form, formsets, change):
+        from .kits import sync_kit_rules
+
         super().save_related(request, form, formsets, change)
+        sync_kit_rules(form.instance)
         record(request.user, "kit.save", form.instance, f"Kit saved: {form.instance.name}")

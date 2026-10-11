@@ -79,6 +79,16 @@ any section whose items should be flagged FLAMMABLE.
 - Past orders keep the section name they were placed with.
 - All changes are recorded in the audit history.
 
+**Sort catalogue** (Admin > Sort catalogue) is the quickest way to organise
+items. Pick a section, then drag items (tick several to move them together)
+onto a subsection, another section or a kit. Moves save straight away, can be
+undone, and are kept on re-import. Subsections can be added, renamed (✎) and
+reordered (drag ⠿) on the same page, and new kits created there.
+
+**Active / hidden:** untick **Active** on a section or subsection (Admin >
+Sections) to hide it, and its items, from ordering while you build it up.
+Admins still see it on the order page, marked "(hidden)".
+
 **Editing items:** go to **Catalogue** in the top bar. Use the **needs attention**
 filter to find codes to confirm, incomplete items, garbled names, and packs
 whose pack size is still 1. Click a Part No. to edit it. The display name can
@@ -192,8 +202,9 @@ e.g. a close-coupled toilet kit (pan, cistern, seat, pan connector, valves).
 - Tick **Prompts kit** on the items that should offer the kit. Adding one of
   them then offers the rest of the kit as a tick list: quantities can be
   changed, and items already on the order are left unticked.
-- Users can also add a whole kit from the **Kits** tab in the item browser,
-  which shows an estimated kit value.
+- Each kit is placed in a section (and optionally a subsection) and listed
+  there above the items. Saving a kit also creates linked-item suggestions
+  between its items; these are managed through the kit.
 - Each kit item becomes a normal order line labelled **KIT: name**, in the app
   and in the stores email.
 

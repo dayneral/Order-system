@@ -47,6 +47,9 @@ class Section(models.Model):
     key = models.SlugField(primary_key=True, max_length=40, editable=False)
     name = models.CharField(max_length=60, unique=True)
     sort_order = models.PositiveSmallIntegerField("Order", default=100, help_text="Lower numbers are shown first.")
+    is_active = models.BooleanField(
+        "Active", default=True,
+        help_text="Untick to hide this section from ordering while you build it up. Admins still see it, marked (hidden).")
     is_flammable = models.BooleanField(
         "Flammable store", default=False,
         help_text="Items in this section are flagged FLAMMABLE on orders and in the stores email.")
@@ -76,6 +79,7 @@ class Subsection(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="subsections")
     name = models.CharField(max_length=60)
     sort_order = models.PositiveSmallIntegerField("Order", default=100)
+    is_active = models.BooleanField("Active", default=True, help_text="Untick to hide from ordering while you build it up.")
 
     class Meta:
         ordering = ["section__sort_order", "sort_order", "name"]
@@ -224,6 +228,8 @@ class LinkedItemRule(models.Model):
     With two_way set, adding any of the suggested items also suggests the trigger item.
     """
 
+    kit = models.ForeignKey("Kit", null=True, blank=True, on_delete=models.CASCADE, related_name="link_rules",
+                            editable=False, help_text="Set when the rule was created automatically from a kit.")
     trigger = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="link_rules",
                                 help_text="When this item is added to an order…")
     suggested_items = models.ManyToManyField(Item, related_name="+",
@@ -253,6 +259,9 @@ class Kit(models.Model):
 
     name = models.CharField(max_length=120, unique=True)
     description = models.CharField(max_length=300, blank=True)
+    section = models.ForeignKey(Section, null=True, blank=True, on_delete=models.SET_NULL, related_name="kits",
+                                help_text="Where the kit is listed on the order page.")
+    subsection = models.ForeignKey(Subsection, null=True, blank=True, on_delete=models.SET_NULL, related_name="kits")
     is_active = models.BooleanField("Active", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -261,6 +270,11 @@ class Kit(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.subsection_id:
+            self.section_id = self.subsection.section_id
+        super().save(*args, **kwargs)
 
 
 class KitItem(models.Model):

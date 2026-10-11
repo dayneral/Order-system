@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Sort catalogue · BFS Material Orders{% endblock %}
+{% block main_class %}page wide{% endblock %}
+{% block content %}
+<div class="row-between">
+  <h1>Sort catalogue</h1>
+  <button type="button" id="undo" {% if not can_undo %}disabled{% endif %}>Undo last change</button>
+</div>
+{% if not sections %}<p>No sections yet.</p>{% else %}
+<div class="section-tabs">
+  {% for s in sections %}<a href="?section={{ s.key }}&show={{ show }}" class="{% if s.pk == section.pk %}active{% endif %}">{{ s.name }}{% if not s.is_active %} <span class="hidden-tag">(hidden)</span>{% endif %}</a>{% endfor %}
+</div>
+<p class="hint">Drag items onto a subsection, another section or a kit. Tick several items to drag them together. Changes save straight away and are kept when the catalogue is re-imported.</p>
+
+<div class="sorter">
+  <section class="panel">
+    <form method="get" class="search">
+      <input type="hidden" name="section" value="{{ section.pk }}">
+      <select name="show" onchange="this.form.submit()">
+        <option value="unsorted" {% if show == "unsorted" %}selected{% endif %}>No subsection yet</option>
+        <option value="all" {% if show == "all" %}selected{% endif %}>All items in {{ section.name }}</option>
+      </select>
+      <input type="search" name="q" value="{{ q }}" placeholder="Filter by name or Part No.">
+      <button>Filter</button>
+    </form>
+    <div class="row-between"><span class="hint"><span id="count">{{ total }}</span> item{{ total|pluralize }}{% if limited %} (first {{ items|length }} shown: filter to narrow){% endif %}</span>
+      <span><button type="button" class="link" id="select-all">Tick all</button> · <button type="button" class="link" id="select-none">Clear</button></span></div>
+    <div class="item-pool" id="pool">
+      {% for item in items %}
+        <div class="card" draggable="true" data-id="{{ item.pk }}" data-sub="{{ item.subsection_id|default:'' }}">
+          <input type="checkbox" class="pick" aria-label="Select {{ item.part_no }}">
+          <span class="code">{{ item.part_no }}</span>
+          <span class="nm">{{ item.name }}</span>
+          <span class="where">{{ item.subsection.name|default:"" }}</span>
+        </div>
+      {% empty %}<p class="hint">{% if show == "unsorted" %}Everything in {{ section.name }} has a subsection.{% else %}No items.{% endif %}</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="panel zones">
+    <h2 class="first">{{ section.name }} subsections</h2>
+    <p class="hint">Drag the ⠿ handle to reorder. Click ✎ to rename.</p>
+    <div id="sub-zones">
+      {% for sub in subsections %}
+        <div class="zone" data-target="sub:{{ sub.pk }}" data-sub-id="{{ sub.pk }}">
+          <span class="handle" draggable="true" title="Drag to reorder">⠿</span>
+          <span class="zname">{{ sub.name }}</span>{% if not sub.is_active %} <span class="hidden-tag">(hidden)</span>{% endif %}
+          <span class="zcount" data-count-for="{{ sub.pk }}">{{ sub.n }}</span>
+          <button type="button" class="link rename" data-id="{{ sub.pk }}" title="Rename">✎</button>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="zone muted-zone" data-target="sec:{{ section.pk }}">No subsection <span class="zcount" data-count-for="none">{{ no_sub_count }}</span></div>
+    <form method="post" action="{% url 'catalogue:sort_add_subsection' section.pk %}" class="inline-fields add-row">{% csrf_token %}
+      <input name="name" placeholder="New subsection name" maxlength="60" required><button>Add subsection</button>
+    </form>
+
+    <h2>Kits in {{ section.name }}</h2>
+    {% for kit in kits %}
+      <div class="zone kit-zone" data-target="kit:{{ kit.pk }}"><span class="flag kit">KIT</span> {{ kit.name }}
+        <span class="zcount" data-kit-count="{{ kit.pk }}">{{ kit.n }}</span>
+        <a href="{% url 'admin:catalogue_kit_change' kit.pk %}" title="Set quantities and which items prompt the kit">edit</a></div>
+    {% empty %}<p class="hint">No kits in this section yet.</p>{% endfor %}
+    <form method="post" action="{% url 'catalogue:sort_add_kit' section.pk %}" class="inline-fields add-row">{% csrf_token %}
+      <input name="name" placeholder="New kit name" maxlength="120" required><button>Create kit</button>
+    </form>
+    <p class="hint">Items dropped on a kit are added with quantity 1. Use <b>edit</b> to set quantities and which items prompt the kit.</p>
+
+    <h2>Move to another section</h2>
+    <div class="other-sections">
+      {% for s in other_sections %}<div class="zone small" data-target="sec:{{ s.pk }}">{{ s.name }}</div>{% endfor %}
+    </div>
+  </section>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function () {
+  const csrf = "{{ csrf_token }}";
+  const show = "{{ show }}";
+  const thisSection = "{{ section.pk }}";
+  const pool = document.getElementById("pool");
+  const toast = document.getElementById("toast");
+  const undoBtn = document.getElementById("undo");
+
+  function say(msg, bad) {
+    toast.textContent = msg; toast.className = "toast" + (bad ? " bad" : ""); toast.hidden = false;
+    clearTimeout(say.t); say.t = setTimeout(() => toast.hidden = true, 3500);
+  }
+  async function post(url, body) {
+    const r = await fetch(url, {method: "POST", headers: {"X-CSRFToken": csrf, "Content-Type": "application/json"},
+                                body: JSON.stringify(body || {})});
+    const data = await r.json().catch(() => ({ok: false, message: "Something went wrong."}));
+    if (!data.ok) say(data.message, true);
+    return data;
+  }
+  function bump(sel, by) {
+    const el = document.querySelector(sel);
+    if (el) el.textContent = Math.max(0, parseInt(el.textContent || "0", 10) + by);
+  }
+
+  // --- Dragging items --------------------------------------------------------------
+  pool.addEventListener("dragstart", (e) => {
+    const card = e.target.closest(".card");
+    if (!card) return;
+    if (!card.querySelector(".pick").checked) {
+      pool.querySelectorAll(".pick:checked").forEach(c => c.checked = false);
+      card.querySelector(".pick").checked = true;
+    }
+    const ids = [...pool.querySelectorAll(".pick:checked")].map(c => c.closest(".card").dataset.id);
+    e.dataTransfer.setData("application/x-items", JSON.stringify(ids));
+    e.dataTransfer.effectAllowed = "move";
+    pool.querySelectorAll(".pick:checked").forEach(c => c.closest(".card").classList.add("dragging"));
+  });
+  pool.addEventListener("dragend", () => pool.querySelectorAll(".dragging").forEach(c => c.classList.remove("dragging")));
+  pool.addEventListener("click", (e) => {
+    const card = e.target.closest(".card");
+    if (card && e.target.tagName !== "INPUT") { const box = card.querySelector(".pick"); box.checked = !box.checked; }
+    pool.querySelectorAll(".card").forEach(c => c.classList.toggle("picked", c.querySelector(".pick").checked));
+  });
+  document.getElementById("select-all").onclick = () => { pool.querySelectorAll(".pick").forEach(c => c.checked = true); pool.dispatchEvent(new Event("click")); };
+  document.getElementById("select-none").onclick = () => { pool.querySelectorAll(".pick").forEach(c => c.checked = false); pool.dispatchEvent(new Event("click")); };
+
+  document.querySelectorAll(".zone").forEach(zone => {
+    zone.addEventListener("dragover", (e) => {
+      if (e.dataTransfer.types.includes("application/x-items") ||
+          (e.dataTransfer.types.includes("application/x-zone") && zone.dataset.subId)) {
+        e.preventDefault(); zone.classList.add("over");
+      }
+    });
+    zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+    zone.addEventListener("drop", async (e) => {
+      zone.classList.remove("over");
+      const raw = e.dataTransfer.getData("application/x-items");
+      if (!raw) return;
+      e.preventDefault();
+      const ids = JSON.parse(raw);
+      const res = await post("{% url 'catalogue:sort_move' %}", {items: ids, target: zone.dataset.target});
+      if (!res.ok) return;
+      say(res.message); undoBtn.disabled = false;
+      if (res.kit) { const c = document.querySelector(`[data-kit-count="${res.kit}"]`); if (c) c.textContent = res.kit_count; }
+      for (const id of res.moved || []) {
+        const card = pool.querySelector(`.card[data-id="${id}"]`);
+        if (!card) continue;
+        bump(card.dataset.sub ? `[data-count-for="${card.dataset.sub}"]` : '[data-count-for="none"]', -1);
+        if (res.section === thisSection) bump(res.subsection ? `[data-count-for="${res.subsection}"]` : '[data-count-for="none"]', 1);
+        const leaves = res.section !== thisSection || (show === "unsorted" && res.subsection);
+        if (leaves) { card.remove(); bump("#count", -1); }
+        else { card.dataset.sub = res.subsection || ""; card.querySelector(".where").textContent = res.subsection ? res.label : "";
+               card.querySelector(".pick").checked = false; card.classList.remove("picked"); }
+      }
+    });
+  });
+
+  // --- Reordering subsections ------------------------------------------------------------
+  const subZones = document.getElementById("sub-zones");
+  let draggedZone = null;
+  subZones.addEventListener("dragstart", (e) => {
+    const handle = e.target.closest(".handle");
+    if (!handle) return;
+    draggedZone = handle.closest(".zone");
+    e.dataTransfer.setData("application/x-zone", draggedZone.dataset.subId);
+  });
+  subZones.addEventListener("dragover", (e) => {
+    if (!draggedZone) return;
+    const over = e.target.closest(".zone");
+    if (!over || over === draggedZone) return;
+    const after = e.clientY > over.getBoundingClientRect().top + over.offsetHeight / 2;
+    over.parentNode.insertBefore(draggedZone, after ? over.nextSibling : over);
+  });
+  subZones.addEventListener("dragend", async () => {
+    if (!draggedZone) return;
+    draggedZone = null;
+    const ids = [...subZones.querySelectorAll(".zone")].map(z => z.dataset.subId);
+    const res = await post("{% url 'catalogue:sort_reorder' section.pk %}", {ids});
+    if (res.ok) say(res.message);
+  });
+
+  // --- Rename and undo --------------------------------------------------------------
+  document.querySelectorAll(".rename").forEach(btn => btn.addEventListener("click", async () => {
+    const zone = btn.closest(".zone");
+    const name = prompt("New name for this subsection:", zone.querySelector(".zname").textContent);
+    if (!name) return;
+    const res = await post(`{% url 'catalogue:sort_rename' 0 %}`.replace("/0/", `/${btn.dataset.id}/`), {name});
+    if (res.ok) { zone.querySelector(".zname").textContent = name.trim(); say(res.message); }
+  }));
+  undoBtn.addEventListener("click", async () => {
+    const res = await post("{% url 'catalogue:sort_undo' %}");
+    if (res.ok) location.reload();
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
