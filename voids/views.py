@@ -16,7 +16,7 @@ from audit.models import AuditEntry, record
 
 from . import importer, services
 from .forms import FilterForm, TaskForm, UpdateForm, UploadForm, VoidForm
-from .models import Area, JobType, Trade, TradeTask, Void, VoidImportRun, VoidUpdate
+from .models import Area, JobType, VoidsSettings, Trade, TradeTask, Void, VoidImportRun, VoidUpdate
 
 SESSION_KEY = "voids_filters"
 VOID_FIELDS = list(VoidForm.Meta.fields)
@@ -40,6 +40,13 @@ def filtered_voids(request):
     else:
         params = QueryDict(request.session.get(SESSION_KEY, ""))
     form = FilterForm(params)
+    th = VoidsSettings.get()
+    form.fields["flag"].choices = [
+        (k, f"No update in {th.stale_filter_days}+ days" if k == "stale" else
+         f"Due in {th.handback_soon_days} days" if k == "week" else label)
+        for k, label in form.fields["flag"].choices]
+    form.fields["due"].choices = [
+        (k, f"Due in {th.handback_soon_days} days" if k == "week" else label) for k, label in form.fields["due"].choices]
     form.is_valid()
     f = form.cleaned_data if form.is_valid() else {}
     qs = with_related(Void.objects.all())
@@ -70,11 +77,13 @@ def filtered_voids(request):
     if f.get("due") == "overdue":
         qs = qs.filter(handback_date__lt=today)
     elif f.get("due") == "week":
-        qs = qs.filter(handback_date__gte=today, handback_date__lte=today + timedelta(days=7))
+        qs = qs.filter(handback_date__gte=today,
+                       handback_date__lte=today + timedelta(days=VoidsSettings.get().handback_soon_days))
     elif f.get("due") == "none":
         qs = qs.filter(handback_date__isnull=True)
     if f.get("flag") == "stale":
-        qs = qs.filter(last_activity__lt=timezone.now() - timedelta(days=7), on_hold=False,
+        qs = qs.filter(last_activity__lt=timezone.now() - timedelta(days=VoidsSettings.get().stale_filter_days),
+                       on_hold=False,
                        status__in=STALE_STATUSES)
     elif f.get("flag") == "on_hold":
         qs = qs.filter(on_hold=True)
@@ -92,6 +101,8 @@ def filtered_voids(request):
              "postcode": ["postcode"], "job": ["job_type__position", "address"]}.get(sort, ["handback_date"])
     qs = qs.order_by(*order)
     voids = list(qs)
+    for v in voids:
+        v._thresholds = th  # read the warning thresholds once, not once per void
     if sort == "simpro":
         voids.sort(key=services.simpro_number)
     elif sort in ("handback", "expected", "start"):
@@ -121,6 +132,10 @@ OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.BOOKED, TradeTask.Status.I
 
 def grid_rows(voids, trades):
     today = timezone.localdate()
+    th = VoidsSettings.get()
+    soon = timedelta(days=th.handback_soon_days)
+    for v in voids:
+        v._thresholds = th
     rows = []
     for v in voids:
         by_trade = {t.trade_id: t for t in v.tasks.all()}
@@ -139,7 +154,7 @@ def grid_rows(voids, trades):
                      "percent": round(100 * done / len(needed)) if needed else 0,
                      "overdue": bool(v.handback_date and v.handback_date < today
                                      and v.status != Void.Status.HANDED_BACK),
-                     "this_week": bool(v.handback_date and today <= v.handback_date <= today + timedelta(days=7))})
+                     "this_week": bool(v.handback_date and today <= v.handback_date <= today + soon)})
     return rows
 
 

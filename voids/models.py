@@ -11,6 +11,43 @@ from django.db import models
 from django.utils import timezone
 
 
+class VoidsSettings(models.Model):
+    """Warning thresholds for the voids list. There is only ever one row (edit it in Voids settings)."""
+
+    stale_amber_days = models.PositiveIntegerField(
+        "needs an update: amber after (days)", default=5,
+        help_text="An open void with no update for this many days gets an amber 'No update' tag.")
+    stale_red_days = models.PositiveIntegerField(
+        "needs an update: red after (days)", default=10,
+        help_text="…and a red tag and outline after this many days.")
+    stale_filter_days = models.PositiveIntegerField(
+        "'No update' filter (days)", default=7,
+        help_text="Used by the 'No update in … days' filter (and the supervisor email, when it is added).")
+    handback_soon_days = models.PositiveIntegerField(
+        "hand-back due soon (days)", default=7,
+        help_text="A hand-back date within this many days is highlighted and shown by the 'Due soon' filter.")
+
+    class Meta:
+        verbose_name = verbose_name_plural = "warning thresholds"
+
+    def __str__(self):
+        return "Warning thresholds"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.stale_red_days <= self.stale_amber_days:
+            raise ValidationError("The red threshold must be more days than the amber one.")
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class JobType(models.Model):
     name = models.CharField(max_length=60, unique=True)
     # Workbook tab this job type is imported from (blank = not imported).
@@ -179,14 +216,14 @@ class Void(models.Model):
     @property
     def stale_level(self):
         """'' (fine), 'amber' or 'red' when nobody has updated an open void for a while."""
-        from django.conf import settings
+        settings = getattr(self, "_thresholds", None) or VoidsSettings.get()
         if self.on_hold or self.status not in (self.Status.NEW, self.Status.STC, self.Status.IN_PROGRESS,
                                                self.Status.SNAGGING):
             return ""
         days = self.days_since_update
-        if days >= settings.VOIDS_STALE_RED_DAYS:
+        if days >= settings.stale_red_days:
             return "red"
-        if days >= settings.VOIDS_STALE_AMBER_DAYS:
+        if days >= settings.stale_amber_days:
             return "amber"
         return ""
 

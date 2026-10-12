@@ -297,3 +297,24 @@ def test_sort_by_job_number_and_electrical_works_filter(voids_client):
     TradeTask.objects.create(void=sparky, trade=Trade.objects.get(name="Electrical"))
     body = voids_client.get(reverse("voids:list"), {"flag": "electrical"}).content.decode()
     assert "Rewire Flat" in body and "A Flat" not in body
+
+
+def test_thresholds_are_editable(voids_client, admin_client):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from voids.models import JobType, VoidsSettings
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Slow Flat", status=Void.Status.STC,
+                            last_activity=timezone.now() - timedelta(days=4))
+    assert v.stale_level == ""
+    resp = admin_client.post(reverse("admin:voids_voidssettings_change", args=[VoidsSettings.get().pk]), {
+        "stale_amber_days": 3, "stale_red_days": 6, "stale_filter_days": 2, "handback_soon_days": 14})
+    assert resp.status_code == 302
+    v = Void.objects.get(pk=v.pk)
+    assert v.stale_level == "amber"
+    body = voids_client.get(reverse("voids:list"), {"flag": "stale"}).content.decode()
+    assert "Slow Flat" in body and "No update in 2+ days" in body
+    resp = admin_client.post(reverse("admin:voids_voidssettings_change", args=[1]), {
+        "stale_amber_days": 6, "stale_red_days": 3, "stale_filter_days": 2, "handback_soon_days": 14})
+    assert resp.status_code == 200  # red must be more than amber
