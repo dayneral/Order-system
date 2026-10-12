@@ -31,13 +31,13 @@ class TaskForm(forms.ModelForm):
     class Meta:
         model = TradeTask
         fields = ["status", "assignee", "date", "claimed", "notes"]
+        widgets = {"date": DATE, "notes": forms.Textarea(attrs={"rows": 2})}
 
     def clean(self):
         data = super().clean()
         if data.get("status") == TradeTask.Status.IN_PROGRESS and not (data.get("assignee") or "").strip():
             self.add_error("assignee", "Who is doing it? Fill this in to set the trade In progress.")
         return data
-        widgets = {"date": DATE, "notes": forms.Textarea(attrs={"rows": 2})}
 
 
 class UpdateForm(forms.Form):

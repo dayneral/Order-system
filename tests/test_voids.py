@@ -559,6 +559,8 @@ def test_in_progress_asks_who(voids_client):
     resp = voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"},
                              HTTP_HX_REQUEST="true")
     assert b"Who is doing the plumbing?" in resp.content and b"autofocus" in resp.content
+    from django.utils import timezone
+    assert timezone.localdate().isoformat().encode() in resp.content  # date filled in, still editable
     assert TradeTask.objects.get(void=v, trade=t).status == "stc"
     url = reverse("voids:task_cell", args=[v.pk, t.pk]) + "?in=tile"
     resp = voids_client.post(url, {"status": "in_progress", "assignee": "", "autosave": "1"}, HTTP_HX_REQUEST="true")
