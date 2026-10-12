@@ -44,15 +44,35 @@ the user approval and edit screen.
 **Contract**: ECC, TEMP, ARK, Concierge. They all follow the same workflow;
 the contract is a filter, not a separate process.
 
-**Area**: SE, SW, NE, NW… Each area has a list of postcode districts (EH16, EH17…)
-and a **default supervisor**.
+**Area**: the four geographical areas, **NE, NW, SE and SW**. Each postcode
+district (EH1, EH2…) belongs to one area.
+
+**Supervisor patch**: a list of postcode districts for each supervisor. A patch is
+**not** the same as an area. With three supervisors, patches cross area
+boundaries. Starting patches:
+
+| Supervisor | Postcode districts |
+|---|---|
+| Stee L | EH1, 2, 8, 9, 13, 16, 17, 19, 20 |
+| Martin T | EH3, 11, 12, 14, 28 |
+| Andrew F | EH4, 5, 6, 7, 15, 29, 30 |
+
+Admins edit both mappings on a settings page, so adding a fourth supervisor later
+means editing a patch, not changing code. Any district not on a list (EH10, EH21…)
+goes on a "no supervisor" list for an admin to assign.
+
+**Trade supervisor**: a supervisor responsible for one trade in **every** area.
+**Jamie** looks after **Electrical**. He is linked to any void with electrical
+work or an electrical flag, whatever its postcode. He gets that void's alerts and
+it appears in his "My voids" list.
 
 **Void**
 - SIMPRO number(s) (the tracker has some, like "10584/10995", so a void can have
   several), contract, address, postcode, area
-- Area is set automatically from the postcode, but can be changed by hand
-- Supervisor: defaults to the area's supervisor, but can be changed by hand.
-  The area and the supervisor are separate filters.
+- Area and supervisor are both set automatically from the postcode district,
+  and both can be changed by hand. They are **separate fields and separate
+  filters**, so the list can be sorted and filtered by geography or by supervisor.
+- Electrical supervisor (Jamie), added automatically when electrical work is needed
 - Access (Master Key, Concierge, keysafe…), date the keys were received
 - **Client hand-back date**: nominated by the client, and the main target
 - Expected completion, if different from the hand-back date (the system warns when
@@ -112,27 +132,41 @@ needed.
 - Admin pages for areas (postcodes and supervisor), trades, contracts and
   operatives/subcontractors.
 
-### Importing from the live tracker during testing and roll-out
+### Importing the tracker
 
-**Yes, this can be done.** It runs as a nightly job, like the existing retention job:
+The live tracker is on OneDrive. **No nightly sync is needed**: the copy we
+have is enough to test with. Before launch BFS uploads the latest file once, and
+from then on the site is the master.
 
-1. The job reads the live workbook. It can get it in one of three ways:
-   - **(a) Recommended:** directly from OneDrive/SharePoint, using the Microsoft
-     Graph API (needs a one-off app registration in your Microsoft 365 tenant).
-   - (b) From a shared link.
-   - (c) As a fallback, an admin uploads the file on an **Import** page.
-2. The importer reads each tab, matches rows by **SIMPRO number** (or by the
-   address when the SIMPRO number is blank), and creates or updates the voids.
-   It understands the cell text: "STC", "C", "Kev 25/09" (who and date) and
-   "Issued 1 bed paint" (kept as a note).
-3. **It reads cell colours as well**, not just the values: red text becomes
-   Claimed, and orange, yellow or green fills become the overall status.
-4. Blank, header and divider rows ("NEW SYSTEM") are skipped. Rows the importer
-   can't understand go on an **import report** to check, and are never guessed at.
-5. During the trial **the spreadsheet is the master**: each night's import
-   overwrites the imported fields. Notes, inspections and photos added on the site
-   are kept. At go-live the import is switched off and the site becomes the master.
-   One-way only: the site never writes back to the spreadsheet.
+- An admin uploads the workbook on an **Import** page. Every upload can first be
+  run as a **trial** (shows what would change, saves nothing), then confirmed.
+- Rows are matched by **SIMPRO number** (or by the address when the SIMPRO number
+  is blank). Re-importing updates them and never creates a duplicate, so the
+  final pre-launch upload can safely be run over the test data.
+- It understands the cell text: "STC", "Kev 25/09" (who and date) and
+  "Issued 1 bed paint" (kept as a note).
+- **It reads cell colours as well**, not just the values: red text becomes
+  Claimed, and orange, yellow or green fills become the overall status.
+- Blank, header and divider rows ("NEW SYSTEM") are skipped. Concierge "C" and
+  "?" values come from early versions of the sheet and are ignored.
+- Rows the importer can't understand go on an **import report** to check, and are
+  never guessed at.
+
+### Completed tab (history)
+
+The Completed tab is imported once as history, for the Stage 3 trends. The data
+is patchy, and the columns moved over time, so:
+
+- **Columns are found by their header name**, not by position. Names are
+  matched loosely ("Vinyl / Flooring", "Flooring", "Vinyl"). Where a block of rows
+  has its own header row, that header is used for the rows below it.
+- Anything that can't be matched goes into the void's notes, so nothing is lost.
+- Each historic void is marked **Imported – history**, with a quality flag for
+  what is missing (no dates, no supervisor…).
+- Dashboards **leave incomplete records out of a measure** instead of counting
+  them as zero. For example, a void with no hand-back date is left out of the
+  "on time" percentage, and the dashboard shows how many records each figure
+  is based on.
 
 ## 4. Stage 2: automatic updates
 
@@ -147,8 +181,18 @@ needed.
   STC trades.
 - **Weekly summary for managers**: all areas, the hand-backs due, what was missed
   and why.
-- **Channels**: email to everyone. **WhatsApp** for supervisors, through the
-  WhatsApp Business Cloud API (Meta) or Twilio. Things to know:
+- **Channels**: email to everyone. **WhatsApp** messages go to each supervisor's
+  own WhatsApp, on their personal number. This is outgoing only: replies are not
+  read by the site. It uses the official WhatsApp Business Cloud API (Meta).
+  - **Testing:** Meta gives a free **test sender number** that can send to up to
+    5 verified phone numbers. That covers you and the supervisors, so it needs no
+    cost and no number of our own.
+  - **Live:** one of the BFS WhatsApp numbers becomes the sender. A number
+    registered with the API **can no longer be used in the normal WhatsApp app**,
+    so use a spare or dedicated number, not a personal phone.
+  - Unofficial tools that send from a personal account break WhatsApp's terms,
+    and the number can be banned, so we won't use them.
+  Other things to know:
   - It needs a business phone number, plus message templates that Meta approves.
   - It costs a small amount per message.
   - Each supervisor chooses email, WhatsApp or both in their profile.
@@ -180,25 +224,23 @@ needed.
 ## 7. Build order
 
 1. Models, admin pages for areas, trades and contracts, roles.
-2. Importer and nightly job, run against a copy of the tracker, with an
-   import report.
+2. Importer (upload, trial run, report), including the Completed history.
 3. Excel-style grid with filters and tabs, then the void page.
 4. Phone layout for the grid and the void page.
 5. Email alerts (new void → area supervisor) and digests.
 6. Dashboards.
 7. WhatsApp channel.
-8. Inspections with photos, and go-live (switch the import off).
+8. Inspections with photos, then go-live: final tracker upload and the site
+   becomes the master.
 
 ## 8. Open questions
 
-- Where is the live tracker stored (OneDrive, SharePoint, Teams, a local
-  drive)? This decides import option (a), (b) or (c).
-- The full list of areas, their postcodes and supervisors. The tracker header
-  covers SE only so far.
-- What does a plain **"C"** mean on the Concierge tab (complete?), and **"?"**?
-- Should the Completed tab be imported once as history, which Stage 3 trends need?
-- WhatsApp: is there a company number we can use, and is a small cost per
-  message acceptable?
+- Which postcode districts are in NE, NW, SE and SW? The importer can suggest a
+  mapping from the "Void Area" column in the tracker for you to check.
+- Jamie's surname, and email/mobile for each supervisor and manager.
+- Whose phone numbers go on the WhatsApp test list (up to 5).
+- A copy of the Completed tab when we reach the history import (a ZIP is fine
+  if the file is large).
 
 ## Decisions
 
@@ -213,4 +255,9 @@ needed.
 | 2026-10-12 | Notifications | Email first; WhatsApp for supervisors |
 | 2026-10-12 | Areas | Supervisors have default areas, but area and supervisor are separate, editable fields and filters |
 | 2026-10-12 | Target | The client-nominated hand-back date is the main target |
-| 2026-10-12 | Trial import | Nightly one-way import from the live tracker; the spreadsheet stays the master until go-live |
+| 2026-10-12 | Import | No nightly sync. Test with the current copy; one final upload before launch; matched by SIMPRO number so re-imports don't duplicate |
+| 2026-10-12 | Areas vs patches | Four geographical areas (NE/NW/SE/SW) and separate supervisor patches by postcode district; both are filters |
+| 2026-10-12 | Electrical | Jamie supervises all electrical work, in every area |
+| 2026-10-12 | Concierge C / ? | Early-version values; ignored |
+| 2026-10-12 | History | Completed tab imported once; columns matched by header; incomplete records are flagged and left out of dashboard figures they can't support |
+| 2026-10-12 | WhatsApp | Outgoing to supervisors' own WhatsApp via the official API; Meta test number for testing; a dedicated BFS number when live |
