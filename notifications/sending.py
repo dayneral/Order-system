@@ -36,9 +36,18 @@ def copy_to(order):
     return [address] if address else []
 
 
-def _recipients_text(order):
+def cc_list(order):
+    """Everyone copied: the property-type address plus the person who placed the order."""
     cc = copy_to(order)
-    return settings.STORES_EMAIL + (f" (cc {cc[0]})" if cc else "")
+    owner = order.owner if order.owner_id else None
+    if owner and owner.email and owner.email.lower() not in {a.lower() for a in cc + [settings.STORES_EMAIL]}:
+        cc.append(owner.email)
+    return cc
+
+
+def _recipients_text(order):
+    cc = cc_list(order)
+    return settings.STORES_EMAIL + (f" (cc {', '.join(cc)})" if cc else "")
 
 
 def _build_message(order, kind, previous=None):
@@ -48,7 +57,7 @@ def _build_message(order, kind, previous=None):
         body=documents.render_text(order, kind, previous),
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[settings.STORES_EMAIL],
-        cc=copy_to(order),
+        cc=cc_list(order),
         reply_to=reply_to,
     )
     message.attach_alternative(documents.render_html(order, kind, previous), "text/html")

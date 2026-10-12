@@ -153,10 +153,12 @@ def test_print_view_matches_email_content(order):
 def test_order_emails_copy_by_property_type(order, settings):
     settings.VOIDS_CC_EMAIL, settings.OCCUPIED_CC_EMAIL = "voids@bfsuk.org", "info@bfsuk.org"
     services.submit(order, order.owner)
-    assert mail.outbox[-1].cc == ["info@bfsuk.org"]
-    assert OrderEmail.objects.filter(order=order).latest("created_at").recipient == "stores@bfsuk.org (cc info@bfsuk.org)"
+    owner = order.owner.email
+    assert mail.outbox[-1].cc == ["info@bfsuk.org", owner]
+    assert (OrderEmail.objects.filter(order=order).latest("created_at").recipient
+            == f"stores@bfsuk.org (cc info@bfsuk.org, {owner})")
     services.cancel(order, order.owner)
-    assert mail.outbox[-1].cc == ["info@bfsuk.org"]  # cancellations copied too
+    assert mail.outbox[-1].cc == ["info@bfsuk.org", owner]  # cancellations copied too
     order.property_type = "void"
     assert sending.copy_to(order) == ["voids@bfsuk.org"]
 
@@ -164,4 +166,4 @@ def test_order_emails_copy_by_property_type(order, settings):
 def test_no_copy_when_settings_blank(order, settings):
     settings.VOIDS_CC_EMAIL = settings.OCCUPIED_CC_EMAIL = ""
     services.submit(order, order.owner)
-    assert mail.outbox[-1].cc == []
+    assert mail.outbox[-1].cc == [order.owner.email]  # the person placing the order is always copied
