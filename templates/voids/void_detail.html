@@ -6,6 +6,7 @@
   <h1>{{ void.address }} <span class="pill st-{{ void.status }}">{{ void.get_status_display }}</span>{% if void.on_hold %} <span class="pill">On hold</span>{% endif %}</h1>
   <div class="actions"><a class="button primary" href="{% url 'voids:edit' void.pk %}">Edit details</a></div>
 </div>
+{% if void.issue_flag %}<form method="post" action="{% url 'voids:clear_issue' void.pk %}" class="issue-banner big" role="alert">{% csrf_token %}⚠ ISSUE{% if void.issue_note %}: {{ void.issue_note }}{% endif %} <button>Clear issue</button></form>{% endif %}
 {% if void.key_info %}<div class="keyinfo big" role="note"><b>⚠ Key info</b><br>{{ void.key_info|linebreaksbr }}</div>{% endif %}
 {% if void.stale_level %}<div class="msg msg-warning">No update for {{ void.days_since_update }} days. Add an update below.</div>{% endif %}
 {% if void.is_late_risk %}<div class="msg msg-warning">Expected completion ({{ void.expected_completion|date:"d M Y" }}) is after the client's hand-back date ({{ void.handback_date|date:"d M Y" }}).</div>{% endif %}
@@ -14,8 +15,9 @@
   <tr><th>Postcode</th><td>{{ void.postcode|default:"—" }}</td><th>Area</th><td>{{ void.area|default:"—" }}</td></tr>
   <tr><th>Supervisor</th><td>{{ void.supervisor|default:"—" }}{% for s in trade_supervisors %}<br>{{ s }} ({{ s.trade }}){% endfor %}</td><th>Access</th><td>{{ void.access|default:"—" }}</td></tr>
   <tr><th>Client hand-back</th><td>{{ void.handback_date|date:"d M Y"|default:"—" }}</td><th>Expected completion</th><td>{{ void.expected_completion|date:"d M Y"|default:"—" }}</td></tr>
+  <tr><th>Works start</th><td>{{ void.start_date|date:"d M Y"|default:"—" }}</td><th></th><td></td></tr>
   <tr><th>Keys received</th><td>{{ void.keys_received|date:"d M Y"|default:"—" }}</td><th>Last inspection</th><td>{{ void.last_inspection|date:"d M Y"|default:"—" }}</td></tr>
-  <tr><th>Flags</th><td>{% if void.electrical_flag %}⚡ Electrical {% endif %}{% if void.issue_flag %}<span class="tag bad">Issue</span>{% endif %}{% if not void.electrical_flag and not void.issue_flag %}—{% endif %}</td><th>Note</th><td>{{ void.status_note|default:"—" }}</td></tr>
+  <tr><th>Flags</th><td>{% if void.electrical_flag %}⚡ Electrical {% endif %}{% if not void.electrical_flag %}—{% endif %}</td><th>Note</th><td>{{ void.status_note|default:"—" }}</td></tr>
 </table>
 <h2>Job diary</h2>
 <form method="post" action="{% url 'voids:add_update' void.pk %}" class="panel add-update">{% csrf_token %}
@@ -41,11 +43,11 @@
   <thead><tr><th>Trade</th><th>Status</th><th>Who</th><th>Date</th><th>Notes</th><th></th></tr></thead>
   <tbody>
   {% for trade, task in trades %}
-  <tr>
+  <tr{% if not task %} class="unused"{% endif %}>
     <td>{{ trade.name }}</td>
     <td><span class="k t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}">{% if task %}{{ task.get_status_display }}{% if task.claimed %} · claimed{% endif %}{% else %}—{% endif %}</span></td>
     <td>{{ task.assignee }}</td><td>{{ task.date|date:"d/m/y" }}</td><td>{{ task.notes|linebreaksbr }}</td>
-    <td><a href="{% url 'voids:task_cell' void.pk trade.pk %}">Update</a></td>
+    <td>{% if task %}<a href="{% url 'voids:task_cell' void.pk trade.pk %}">Update</a>{% else %}<form method="post" action="{% url 'voids:add_trade' void.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="trade" value="{{ trade.pk }}"><button class="link">Add to job</button></form>{% endif %}</td>
   </tr>
   {% endfor %}
   </tbody>

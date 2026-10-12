@@ -134,6 +134,8 @@ class Void(models.Model):
                                    related_name="voids")
     access = models.CharField(max_length=100, blank=True)
     keys_received = models.DateField(null=True, blank=True)
+    start_date = models.DateField("works start", null=True, blank=True,
+                                  help_text="Not allowed to start before, or works booked to start on, this date.")
     handback_date = models.DateField("client hand-back date", null=True, blank=True)
     expected_completion = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
@@ -141,6 +143,7 @@ class Void(models.Model):
     status_fixed = models.BooleanField("status set by hand", default=False)
     electrical_flag = models.BooleanField(default=False)
     issue_flag = models.BooleanField("issue", default=False)
+    issue_note = models.CharField("issue details", max_length=300, blank=True)
     status_note = models.CharField(max_length=300, blank=True,
                                    help_text="Short note shown in the list, e.g. \"Rewire\", \"Awaiting lines\".")
     key_info = models.TextField("key info", blank=True,
@@ -195,19 +198,17 @@ class Void(models.Model):
 
 class TradeTask(models.Model):
     class Status(models.TextChoices):
-        NONE = "", "—"
         NOT_REQUIRED = "not_required", "Not required"
         STC = "stc", "STC"
         BOOKED = "booked", "Booked / ordered"
-        ASSIGNED = "assigned", "Assigned"
         IN_PROGRESS = "in_progress", "In progress"
         SNAGGING = "snagging", "Snagging / follow on"
-        ISSUE = "issue", "Issue"
         COMPLETE = "complete", "Complete"
 
     void = models.ForeignKey(Void, on_delete=models.CASCADE, related_name="tasks")
     trade = models.ForeignKey(Trade, on_delete=models.PROTECT)
-    status = models.CharField(max_length=20, choices=Status.choices, blank=True, default="")
+    # A trade on the job with nobody assigned yet is STC (still to have trades assigned).
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.STC)
     # Red writing in the tracker: works claimed for payment.
     claimed = models.BooleanField(default=False)
     assignee = models.CharField("who", max_length=100, blank=True)

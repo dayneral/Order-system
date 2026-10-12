@@ -271,3 +271,10 @@ is patchy, and the columns moved over time, so:
 | 2026-10-12 | Needs an update | Each void has a "last updated" time, moved by diary updates, trade changes and status changes (not imports or small detail edits). Open voids are flagged **amber after 5 days and red after 10** (settings `VOIDS_STALE_AMBER_DAYS` / `VOIDS_STALE_RED_DAYS`). Filter "No update in 7+ days" and sort "Least recently updated". Voids **on hold** are not flagged |
 | 2026-10-12 | Key info | The old Notes box becomes **Key info** (key safe numbers, warnings), shown in a yellow warning box on the tile and at the top of the void page |
 | 2026-10-12 | Photos | Not needed; managed on a separate system |
+| 2026-10-12 | Concierge stations | Recorded as voids; the "Concierge Station" job type is removed (if no voids use it) |
+| 2026-10-12 | Works start date | New **Works start** date on a void (not allowed to start before, or booked to start on), shown on the tile |
+| 2026-10-12 | Trade statuses | **Assigned is merged into In progress.** A trade added to a job starts as **STC** until someone is assigned. Trade statuses: STC, Booked / ordered, In progress, Snagging / follow on, Complete, Not required |
+| 2026-10-12 | Issues | **Issue belongs to the whole job**, not a trade: a red ISSUE banner on the tile and void page, with details. Raised by an Issue diary update (or the edit page), cleared with **Clear issue**. Trade issues from earlier imports moved to the job |
+| 2026-10-12 | Tiles | Closed tiles are all the same size; an opened tile takes the full row. **Expected completion** is the large date on the tile, with hand-back and works start beside it. Opened tiles list the trades on the job first, then **Add other trade** |
+| 2026-10-12 | Sorting | Sort menu on the list: **job number (lowest first, the default)**, hand-back date, expected completion, works start, least/most recently updated, address |
+| 2026-10-12 | Electrical quick filter | **⚡ Electrical works** button beside the job types: voids with an electrical flag or Electrical on the job |

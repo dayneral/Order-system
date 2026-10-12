@@ -258,3 +258,42 @@ def test_import_does_not_count_as_activity(db, admin_user):
     run = importer.preview_upload("t.xlsx", tracker(ROWS), admin_user, today=TODAY)
     importer.apply_run(run, admin_user)
     assert all(v.stale_level == "red" for v in Void.objects.all())
+
+
+def test_add_trade_starts_stc_and_remove(voids_client):
+    from voids.models import JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Trade Flat", status=Void.Status.STC)
+    plumbing = Trade.objects.get(name="Plumbing")
+    resp = voids_client.post(reverse("voids:add_trade", args=[v.pk]), {"trade": plumbing.pk}, HTTP_HX_REQUEST="true")
+    assert b"Trades on this job" in resp.content
+    task = TradeTask.objects.get(void=v, trade=plumbing)
+    assert task.status == TradeTask.Status.STC
+    voids_client.post(reverse("voids:task_cell", args=[v.pk, plumbing.pk]), {"remove": "1"})
+    assert not TradeTask.objects.filter(void=v).exists()
+
+
+def test_issue_update_flags_job_until_cleared(voids_client):
+    from voids.models import JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Issue Flat", status=Void.Status.STC)
+    resp = voids_client.post(reverse("voids:add_update", args=[v.pk]),
+                             {"kind": "issue", "text": "Leak under sink"}, HTTP_HX_REQUEST="true")
+    assert b"ISSUE: Leak under sink" in resp.content
+    v.refresh_from_db()
+    assert v.issue_flag and v.issue_note == "Leak under sink"
+    assert b"Issue Flat" in voids_client.get(reverse("voids:list"), {"flag": "issue"}).content
+    voids_client.post(reverse("voids:clear_issue", args=[v.pk]))
+    v.refresh_from_db()
+    assert not v.issue_flag
+
+
+def test_sort_by_job_number_and_electrical_works_filter(voids_client):
+    from voids.models import JobType
+    jt = JobType.objects.first()
+    for simpro, addr in [("12000", "C Flat"), ("900", "A Flat"), ("10584/10995", "B Flat")]:
+        Void.objects.create(job_type=jt, address=addr, simpro=simpro, status=Void.Status.STC)
+    body = voids_client.get(reverse("voids:list"), {"sort": "", "flag": ""}).content.decode()
+    assert body.index("A Flat") < body.index("B Flat") < body.index("C Flat")
+    sparky = Void.objects.create(job_type=jt, address="Rewire Flat", status=Void.Status.STC)
+    TradeTask.objects.create(void=sparky, trade=Trade.objects.get(name="Electrical"))
+    body = voids_client.get(reverse("voids:list"), {"flag": "electrical"}).content.decode()
+    assert "Rewire Flat" in body and "A Flat" not in body

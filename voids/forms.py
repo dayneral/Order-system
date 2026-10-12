@@ -9,9 +9,9 @@ class VoidForm(forms.ModelForm):
     class Meta:
         model = Void
         fields = ["key_info", "job_type", "simpro", "address", "postcode", "area", "supervisor", "access", "keys_received",
-                  "handback_date", "expected_completion", "status", "status_fixed", "status_note",
-                  "electrical_flag", "issue_flag", "on_hold", "last_inspection"]
-        widgets = {"keys_received": DATE, "handback_date": DATE, "expected_completion": DATE,
+                  "start_date", "handback_date", "expected_completion", "status", "status_fixed", "status_note",
+                  "electrical_flag", "issue_flag", "issue_note", "on_hold", "last_inspection"]
+        widgets = {"keys_received": DATE, "start_date": DATE, "handback_date": DATE, "expected_completion": DATE,
                    "last_inspection": DATE,
                    "key_info": forms.Textarea(attrs={"rows": 3, "placeholder": "e.g. Key safe 1234 · Asbestos on chimney · Dog next door"})}
         help_texts = {
@@ -69,8 +69,9 @@ class FilterForm(forms.Form):
         ("", "Any date"), ("overdue", "Overdue"), ("week", "Due in 7 days"), ("none", "No date")])
     flag = forms.ChoiceField(required=False, label="Flag", choices=[
         ("", "Any"), ("stale", "No update in 7+ days"), ("stale_amber", "Needs an update (amber or red)"),
-        ("stale_red", "Needs an update (red)"), ("on_hold", "On hold"), ("electrical", "Electrical"), ("issue", "Issue"),
+        ("stale_red", "Needs an update (red)"), ("on_hold", "On hold"), ("electrical", "Electrical works"), ("issue", "Issue"),
         ("late", "Expected after hand-back")])
     sort = forms.ChoiceField(required=False, label="Sort", choices=[
-        ("", "Hand-back date"), ("stale", "Least recently updated"), ("recent", "Most recently updated"),
-        ("address", "Address"), ("simpro", "SIMPRO number")])
+        ("", "Job number (lowest first)"), ("handback", "Hand-back date"), ("expected", "Expected completion"),
+        ("start", "Works start"), ("stale", "Least recently updated"), ("recent", "Most recently updated"),
+        ("address", "Address")])

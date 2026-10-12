@@ -1,7 +1,7 @@
 {% with v=row.void %}
 <tr class="st-{{ v.status }}{% if row.overdue %} overdue{% endif %}" id="void-{{ v.pk }}">
   <th class="stick addr" scope="row"><a href="{% url 'voids:detail' v.pk %}">{{ v.address }}</a>
-    <span class="tags">{% if v.status == "new" %}<span class="tag">Needs visit</span>{% endif %}{% if v.electrical_flag %}<span class="tag elec" title="Electrical flag">⚡</span>{% endif %}{% if v.issue_flag %}<span class="tag bad">Issue</span>{% endif %}</span></th>
+    <span class="tags">{% if v.status == "new" %}<span class="tag">Needs visit</span>{% endif %}{% if v.electrical_flag %}<span class="tag elec" title="Electrical flag">⚡</span>{% endif %}{% if v.issue_flag %}<span class="tag bad" title="{{ v.issue_note }}">Issue</span>{% endif %}</span></th>
   <td>{{ v.job_type.name }}</td>
   <td class="nowrap">{{ v.postcode }}</td>
   <td class="nowrap">{{ v.supervisor|default:"" }}</td>
