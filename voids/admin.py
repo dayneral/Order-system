@@ -16,8 +16,8 @@ class AreaAdmin(admin.ModelAdmin):
 
 @admin.register(Trade)
 class TradeAdmin(admin.ModelAdmin):
-    list_display = ["name", "position", "active"]
-    list_editable = ["position", "active"]
+    list_display = ["name", "short_name", "position", "active"]
+    list_editable = ["short_name", "position", "active"]
 
 
 class DistrictInline(admin.TabularInline):

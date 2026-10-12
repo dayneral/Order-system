@@ -10,10 +10,16 @@
   </div>
 </div>
 
+<nav class="areas" aria-label="Area">
+  {% for a in area_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
+</nav>
 <nav class="quick" aria-label="Job type">
   {% for j in job_links %}<a href="?{{ j.query }}"{% if j.active %} class="on" aria-current="true"{% endif %}>{{ j.label }}</a>{% endfor %}
+  <span class="viewtoggle">View: <a href="?view=tiles"{% if view == "tiles" %} class="on"{% endif %}>Tiles</a><a href="?view=table"{% if view == "table" %} class="on"{% endif %}>Table</a></span>
 </nav>
 
+<details class="more-filters"{% if form.q.value or form.supervisor.value or form.status.value or form.due.value or form.flag.value or trade_filter %} open{% endif %}>
+<summary>Search and more filters</summary>
 <form method="get" class="filters">
   {% for field in form %}{% if field.is_hidden %}{{ field }}{% else %}
   <label>{{ field.label }} {{ field }}</label>{% endif %}{% endfor %}
@@ -24,7 +30,20 @@
   <button class="primary">Filter</button>
   <a href="?clear=1">Clear</a>
 </form>
+</details>
 
+{% if view == "tiles" %}
+<p class="key">
+  <span class="dot t-stc"></span>STC <span class="dot t-booked"></span>Booked <span class="dot t-assigned"></span>Assigned
+  <span class="dot t-in_progress"></span>In progress <span class="dot t-snagging"></span>Snagging
+  <span class="dot t-issue"></span>Issue <span class="dot t-complete"></span>Complete <span class="dot t-complete claimed"></span>Claimed
+  &nbsp;· Tap a property to see and update its trades.
+</p>
+<div class="tiles">
+  {% for row in rows %}{% include "voids/_tile.html" %}
+  {% empty %}<p>No voids match these filters.</p>{% endfor %}
+</div>
+{% else %}
 <p class="key">
   <span class="k st-new">New: needs visit</span><span class="k st-stc">STC</span>
   <span class="k st-in_progress">In progress</span><span class="k st-snagging">Snagging</span>
@@ -34,7 +53,6 @@
   <span class="k t-issue">Issue</span><span class="k t-complete">Complete</span><span class="k claimed">Red = claimed</span>
   &nbsp;Click a trade cell to update it.
 </p>
-
 <div class="vgrid-wrap">
 <table class="vgrid">
   <thead><tr>
@@ -57,4 +75,6 @@
   </tbody>
 </table>
 </div>
+{% endif %}
+{% if unassigned %}<p class="hint">{{ unassigned }} void{{ unassigned|pluralize }} {{ unassigned|pluralize:"has,have" }} no area yet and only show under All properties.</p>{% endif %}
 {% endblock %}

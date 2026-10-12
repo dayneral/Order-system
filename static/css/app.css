@@ -265,3 +265,57 @@ table.vgrid tr .stick a { color: #222; }
   table.vgrid .stick { min-width: 8rem; max-width: 9rem; }
   .vgrid-wrap { max-height: none; }
 }
+
+/* --- Voids: tiles ------------------------------------------------------------ */
+.areas { display: flex; gap: .5rem; flex-wrap: wrap; margin: .75rem 0 .25rem; }
+.areas a { padding: .55rem 1.1rem; border: 2px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); background: var(--card); font-weight: 700; font-size: 1.05rem; }
+.areas a.on { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.areas .count { font-weight: 400; opacity: .8; margin-left: .25rem; }
+.quick .viewtoggle { margin-left: auto; color: var(--muted); display: flex; gap: .3rem; align-items: center; }
+.quick .viewtoggle a { padding: .2rem .7rem; }
+.more-filters { margin: .5rem 0; }
+.more-filters summary { cursor: pointer; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: .75rem; align-items: start; }
+.tile { background: var(--card); border: 1px solid var(--line); border-left: 8px solid #ccc; border-radius: 8px; }
+.tile.st-new { border-left-color: #9b7fd6; } .tile.st-stc { border-left-color: #bbb; }
+.tile.st-in_progress { border-left-color: #ee8f3c; } .tile.st-snagging { border-left-color: #e6c619; }
+.tile.st-complete { border-left-color: #3fa34d; } .tile.st-handed_back { border-left-color: #888; }
+.tile.overdue { box-shadow: 0 0 0 2px #c00 inset; }
+.tile summary { list-style: none; cursor: pointer; padding: .6rem .75rem; display: flex; flex-direction: column; gap: .35rem; }
+.tile summary::-webkit-details-marker { display: none; }
+.tile-top { display: flex; justify-content: space-between; gap: .5rem; align-items: start; }
+.tile-addr { font-weight: 700; }
+.tile .pill { white-space: nowrap; color: #222; }
+.tile-meta { display: flex; flex-wrap: wrap; gap: .2rem .6rem; font-size: .82rem; color: var(--muted); }
+.dots { display: flex; flex-wrap: wrap; gap: .25rem; }
+.dot { display: inline-flex; align-items: center; justify-content: center; width: 1.65rem; height: 1.65rem; border-radius: 50%; font-size: .62rem; font-weight: 700; color: #222; border: 2px solid #0003; background: #fff; vertical-align: middle; }
+.key .dot { width: .9rem; height: .9rem; margin: 0 .15rem 0 .5rem; }
+.dot.t-none { background: transparent; border-style: dashed; color: var(--muted); }
+.dot.t-stc { background: #fff; } .dot.t-booked { background: #9fc5e8; } .dot.t-assigned { background: #f9cbad; }
+.dot.t-in_progress { background: #f0a560; } .dot.t-snagging { background: #ffe14d; } .dot.t-issue { background: #f26b6b; }
+.dot.t-complete { background: #7cc47f; }
+/* Claimed for payment: a small red mark on the circle, not a loud ring. */
+.dot { position: relative; }
+.dot.claimed { color: #222 !important; font-weight: 700; }
+.dot.claimed::after { content: ""; position: absolute; top: -3px; right: -3px; width: .5rem; height: .5rem; border-radius: 50%; background: #d00000; border: 1px solid #fff; }
+.tile-foot { display: flex; align-items: center; gap: .6rem; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
+.bar { flex: 1 1 4rem; min-width: 4rem; height: .5rem; border-radius: 99px; background: var(--sunk); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: #3fa34d; }
+.tile-foot .late { color: #b00020; font-weight: 700; } .tile-foot .soon { color: #6a3fb5; font-weight: 700; }
+.tile-body { border-top: 1px solid var(--line); padding: .5rem .75rem .75rem; }
+.tile-note { margin: 0 0 .4rem; font-size: .9rem; }
+.trade-list { list-style: none; margin: 0; padding: 0; }
+.trade-list li { border-bottom: 1px solid var(--line); }
+.trade-list li.unused { opacity: .6; }
+.trade-row { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 8rem 1fr; gap: .5rem; align-items: center; width: 100%; padding: .35rem 0; font-size: .9rem; }
+.trade-row:hover .tname, .trade-row:focus-visible .tname { text-decoration: underline; }
+.trade-row:focus-visible { outline: 2px solid var(--brand); }
+.tile .cellform { padding: .4rem 0; }
+.tile .cellform label { display: flex; flex-direction: column; font-size: .85rem; }
+.tile .cellform label.inline { flex-direction: row; gap: .3rem; align-items: center; }
+.tile-links { font-size: .85rem; margin: .5rem 0 0; color: var(--muted); }
+@media (max-width: 700px) {
+  .tiles { grid-template-columns: 1fr; }
+  .quick .viewtoggle { margin-left: 0; }
+  .trade-row { grid-template-columns: auto 6.5rem 1fr; }
+}

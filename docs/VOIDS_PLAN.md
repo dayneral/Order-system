@@ -266,3 +266,4 @@ is patchy, and the columns moved over time, so:
 | 2026-10-12 | Job types | One list for every job, with a **Job type** label (Void, Temp, Concierge Station; admins can add more). Job type is a filter (quick buttons on the list), not a separate tab |
 | 2026-10-12 | Claimed | "Claimed" (red writing) is stored as a tick on each trade, separate from its status, because the tracker shows red writing on work in progress as well as complete work |
 | 2026-10-12 | Supervisor details | Emails and phone numbers to be added later by BFS under Voids settings → Supervisors |
+| 2026-10-12 | List layout | **Tiles** by default instead of a spreadsheet grid: area buttons (All properties, NE, NW, SE, SW) with counts, job type buttons, then one tile per property with a coloured circle per trade and a progress bar. Tap a tile to open it and update trades. The spreadsheet-style **Table** view is kept as an option |

@@ -175,3 +175,19 @@ def test_admin_switches_module_access(admin_client, make_user):
 def test_export_and_import_pages(admin_client):
     assert admin_client.get(reverse("voids:export")).status_code == 200
     assert admin_client.get(reverse("voids:import")).status_code == 200
+
+
+def test_tiles_by_area_and_tile_edit(voids_client):
+    from voids.models import Area, JobType
+    ne, sw = Area.objects.get(code="NE"), Area.objects.get(code="SW")
+    a = Void.objects.create(job_type=JobType.objects.first(), address="North Flat", area=ne, status=Void.Status.STC)
+    Void.objects.create(job_type=JobType.objects.first(), address="South Flat", area=sw, status=Void.Status.STC)
+    resp = voids_client.get(reverse("voids:list"), {"view": "tiles", "area": ne.pk})
+    assert b"North Flat" in resp.content and b"South Flat" not in resp.content
+    assert b'class="tiles"' in resp.content
+    trade = Trade.objects.get(name="Plumbing")
+    url = reverse("voids:task_cell", args=[a.pk, trade.pk]) + "?in=tile"
+    resp = voids_client.post(url, {"status": "in_progress", "assignee": "Ben"}, HTTP_HX_REQUEST="true")
+    assert b'class="tile' in resp.content and b"dot t-in_progress" in resp.content
+    a.refresh_from_db()
+    assert a.status == Void.Status.IN_PROGRESS

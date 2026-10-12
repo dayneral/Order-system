@@ -1,0 +1,56 @@
+{% with v=row.void %}
+<article class="tile st-{{ v.status }}{% if row.overdue %} overdue{% endif %}" id="tile-{{ v.pk }}">
+<details{% if open %} open{% endif %}>
+  <summary>
+    <div class="tile-top">
+      <span class="tile-addr">{{ v.address }}</span>
+      <span class="pill st-{{ v.status }}">{{ v.get_status_display }}</span>
+    </div>
+    <div class="tile-meta">
+      {% if v.simpro %}<span>#{{ v.simpro }}</span>{% endif %}
+      <span>{{ v.job_type.name }}</span>
+      {% if v.area %}<span>{{ v.area }}</span>{% endif %}
+      {% if v.supervisor %}<span>{{ v.supervisor }}</span>{% endif %}
+      {% if v.electrical_flag %}<span class="tag elec" title="Electrical flag">⚡</span>{% endif %}
+      {% if v.issue_flag %}<span class="tag bad">Issue</span>{% endif %}
+    </div>
+    <div class="dots" aria-label="Trades">
+      {% for trade, task in row.cells %}{% if task and task.status != "not_required" %}<span class="dot t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}" title="{{ trade.name }}: {{ task.get_status_display }}{% if task.claimed %} (claimed){% endif %}">{{ trade.badge }}</span>{% endif %}{% endfor %}
+    </div>
+    <div class="tile-foot">
+      <span class="bar" role="img" aria-label="{{ row.done }} of {{ row.needed }} trades complete"><span style="width: {{ row.percent }}%"></span></span>
+      <span>{{ row.done }}/{{ row.needed }} done</span>
+      {% if v.handback_date %}<span class="{% if row.overdue %}late{% elif row.this_week %}soon{% endif %}">Hand back {{ v.handback_date|date:"d M" }}</span>
+      {% elif v.expected_completion %}<span>Expected {{ v.expected_completion|date:"d M" }}</span>{% endif %}
+    </div>
+  </summary>
+  <div class="tile-body">
+    {% if v.status_note %}<p class="tile-note">{{ v.status_note }}</p>{% endif %}
+    <ul class="trade-list">
+    {% for trade, task in row.cells %}
+      <li{% if not task or task.status == "not_required" %} class="unused"{% endif %}>
+        {% if editing == trade.pk %}
+        <form hx-post="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML" class="cellform">
+          <b>{{ trade.name }}</b>
+          <label>Status {{ form.status }}</label>
+          <label>Who {{ form.assignee }}</label>
+          <label>Date {{ form.date }}</label>
+          <label class="inline">{{ form.claimed }} Claimed</label>
+          <label>Notes {{ form.notes }}</label>
+          <span class="actions"><button class="primary">Save</button><button name="cancel" value="1">Cancel</button></span>
+        </form>
+        {% else %}
+        <button class="trade-row" hx-get="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML">
+          <span class="dot t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span>
+          <span class="tname">{{ trade.name }}</span>
+          <span class="tinfo">{% if task %}{{ task.get_status_display }}{% if task.assignee %} · {{ task.assignee }}{% endif %}{% if task.date %} · {{ task.date|date:"d/m" }}{% endif %}{% if task.notes %}<br><small>{{ task.notes|linebreaksbr }}</small>{% endif %}{% else %}<small>Not set – tap to add</small>{% endif %}</span>
+        </button>
+        {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+    <p class="tile-links"><a href="{% url 'voids:detail' v.pk %}">Open void page</a> · {{ v.postcode }}{% if v.access %} · Access: {{ v.access }}{% endif %}</p>
+  </div>
+</details>
+</article>
+{% endwith %}

@@ -39,6 +39,7 @@ class Area(models.Model):
 
 class Trade(models.Model):
     name = models.CharField(max_length=60, unique=True)
+    short_name = models.CharField(max_length=3, blank=True, help_text="Up to 3 letters shown in the trade circles, e.g. PL.")
     position = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)
     # Other column headings this trade has had in the tracker, one per line.
@@ -49,6 +50,10 @@ class Trade(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def badge(self):
+        return self.short_name or self.name[:2].upper()
 
     def heading_names(self):
         names = [self.name] + [a for a in self.import_aliases.splitlines() if a.strip()]

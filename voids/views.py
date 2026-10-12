@@ -16,7 +16,7 @@ from audit.models import AuditEntry, record
 
 from . import importer, services
 from .forms import FilterForm, TaskForm, UploadForm, VoidForm
-from .models import JobType, Trade, TradeTask, Void, VoidImportRun
+from .models import Area, JobType, Trade, TradeTask, Void, VoidImportRun
 
 SESSION_KEY = "voids_filters"
 VOID_FIELDS = list(VoidForm.Meta.fields)
@@ -43,8 +43,6 @@ def filtered_voids(request):
         qs = qs.filter(Q(address__icontains=q) | Q(postcode__icontains=q) | Q(simpro__icontains=q))
     if f.get("job"):
         qs = qs.filter(job_type=f["job"])
-    if f.get("area"):
-        qs = qs.filter(area=f["area"])
     if f.get("supervisor"):
         sup = f["supervisor"]
         if sup.trade_id:
@@ -81,7 +79,13 @@ def filtered_voids(request):
     voids = list(qs)
     if f.get("flag") == "late":
         voids = [v for v in voids if v.is_late_risk]
-    return form, voids, params
+    # Counts for the area buttons are taken before the area filter.
+    area_counts = {}
+    for v in voids:
+        area_counts[v.area_id] = area_counts.get(v.area_id, 0) + 1
+    if f.get("area"):
+        voids = [v for v in voids if v.area_id == f["area"].pk]
+    return form, voids, params, area_counts
 
 
 OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.BOOKED, TradeTask.Status.ASSIGNED,
@@ -93,7 +97,11 @@ def grid_rows(voids, trades):
     rows = []
     for v in voids:
         by_trade = {t.trade_id: t for t in v.tasks.all()}
-        rows.append({"void": v, "cells": [(trade, by_trade.get(trade.pk)) for trade in trades],
+        cells = [(trade, by_trade.get(trade.pk)) for trade in trades]
+        needed = [t for _, t in cells if t and t.status not in ("", TradeTask.Status.NOT_REQUIRED)]
+        done = sum(1 for t in needed if t.status == TradeTask.Status.COMPLETE)
+        rows.append({"void": v, "cells": cells, "done": done, "needed": len(needed),
+                     "percent": round(100 * done / len(needed)) if needed else 0,
                      "overdue": bool(v.handback_date and v.handback_date < today
                                      and v.status != Void.Status.HANDED_BACK),
                      "this_week": bool(v.handback_date and today <= v.handback_date <= today + timedelta(days=7))})
@@ -102,7 +110,7 @@ def grid_rows(voids, trades):
 
 @login_required
 def void_list(request):
-    form, voids, params = filtered_voids(request)
+    form, voids, params, area_counts = filtered_voids(request)
     trades = list(Trade.objects.filter(active=True))
     current_job = params.get("job", "")
     job_links = []
@@ -111,10 +119,26 @@ def void_list(request):
         p["job"] = str(jt.pk) if jt else ""
         job_links.append({"label": jt.name if jt else "All", "query": p.urlencode(),
                           "active": (str(jt.pk) if jt else "") == current_job})
-    # Job type and trade have their own controls (quick buttons, trade list).
+    current_area = params.get("area", "")
+    area_links = []
+    for a in [None, *Area.objects.all()]:
+        p = params.copy()
+        p["area"] = str(a.pk) if a else ""
+        area_links.append({"label": a.code if a else "All properties",
+                           "count": sum(area_counts.values()) if a is None else area_counts.get(a.pk, 0),
+                           "query": p.urlencode(), "active": (str(a.pk) if a else "") == current_area})
+    unassigned = area_counts.get(None, 0)
+    view = request.GET.get("view")
+    if view in ("tiles", "table"):
+        request.session["voids_view"] = view
+    view = request.session.get("voids_view", "tiles")
+    # Area, job type and trade have their own controls (quick buttons, trade list).
     form.fields["trade"].widget = form.fields["trade"].hidden_widget()
     form.fields["job"].widget = form.fields["job"].hidden_widget()
+    form.fields["area"].widget = form.fields["area"].hidden_widget()
     return render(request, "voids/void_list.html", {
+        "area_links": area_links, "unassigned": unassigned, "view": view,
+        "task_statuses": [c for c in TradeTask.Status.choices if c[0]],
         "form": form, "rows": grid_rows(voids, trades), "trades": trades, "count": len(voids),
         "job_links": job_links, "params": params.urlencode(), "trade_filter": params.get("trade", ""),
         "statuses": Void.Status.choices,
@@ -176,9 +200,10 @@ def task_cell(request, void_id, trade_id):
     trade = get_object_or_404(Trade, pk=trade_id)
     task = TradeTask.objects.filter(void=void, trade=trade).first() or TradeTask(void=void, trade=trade)
     in_grid = request.headers.get("HX-Request") == "true"
+    in_tile = in_grid and request.GET.get("in") == "tile"
     if request.method == "POST":
         if "cancel" in request.POST:
-            return _cell_response(request, void, trade, in_grid)
+            return _cell_response(request, void, trade, in_grid, in_tile)
         form = TaskForm(request.POST, instance=task)
         if form.is_valid():
             before = TradeTask.objects.filter(pk=task.pk).first()
@@ -187,23 +212,25 @@ def task_cell(request, void_id, trade_id):
                    services.changed_fields(before, task, ["status", "assignee", "date", "claimed", "notes"])
                    if before else {})
             services.refresh_status(void, request.user)
-            return _cell_response(request, void, trade, in_grid)
+            return _cell_response(request, void, trade, in_grid, in_tile)
     else:
         form = TaskForm(instance=task)
     if in_grid:
         trades = list(Trade.objects.filter(active=True))
         void = Void.objects.select_related("job_type", "area", "supervisor").prefetch_related("tasks__trade").get(pk=void.pk)
-        return render(request, "voids/_row.html", {"row": grid_rows([void], trades)[0], "editing": trade.pk,
-                                                    "form": form})
+        tpl = "voids/_tile.html" if in_tile else "voids/_row.html"
+        return render(request, tpl, {"row": grid_rows([void], trades)[0], "editing": trade.pk,
+                                     "form": form, "open": True})
     return render(request, "voids/task_edit.html", {"form": form, "void": void, "trade": trade, "task": task})
 
 
-def _cell_response(request, void, trade, in_grid):
+def _cell_response(request, void, trade, in_grid, in_tile=False):
     if not in_grid:
         return redirect("voids:detail", void.pk)
     void = Void.objects.select_related("job_type", "area", "supervisor").prefetch_related("tasks__trade").get(pk=void.pk)
     trades = list(Trade.objects.filter(active=True))
-    return render(request, "voids/_row.html", {"row": grid_rows([void], trades)[0]})
+    tpl = "voids/_tile.html" if in_tile else "voids/_row.html"
+    return render(request, tpl, {"row": grid_rows([void], trades)[0], "open": True})
 
 
 STATUS_FILLS = {"in_progress": "FFF4B183", "snagging": "FFFFF2A8", "complete": "FFC6E8C6", "new": "FFE3DAF5",
@@ -214,7 +241,7 @@ TASK_FILLS = {"complete": "FFC6E8C6", "in_progress": "FFF4B183", "snagging": "FF
 
 @login_required
 def export(request):
-    _, voids, _ = filtered_voids(request)
+    _, voids, _, _ = filtered_voids(request)
     trades = list(Trade.objects.filter(active=True))
     wb = openpyxl.Workbook()
     ws = wb.active
