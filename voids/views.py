@@ -57,8 +57,6 @@ def filtered_voids(request):
     if f.get("q"):
         q = f["q"].strip()
         qs = qs.filter(Q(address__icontains=q) | Q(postcode__icontains=q) | Q(simpro__icontains=q))
-    if f.get("job") and f.get("flag") != "electrical":  # Electrical covers every job type
-        qs = qs.filter(job_type=f["job"])
     status = f.get("status")
     if status == "all":
         pass
@@ -106,22 +104,33 @@ def filtered_voids(request):
         voids = [v for v in voids if v.stale_level]
     elif f.get("flag") == "stale_red":
         voids = [v for v in voids if v.stale_level == "red"]
-    # Area and supervisor buttons show counts, so those two filters are applied here:
-    # each set of counts respects the other filter but not its own.
+    # Area, supervisor and job type buttons show counts, so those filters are applied here.
+    # Area and supervisor are alternative ways in: a view is by one or the other, never both.
     sups = list(Supervisor.objects.filter(active=True).select_related("trade"))
     area = f.get("area")
     sup = f.get("supervisor")
-    # Area and supervisor are alternative ways in: a view is by one or the other, never both.
+    job = f.get("job") if f.get("flag") != "electrical" else None  # Electrical covers every job type
+
+    def by_place(items):
+        if sup:
+            return [v for v in items if services.supervises(sup, v)]
+        if area:
+            return [v for v in items if v.area_id == area.pk]
+        return items
+
+    placed = by_place(voids)
+    job_counts = {None: len(placed)}
+    for v in placed:
+        job_counts[v.job_type_id] = job_counts.get(v.job_type_id, 0) + 1
+    if job:
+        voids = [v for v in voids if v.job_type_id == job.pk]
     area_counts = {}
     for v in voids:
         area_counts[v.area_id] = area_counts.get(v.area_id, 0) + 1
     sup_counts = {s.pk: sum(1 for v in voids if services.supervises(s, v)) for s in sups}
     sup_counts[None] = len(voids)
-    if sup:
-        voids = [v for v in voids if services.supervises(sup, v)]
-    elif area:
-        voids = [v for v in voids if v.area_id == area.pk]
-    return form, voids, params, {"areas": area_counts, "sups": sup_counts, "sup_list": sups}
+    voids = by_place(voids)
+    return form, voids, params, {"areas": area_counts, "sups": sup_counts, "sup_list": sups, "jobs": job_counts}
 
 
 # The status buttons on each trade, in workflow order.
@@ -180,6 +189,7 @@ def void_list(request):
         if p.get("flag") == "electrical":
             p["flag"] = ""  # Electrical is its own button across all job types
         job_links.append({"label": jt.name if jt else "All", "query": p.urlencode(),
+                          "count": counts["jobs"].get(jt.pk if jt else None, 0),
                           "active": (str(jt.pk) if jt else "") == current_job
                           and params.get("flag") != "electrical"})
     current_sup = params.get("supervisor", "")
@@ -202,11 +212,6 @@ def void_list(request):
         sup_links.append({"label": (f"{sp.name} ({sp.trade.name})" if sp and sp.trade_id else sp.name) if sp
                           else "All supervisors", "count": counts["sups"].get(sp.pk, 0),
                           "query": p.urlencode(), "active": str(sp.pk) == current_sup})
-    p = params.copy()
-    elec_on = params.get("flag") == "electrical"
-    p["flag"] = "" if elec_on else "electrical"
-    p["job"] = ""
-    electrical_link = {"query": p.urlencode(), "active": elec_on}
     p = params.copy()
     done_on = params.get("status") == Void.Status.HANDED_BACK
     p["status"] = "" if done_on else Void.Status.HANDED_BACK
@@ -233,8 +238,8 @@ def void_list(request):
     form.fields["supervisor"].widget = form.fields["supervisor"].hidden_widget()
     return render(request, "voids/void_list.html", {
         "area_links": area_links, "unassigned": unassigned, "view": view,
-        "electrical_link": electrical_link, "sort_options": sort_options, "sort_toggle": sort_toggle, "sup_links": sup_links,
-        "completed_link": completed_link, "electrical_mode": params.get("flag") == "electrical",
+        "sort_options": sort_options, "sort_toggle": sort_toggle, "sup_links": sup_links,
+        "completed_link": completed_link, "electrical_mode": electrical_view(params),
         "task_statuses": [c for c in TradeTask.Status.choices if c[0]],
         "form": form, "rows": grid_rows(voids, trades), "trades": trades, "count": len(voids),
         "job_links": job_links, "params": params.urlencode(), "trade_filter": params.get("trade", ""),
@@ -357,6 +362,15 @@ def task_cell(request, void_id, trade_id):
     return render(request, "voids/task_edit.html", {"form": form, "void": void, "trade": trade, "task": task})
 
 
+def electrical_view(params):
+    """Viewing the electrical supervisor's voids (or the Electrical flag filter): show each tile's
+    electrical status prominently."""
+    if params.get("flag") == "electrical":
+        return True
+    sup = Supervisor.objects.filter(pk=params.get("supervisor") or 0).select_related("trade").first()
+    return bool(sup and sup.trade_id and sup.trade.name.lower() == "electrical")
+
+
 def _task_ids(void, trade):
     # Stable ids so the cursor stays in the same box after each automatic save.
     return f"t{void.pk}-{trade.pk}-%s"
@@ -367,7 +381,7 @@ def _tile(request, void, **extra):
     row = grid_rows([v], list(Trade.objects.filter(active=True)))[0]
     saved = QueryDict(request.session.get(SESSION_KEY, ""))
     return render(request, "voids/_tile.html", {"row": row, "open": True,
-                                                "electrical_mode": saved.get("flag") == "electrical", **extra})
+                                                "electrical_mode": electrical_view(saved), **extra})
 
 
 @login_required
