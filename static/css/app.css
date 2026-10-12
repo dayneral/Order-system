@@ -392,3 +392,13 @@ table.grid tr.unused td { opacity: .6; }
   .tile.open summary .keyinfo { -webkit-line-clamp: 1; display: -webkit-box; }
 }
 .tile.open .trade-row { grid-template-columns: auto 7.5rem 1fr; }
+/* Opened tile on desktop: the full row, everything visible without scrolling. */
+@media (min-width: 701px) {
+  .tile.open { grid-column: 1 / -1; }
+  .tile.open details { grid-template-columns: minmax(270px, 22rem) 1fr; }
+  .tile.open .tile-body { max-height: none; overflow: visible; display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; align-content: start; }
+  .tile.open .tile-body > .issue-clear, .tile.open .tile-body > .keyinfo, .tile.open .tile-body > .tile-note, .tile.open .tile-body > .tile-links { grid-column: 1 / -1; }
+  .tile.open summary { height: auto; min-height: 19rem; }
+}
+.tiles { grid-auto-flow: row; }
+@media (min-width: 701px) { .tile.open .tile-body { grid-template-columns: 1.5fr 1fr; } }
