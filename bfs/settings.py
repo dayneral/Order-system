@@ -177,6 +177,3 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
 }
 
-# Voids: an open void with no update for this many days is flagged amber / red.
-VOIDS_STALE_AMBER_DAYS = int(os.environ.get("VOIDS_STALE_AMBER_DAYS", "5"))
-VOIDS_STALE_RED_DAYS = int(os.environ.get("VOIDS_STALE_RED_DAYS", "10"))

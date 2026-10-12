@@ -1,0 +1,23 @@
+{% with v=row.void %}
+<li{% if task.status == "not_required" %} class="unused"{% endif %}>
+  {% if editing == trade.pk %}
+  <form hx-post="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML" class="cellform">
+    <b>{{ trade.name }}</b>
+    <label>Status {{ form.status }}</label>
+    <label>Who {{ form.assignee }}</label>
+    <label>Date {{ form.date }}</label>
+    <label class="inline">{{ form.claimed }} Claimed</label>
+    <label>Notes {{ form.notes }}</label>
+    <label>{{ form.comment.label }} {{ form.comment }}</label>
+    <span class="actions"><button class="primary">Save</button><button name="cancel" value="1">Cancel</button>
+      <button name="remove" value="1" class="danger" onclick="return confirm('Remove {{ trade.name|escapejs }} from this job?')">Remove from job</button></span>
+  </form>
+  {% else %}
+  <button class="trade-row" hx-get="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML">
+    <span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span>
+    <span class="tname">{{ trade.name }}</span>
+    <span class="tinfo">{{ task.get_status_display }}{% if task.assignee %} · {{ task.assignee }}{% endif %}{% if task.date %} · {{ task.date|date:"d/m" }}{% endif %}{% if task.notes %}<br><small>{{ task.notes|linebreaksbr }}</small>{% endif %}</span>
+  </button>
+  {% endif %}
+</li>
+{% endwith %}

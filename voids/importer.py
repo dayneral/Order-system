@@ -32,6 +32,7 @@ from . import services
 from .models import Area, JobType, Supervisor, Trade, TradeTask, Void, VoidImportRun, normalise_heading
 
 S = TradeTask.Status
+ISSUE = "issue"  # an Issue colour on a trade raises an issue on the whole job
 
 FIELD_HEADINGS = {
     "postcode": {"post code", "postcode"},
@@ -50,7 +51,7 @@ LEGEND = {
     "works in progress": S.IN_PROGRESS,
     "snagging issued": S.SNAGGING,
     "follow on": S.SNAGGING,
-    "issue": S.ISSUE,
+    "issue": ISSUE,
     "glazing comp door": S.BOOKED,
     "electrical flag": "electrical",
     "hand back this week": "handback",
@@ -58,7 +59,7 @@ LEGEND = {
 # Used when a tab has no colour key of its own (standard Excel colours).
 DEFAULT_COLOURS = {
     "rgb:FF00B050": S.COMPLETE, "rgb:FF92D050": S.COMPLETE, "rgb:FFFFC000": S.IN_PROGRESS,
-    "rgb:FFFFFF00": S.SNAGGING, "rgb:FFFF0000": S.ISSUE, "rgb:FF7030A0": "electrical",
+    "rgb:FFFFFF00": S.SNAGGING, "rgb:FFFF0000": ISSUE, "rgb:FF7030A0": "electrical",
 }
 RED_TEXT = {"FFFF0000", "FFC00000"}
 DATE_IN_TEXT = re.compile(r"(\d{1,2})\s*[/.-]\s*(\d{1,2})(?:\s*[/.-]\s*(\d{2,4}))?")
@@ -122,25 +123,28 @@ def to_date(value, today):
     return guess_date(clean(value), today) if value else None
 
 
+WORK_COLOURS = (S.COMPLETE, S.IN_PROGRESS, S.SNAGGING, ISSUE, S.BOOKED)
+
+
 def parse_task(cell, legend, today):
     text = clean(cell.value)
     colour = legend.get(colour_key(cell)) or DEFAULT_COLOURS.get(colour_key(cell))
     claimed = bool(text) and is_red_text(cell)
-    if not text and colour not in (S.COMPLETE, S.IN_PROGRESS, S.SNAGGING, S.ISSUE, S.BOOKED):
+    if not text and colour not in WORK_COLOURS:
         return None
     low = text.lower()
-    task = {"status": "", "claimed": claimed, "assignee": "", "date": None, "notes": ""}
+    task = {"status": S.STC, "claimed": claimed, "assignee": "", "date": None, "notes": ""}
     if low.startswith("stc"):
         task["status"] = S.STC
         rest = text[3:].strip(" -–:")
         task["notes"] = rest
-        if colour in (S.COMPLETE, S.IN_PROGRESS, S.SNAGGING, S.ISSUE, S.BOOKED):
+        if colour in WORK_COLOURS:
             task["status"] = colour
         return task
     if low.startswith(("not needed", "not required", "n/a")):
         task["status"] = S.NOT_REQUIRED
         return task
-    task["status"] = colour if colour in (S.COMPLETE, S.IN_PROGRESS, S.SNAGGING, S.ISSUE, S.BOOKED) else S.ASSIGNED
+    task["status"] = colour if colour in WORK_COLOURS else S.IN_PROGRESS
     lines = [ln.strip() for ln in re.split(r"[\n\r]+", text) if ln.strip()]
     last = lines[-1] if lines else ""
     d = guess_date(last, today)
@@ -224,7 +228,7 @@ def parse_workbook(data, today=None):
             if not simpro and len(filled) == 1:
                 continue  # a divider row such as "NEW SYSTEM"
             item = {"sheet": ws.title, "row": row[0].row, "job_type": job_type, "simpro": simpro,
-                    "address": address, "tasks": {}}
+                    "address": address, "tasks": {}, "issue_note": ""}
             for f in ("postcode", "supervisor", "access", "status_note"):
                 c = val(f)
                 item[f] = clean(c.value) if c is not None else ""
@@ -243,13 +247,19 @@ def parse_workbook(data, today=None):
             row_colours = {legend.get(colour_key(x)) or DEFAULT_COLOURS.get(colour_key(x))
                            for x in row[: max(fields.values()) + 1]}
             item["electrical_flag"] = "electrical" in row_colours
-            item["issue_flag"] = colour_key(addr_cell) in {k for k, v in legend.items() if v == S.ISSUE} \
+            item["issue_flag"] = colour_key(addr_cell) in {k for k, v in legend.items() if v == ISSUE} \
                 or colour_key(addr_cell) == "rgb:FFFF0000"
             for name, idx in trade_cols.items():
                 if idx < len(row):
                     t = parse_task(row[idx], legend, today)
                     if t:
                         item["tasks"][name] = t
+            issue_trades = [n for n, t in item["tasks"].items() if t["status"] == ISSUE]
+            for n in issue_trades:
+                item["tasks"][n]["status"] = S.IN_PROGRESS
+            if issue_trades:
+                item["issue_flag"] = True
+                item["issue_note"] = "Issue on " + ", ".join(issue_trades) + " (from tracker)"
             if "Electrical" in item["tasks"] and item["tasks"]["Electrical"]["status"] not in ("", S.NOT_REQUIRED):
                 if re.search(r"rewire|electric", " ".join(str(v) for v in item["tasks"]["Electrical"].values()), re.I):
                     item["electrical_flag"] = True
@@ -362,6 +372,8 @@ def apply_run(run, user):
         void.status_note = note[:300]
         void.electrical_flag = item["electrical_flag"]
         void.issue_flag = item["issue_flag"]
+        if item["issue_flag"] and not void.issue_note:
+            void.issue_note = item.get("issue_note", "")[:300]
         if item["last_inspection"]:
             void.last_inspection = date.fromisoformat(item["last_inspection"])
         if item["area"] and item["area"] in areas:

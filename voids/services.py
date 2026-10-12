@@ -26,7 +26,7 @@ def trade_supervisors(void):
     sups = list(Supervisor.objects.filter(active=True, trade__isnull=False).select_related("trade"))
     if not sups:
         return []
-    needed = {t.trade_id for t in void.tasks.all() if t.status not in ("", S.NOT_REQUIRED)}
+    needed = {t.trade_id for t in void.tasks.all() if t.status != S.NOT_REQUIRED}
     out = []
     for s in sups:
         if s.trade_id in needed or (void.electrical_flag and s.trade.name.lower() == "electrical"):
@@ -38,7 +38,7 @@ def derive_status(void):
     """Work out the overall status (the row colour) from the trades."""
     if void.status_fixed or void.status == Void.Status.HANDED_BACK:
         return void.status
-    statuses = [t.status for t in void.tasks.all() if t.status not in ("", S.NOT_REQUIRED)]
+    statuses = [t.status for t in void.tasks.all() if t.status != S.NOT_REQUIRED]
     if not statuses:
         return Void.Status.NEW if void.status == Void.Status.NEW else Void.Status.STC
     if all(s == S.COMPLETE for s in statuses):
@@ -74,6 +74,10 @@ def add_update(void, author, kind, text):
     upd = VoidUpdate.objects.create(void=void, author=author if getattr(author, "pk", None) else None,
                                     kind=kind, text=text.strip())
     touch(void)
+    if kind == VoidUpdate.Kind.ISSUE:
+        # An Issue update raises an issue on the whole job until someone clears it.
+        void.issue_flag, void.issue_note = True, text.strip()[:300]
+        Void.objects.filter(pk=void.pk).update(issue_flag=True, issue_note=void.issue_note)
     if kind == VoidUpdate.Kind.VISIT:
         void.last_inspection = timezone.localdate()
         fields = ["last_inspection"]
@@ -103,3 +107,15 @@ def changed_fields(before, after, fields):
         if a != b:
             out[f] = {"from": str(a) if a is not None else None, "to": str(b) if b is not None else None}
     return out
+
+
+def needs_electrical(void):
+    return void.electrical_flag or any(
+        t.trade.name.lower() == "electrical" and t.status != S.NOT_REQUIRED for t in void.tasks.all())
+
+
+def simpro_number(void):
+    """Sort key: the first number in the SIMPRO field (blank last)."""
+    import re
+    m = re.search(r"\d+", void.simpro or "")
+    return (0, int(m.group())) if m else (1, 0)
