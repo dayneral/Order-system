@@ -17,12 +17,16 @@
   </form>
   {% else %}
   <div class="trade-line">
-    <button class="trade-row" hx-get="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML">
+    <button class="trade-row" hx-get="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML" title="Edit who, date and notes">
       <span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span>
       <span class="tname">{{ trade.name }}</span>
-      <span class="tinfo">{{ task.get_status_display }}{% if task.assignee %} · {{ task.assignee }}{% endif %}{% if task.date %} · {{ task.date|date:"d/m" }}{% endif %}{% if task.notes %}<br><small>{{ task.notes|linebreaksbr }}</small>{% endif %}{% if task.updated_by %}<br><small class="changed-by">Changed by {{ task.updated_by.get_short_name }} · {{ task.updated_at|date:"d M H:i" }}</small>{% endif %}</span>
+      <span class="tinfo">{% if task.assignee %}{{ task.assignee }}{% endif %}{% if task.date %} · {{ task.date|date:"d/m" }}{% endif %}{% if task.status == "not_required" %}Not required{% endif %}{% if task.notes %}<br><small>{{ task.notes|linebreaksbr }}</small>{% endif %}{% if task.updated_by %}<br><small class="changed-by">Changed by {{ task.updated_by.get_short_name }} · {{ task.updated_at|date:"d M H:i" }}</small>{% endif %}</span>
     </button>
     {% if task.status != "not_required" %}
+    <span class="status-toggle" role="group" aria-label="{{ trade.name }} status">
+      {% for value, label in row.status_choices %}<button class="st-btn t-{{ value }}{% if task.status == value %} on{% endif %}"{% if task.status == value %} aria-pressed="true" disabled{% endif %}
+        hx-post="{% url 'voids:set_task_status' v.pk trade.pk %}" hx-vals='{"status": "{{ value }}"}' hx-target="closest article" hx-swap="outerHTML">{{ label }}</button>{% endfor %}
+    </span>
     <button class="claim-btn{% if task.claimed %} on{% endif %}" title="{% if task.claimed %}Claimed – click to undo{% else %}Mark as claimed for payment{% endif %}"
       hx-post="{% url 'voids:toggle_claim' v.pk trade.pk %}" hx-target="closest article" hx-swap="outerHTML">{% if task.claimed %}✓ Claimed{% else %}£ Claim{% endif %}</button>
     {% endif %}

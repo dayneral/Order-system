@@ -14,7 +14,7 @@
 <nav class="areas" aria-label="Area">
   {% for a in area_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
 </nav>
-<nav class="areas sups" aria-label="Supervisor">
+<nav class="areas sups" aria-label="Supervisor"><span class="or-label">or by supervisor:</span>
   {% for a in sup_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
 </nav>
 <nav class="quick" aria-label="Job type">

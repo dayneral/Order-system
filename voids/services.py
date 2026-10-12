@@ -213,3 +213,12 @@ def supervises(sup, void):
             return True
         return sup.trade.name.lower() == "electrical" and void.electrical_flag
     return False
+
+
+AUTO_DATE_STATUSES = (S.BOOKED, S.IN_PROGRESS, S.COMPLETE)
+
+
+def auto_date(task, old_status):
+    """A status change sets the trade's date: the day it was assigned (booked / in progress) or completed."""
+    if task.status != old_status and task.status in AUTO_DATE_STATUSES:
+        task.date = timezone.localdate()
