@@ -397,9 +397,10 @@ def test_supervisor_buttons_and_own_voids_by_default(client, make_user):
     assert "filter-label" in body and "Jamie H (Electrical)" in body
     body = client.get(reverse("voids:list"), {"supervisor": jamie.pk}).content.decode()
     assert "Martin Temp Flat" in body and "Stee Flat" not in body
-    # Electrical button shows electrical voids of every job type, with electrical prominent.
-    body = client.get(reverse("voids:list"), {"supervisor": "", "job": jt_void.pk, "flag": "electrical"}).content.decode()
-    assert "Martin Temp Flat" in body and "elec-bar" in body
+    # Jamie's view shows electrical work prominently on each tile; there's no separate Electrical button.
+    assert "elec-bar" in client.get(reverse("voids:list"), {"supervisor": jamie.pk}).content.decode()
+    body = client.get(reverse("voids:list"), {"supervisor": stee.pk}).content.decode()
+    assert "elec-bar" not in body and "Electrical works</a>" not in body
 
 
 def test_sign_off_only_when_all_trades_complete_and_button_on_tile(voids_client):

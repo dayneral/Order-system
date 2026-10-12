@@ -213,11 +213,6 @@ def void_list(request):
                           else "All supervisors", "count": counts["sups"].get(sp.pk, 0),
                           "query": p.urlencode(), "active": str(sp.pk) == current_sup})
     p = params.copy()
-    elec_on = params.get("flag") == "electrical"
-    p["flag"] = "" if elec_on else "electrical"
-    p["job"] = ""
-    electrical_link = {"query": p.urlencode(), "active": elec_on}
-    p = params.copy()
     done_on = params.get("status") == Void.Status.HANDED_BACK
     p["status"] = "" if done_on else Void.Status.HANDED_BACK
     completed_link = {"query": p.urlencode(), "active": done_on}
@@ -243,8 +238,8 @@ def void_list(request):
     form.fields["supervisor"].widget = form.fields["supervisor"].hidden_widget()
     return render(request, "voids/void_list.html", {
         "area_links": area_links, "unassigned": unassigned, "view": view,
-        "electrical_link": electrical_link, "sort_options": sort_options, "sort_toggle": sort_toggle, "sup_links": sup_links,
-        "completed_link": completed_link, "electrical_mode": params.get("flag") == "electrical",
+        "sort_options": sort_options, "sort_toggle": sort_toggle, "sup_links": sup_links,
+        "completed_link": completed_link, "electrical_mode": electrical_view(params),
         "task_statuses": [c for c in TradeTask.Status.choices if c[0]],
         "form": form, "rows": grid_rows(voids, trades), "trades": trades, "count": len(voids),
         "job_links": job_links, "params": params.urlencode(), "trade_filter": params.get("trade", ""),
@@ -367,6 +362,15 @@ def task_cell(request, void_id, trade_id):
     return render(request, "voids/task_edit.html", {"form": form, "void": void, "trade": trade, "task": task})
 
 
+def electrical_view(params):
+    """Viewing the electrical supervisor's voids (or the Electrical flag filter): show each tile's
+    electrical status prominently."""
+    if params.get("flag") == "electrical":
+        return True
+    sup = Supervisor.objects.filter(pk=params.get("supervisor") or 0).select_related("trade").first()
+    return bool(sup and sup.trade_id and sup.trade.name.lower() == "electrical")
+
+
 def _task_ids(void, trade):
     # Stable ids so the cursor stays in the same box after each automatic save.
     return f"t{void.pk}-{trade.pk}-%s"
@@ -377,7 +381,7 @@ def _tile(request, void, **extra):
     row = grid_rows([v], list(Trade.objects.filter(active=True)))[0]
     saved = QueryDict(request.session.get(SESSION_KEY, ""))
     return render(request, "voids/_tile.html", {"row": row, "open": True,
-                                                "electrical_mode": saved.get("flag") == "electrical", **extra})
+                                                "electrical_mode": electrical_view(saved), **extra})
 
 
 @login_required
