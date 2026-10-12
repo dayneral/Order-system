@@ -517,3 +517,10 @@ td.late { color: #b00020; font-weight: 700; }
 .claim-btn { width: 6.6rem; text-align: center; flex-shrink: 0; }
 .ask-who { background: #fff4cc; border: 2px solid #e0a800; border-radius: 6px; padding: .35rem .6rem; margin: .2rem 0; font-size: .9rem; color: #3a2d00; }
 .cellform .error { color: #b00020; font-weight: 700; font-size: .82rem; }
+/* Status buttons line up row to row: fixed column widths, so the bold selected one doesn't
+   push the others along. */
+.status-toggle { display: inline-grid; grid-template-columns: 3.4rem 6.6rem 5.8rem 5.8rem; width: 21.6rem; }
+.st-btn { width: 100%; text-align: center; padding: .3rem 0; box-sizing: border-box; }
+.st-btn.on { box-shadow: none; }
+.trade-line { min-height: 2.6rem; }
+@media (max-width: 900px) { .status-toggle { grid-template-columns: repeat(4, 1fr); width: 100%; } }
