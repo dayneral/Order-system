@@ -78,7 +78,7 @@
 </table>
 <p class="note">{{ line_count }} line{{ line_count|pluralize }}.
 {% if has_flammable %}<span class="flam">Includes FLAMMABLE items: pick from the flammable store.</span>{% endif %}
-{% if has_non_stocked %}Other items are not held in stores and need to be sourced.{% endif %}</p>
+{% if has_non_stocked %}Other items may not be held in stores and may need to be sourced.{% endif %}</p>
 <p class="note">Sent by BFS Material Orders to {{ stores_email }}. Generated {{ generated_at|date:"d M Y H:i" }}.</p>
 </div>
 </body>
