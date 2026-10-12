@@ -470,3 +470,30 @@ def test_nightly_email_puts_snagging_first(db, mailoutbox):
     assert html.index("SNAGGING") < html.index("Visit Flat")
     assert "Snagging: Painting" in html
     assert any(r[0] == sup and r[3] for r in report)
+
+
+def test_overview_counts_and_links(voids_client):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from voids.models import JobType
+    today = timezone.localdate()
+    jt = JobType.objects.first()
+    stee = Supervisor.objects.get(name="Stee L")
+    Void.objects.create(job_type=jt, address="Late Flat", supervisor=stee, status="in_progress",
+                        handback_date=today - timedelta(days=2), issue_flag=True)
+    v = Void.objects.create(job_type=jt, address="Soon Flat", supervisor=stee, status="snagging",
+                            handback_date=today + timedelta(days=3))
+    TradeTask.objects.create(void=v, trade=Trade.objects.get(name="Painting"), status="stc")
+    resp = voids_client.get(reverse("voids:overview"))
+    assert resp.status_code == 200
+    ctx = resp.context
+    assert ctx["totals"]["open"] == 2 and ctx["totals"]["overdue"] == 1 and ctx["totals"]["issues"] == 1
+    assert ctx["totals"]["snagging"] == 1 and ctx["totals"]["due_soon"] == 1
+    stee_row = next(r for r in ctx["sup_rows"] if r["label"] == "Stee L")
+    overdue_cell = next(c for c in stee_row["cells"] if c["key"] == "overdue")
+    assert overdue_cell["n"] == 1 and f"supervisor={stee.pk}" in overdue_cell["url"] and "due=overdue" in overdue_cell["url"]
+    assert ctx["trades"][0]["trade"].name == "Painting"
+    body = voids_client.get(overdue_cell["url"]).content.decode()
+    assert "Late Flat" in body and "Soon Flat" not in body

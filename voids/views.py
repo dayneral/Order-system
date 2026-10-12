@@ -590,3 +590,10 @@ def import_discard(request, run_id):
     run.save(update_fields=["status"])
     messages.success(request, "Import discarded. Nothing was changed.")
     return redirect("voids:import")
+
+
+@login_required
+def overview(request):
+    from .overview import build
+    job = JobType.objects.filter(pk=request.GET.get("job") or 0).first()
+    return render(request, "voids/overview.html", build(job))
