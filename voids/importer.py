@@ -39,7 +39,7 @@ FIELD_HEADINGS = {
     "supervisor": {"supervisor"},
     "area": {"void area", "area"},
     "simpro": {"simpro number", "simpro no", "simpro", "temp simpro number"},
-    "expected": {"expected completion"},
+    "expected": {"expected completion", "hand back date", "handback date", "hand back"},
     "address": {"address"},
     "access": {"access"},
     "status_note": {"status"},
@@ -344,7 +344,7 @@ def preview_upload(filename, data, user, today=None):
     return VoidImportRun.objects.create(uploaded_by=user, filename=filename[:255], rows=rows, report=report)
 
 
-TRACKED = ["simpro", "address", "postcode", "area_id", "supervisor_id", "access", "expected_completion",
+TRACKED = ["simpro", "address", "postcode", "area_id", "supervisor_id", "access", "handback_date",
            "status_note", "electrical_flag", "issue_flag", "last_inspection"]
 
 
@@ -367,7 +367,8 @@ def apply_run(run, user):
         void.address = item["address"][:200]
         void.postcode = item["postcode"][:10].upper()
         void.access = item["access"][:100]
-        void.expected_completion = date.fromisoformat(item["expected"]) if item["expected"] else None
+        # The tracker's "Expected Completion" is the client hand-back date.
+        void.handback_date = date.fromisoformat(item["expected"]) if item["expected"] else None
         note = "; ".join(x for x in (item["status_note"], item["expected_note"]) if x)
         void.status_note = note[:300]
         void.electrical_flag = item["electrical_flag"]

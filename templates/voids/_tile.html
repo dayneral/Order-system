@@ -1,6 +1,6 @@
 {% with v=row.void %}
 <article class="tile st-{{ v.status }}{% if row.overdue %} overdue{% endif %}{% if v.on_hold %} held{% endif %}{% if v.issue_flag %} has-issue{% endif %}{% if open %} open{% endif %}" id="tile-{{ v.pk }}">
-<details{% if open %} open{% endif %} ontoggle="this.parentElement.classList.toggle('open', this.open)">
+<details{% if open %} open{% endif %} ontoggle="voidTileToggle(this)">
   <summary>
     {% if v.issue_flag %}<div class="issue-banner" role="alert">⚠ ISSUE{% if v.issue_note %}: {{ v.issue_note|truncatechars:70 }}{% endif %}</div>{% endif %}
     <div class="tile-top">
@@ -14,9 +14,11 @@
       {% if v.supervisor %}<span>{{ v.supervisor }}</span>{% endif %}
       {% if v.electrical_flag %}<span class="tag elec" title="Electrical works">⚡</span>{% endif %}
     </div>
+    {% if v.status == "complete" %}<div class="final-banner">✔ All trades complete – final check needed</div>
+    {% elif v.status == "handed_back" %}<div class="done-banner">✓ Completed{% if v.final_checked_by %} · final checked by {{ v.final_checked_by.get_short_name }} {{ v.final_checked_at|date:"d M" }}{% endif %}</div>{% endif %}
+    {% if electrical_mode %}{% with e=row.electrical %}<div class="elec-bar">⚡ <b>Electrical:</b> {% if e %}{{ e.get_status_display }}{% if e.assignee %} · {{ e.assignee }}{% endif %}{% if e.date %} · {{ e.date|date:"d/m" }}{% endif %}{% if e.notes %} · {{ e.notes|truncatechars:50 }}{% endif %}{% else %}flagged – not yet on the job{% endif %}</div>{% endwith %}{% endif %}
     <div class="tile-dates">
-      <span class="date-main{% if v.is_late_risk %} late{% endif %}"><small>Expected</small>{{ v.expected_completion|date:"d M"|default:"—" }}</span>
-      <span class="date-sub{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}"><small>Hand back</small>{{ v.handback_date|date:"d M"|default:"—" }}</span>
+      <span class="date-main{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}"><small>Hand back</small>{{ v.handback_date|date:"d M"|default:"—" }}</span>
       {% if v.start_date %}<span class="date-sub"><small>Start</small>{{ v.start_date|date:"d M" }}</span>{% endif %}
     </div>
     {% if v.key_info %}<div class="keyinfo" role="note"><span aria-hidden="true">⚠</span> {{ v.key_info }}</div>{% endif %}
@@ -43,7 +45,8 @@
     {% if v.key_info %}<div class="keyinfo">⚠ {{ v.key_info|linebreaksbr }}</div>{% endif %}
     {% if v.status_note %}<p class="tile-note">{{ v.status_note }}</p>{% endif %}
     <div class="body-col">
-    <h3 class="tile-h">Trades on this job</h3>
+    <h3 class="tile-h">Trades on this job
+      {% if row.claimable %}<button class="claim-all" hx-post="{% url 'voids:claim_complete' v.pk %}" hx-target="closest article" hx-swap="outerHTML">£ Claim all complete ({{ row.claimable }})</button>{% endif %}</h3>
     <ul class="trade-list">
     {% for trade, task in row.on_job %}{% include "voids/_trade_line.html" %}{% empty %}<li class="unused"><small>None yet – add one below.</small></li>{% endfor %}
     {% for trade, task in row.not_needed %}{% include "voids/_trade_line.html" %}{% endfor %}

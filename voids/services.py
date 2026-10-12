@@ -61,6 +61,47 @@ def refresh_status(void, actor=None, activity=True):
                {"status": {"from": old, "to": new}})
         if activity:
             add_update(void, actor, VoidUpdate.Kind.STATUS, f"Status → {void.get_status_display()}")
+    if void.status == Void.Status.COMPLETE and not void.final_check_requested_at and activity:
+        request_final_check(void, actor)
+    elif void.status not in (Void.Status.COMPLETE, Void.Status.HANDED_BACK) and void.final_check_requested_at:
+        # Reopened (e.g. a trade back in progress): ask again next time it is complete.
+        void.final_check_requested_at = None
+        Void.objects.filter(pk=void.pk).update(final_check_requested_at=None)
+
+
+def request_final_check(void, actor=None):
+    from .notify import send_final_check_request
+    sent = send_final_check_request(void)
+    void.final_check_requested_at = timezone.now()
+    Void.objects.filter(pk=void.pk).update(final_check_requested_at=void.final_check_requested_at)
+    who = ", ".join(sent) if sent else "no supervisor email set up – nobody emailed"
+    add_update(void, None, VoidUpdate.Kind.STATUS, f"All trades complete: final check requested ({who})")
+
+
+def confirm_final_check(void, user):
+    """The supervisor has final checked the property: the void moves to Completed."""
+    void.status = Void.Status.HANDED_BACK
+    void.final_checked_at = timezone.now()
+    void.final_checked_by = user
+    void.handed_back_at = timezone.localdate()
+    void.issue_flag = False
+    void.save(update_fields=["status", "final_checked_at", "final_checked_by", "handed_back_at", "issue_flag",
+                             "updated_at"])
+    record(user, "void.final_check", void, f"Final check confirmed for {void}")
+    add_update(void, user, VoidUpdate.Kind.STATUS, "Final check confirmed – moved to Completed")
+
+
+def reopen(void, user):
+    void.status = Void.Status.IN_PROGRESS
+    void.status_fixed = False
+    void.final_checked_at = None
+    void.final_checked_by = None
+    void.handed_back_at = None
+    void.save(update_fields=["status", "status_fixed", "final_checked_at", "final_checked_by", "handed_back_at",
+                             "updated_at"])
+    record(user, "void.reopen", void, f"Reopened {void}")
+    add_update(void, user, VoidUpdate.Kind.STATUS, "Reopened (taken out of Completed)")
+    refresh_status(void, user)
 
 
 def touch(void):
@@ -119,3 +160,20 @@ def simpro_number(void):
     import re
     m = re.search(r"\d+", void.simpro or "")
     return (0, int(m.group())) if m else (1, 0)
+
+
+def log_trade_change(void, user, task, comment):
+    """Diary line for a trade change. Quick successive edits by the same person to the same trade
+    (e.g. status, then who, then date) update one line instead of adding several."""
+    text = trade_update_text(task)
+    if comment:
+        text = f"{text}: {comment}"
+    last = void.updates.filter(hidden=False, kind=VoidUpdate.Kind.TRADE,
+                               created_at__gte=timezone.now() - timezone.timedelta(minutes=10)).first()
+    if (last and last.author_id == getattr(user, "pk", None) and not comment
+            and last.text.startswith(task.trade.name + " →")):
+        last.text = text
+        last.save(update_fields=["text"])
+        touch(void)
+        return last
+    return add_update(void, user, VoidUpdate.Kind.TRADE, text)

@@ -402,3 +402,27 @@ table.grid tr.unused td { opacity: .6; }
 }
 .tiles { grid-auto-flow: row; }
 @media (min-width: 701px) { .tile.open .tile-body { grid-template-columns: 1.5fr 1fr; } }
+/* Opened tile: the other tiles close up the gap (dense flow) and the open one gets its
+   own full row, clearly marked as the selected property. */
+.tiles { grid-auto-flow: row dense; }
+.tile.open { border: 3px solid var(--brand) !important; box-shadow: 0 4px 14px #0002; }
+.tile.open summary { background: color-mix(in srgb, var(--brand) 10%, var(--card)); }
+.tile.open summary .tile-addr { font-size: 1.15rem; }
+.tile.open summary::before { content: "Selected"; align-self: flex-start; background: var(--brand); color: var(--brand-ink); font-size: .72rem; font-weight: 700; padding: .05rem .5rem; border-radius: 4px; letter-spacing: .03em; text-transform: uppercase; }
+/* Supervisor buttons (as prominent as areas), completed, electrical, final check, claims. */
+.areas.sups a { font-size: .98rem; }
+.done-chip { border-color: #2e7d32 !important; }
+.done-chip.on { background: #2e7d32 !important; color: #fff !important; }
+.elec-bar { background: #efe3f8; border: 2px solid #7030a0; color: #2d0f45; border-radius: 6px; padding: .3rem .5rem; font-size: .9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.final-banner { background: #2e7d32; color: #fff; font-weight: 800; padding: .3rem .5rem; border-radius: 5px; font-size: .88rem; }
+.done-banner { background: #e3f1e4; color: #1b4d1e; font-weight: 700; padding: .3rem .5rem; border-radius: 5px; font-size: .85rem; }
+.final-check { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; background: #e3f1e4; border: 2px solid #2e7d32; border-radius: 6px; padding: .5rem .7rem; margin-bottom: .6rem; color: #1b4d1e; grid-column: 1 / -1; }
+.trade-line { display: flex; align-items: center; gap: .5rem; }
+.trade-line .trade-row { flex: 1; }
+.claim-btn { font-size: .8rem; padding: .2rem .55rem; border-radius: 99px; white-space: nowrap; }
+.claim-btn.on { background: #fde3e3; border-color: #d00000; color: #a00000; font-weight: 700; }
+.claim-all { font-size: .8rem; margin-left: .5rem; padding: .15rem .6rem; }
+.changed-by { color: var(--muted); }
+.editor-head { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.saved-note { margin-left: auto; font-size: .8rem; color: var(--muted); }
+.trade-list li.editing { background: color-mix(in srgb, var(--brand) 8%, transparent); border-radius: 6px; padding: 0 .4rem; }

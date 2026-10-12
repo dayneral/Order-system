@@ -157,8 +157,8 @@ class Void(models.Model):
         STC = "stc", "STC"
         IN_PROGRESS = "in_progress", "In progress"
         SNAGGING = "snagging", "Snagging"
-        COMPLETE = "complete", "Complete"
-        HANDED_BACK = "handed_back", "Handed back"
+        COMPLETE = "complete", "Ready for final check"
+        HANDED_BACK = "handed_back", "Completed"
 
     OPEN_STATUSES = [Status.NEW, Status.STC, Status.IN_PROGRESS, Status.SNAGGING, Status.COMPLETE]
 
@@ -173,8 +173,8 @@ class Void(models.Model):
     keys_received = models.DateField(null=True, blank=True)
     start_date = models.DateField("works start", null=True, blank=True,
                                   help_text="Not allowed to start before, or works booked to start on, this date.")
-    handback_date = models.DateField("client hand-back date", null=True, blank=True)
-    expected_completion = models.DateField(null=True, blank=True)
+    # The client's nominated hand-back date: the job's target / expected completion.
+    handback_date = models.DateField("hand-back date", null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
     # When set, the status is not worked out from the trades.
     status_fixed = models.BooleanField("status set by hand", default=False)
@@ -194,6 +194,11 @@ class Void(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     handed_back_at = models.DateField(null=True, blank=True)
+    # Final check: asked for when every trade is complete, confirmed by a supervisor.
+    final_check_requested_at = models.DateTimeField(null=True, blank=True)
+    final_checked_at = models.DateTimeField(null=True, blank=True)
+    final_checked_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL,
+                                         related_name="+")
 
     class Meta:
         ordering = ["handback_date", "address"]
@@ -207,7 +212,7 @@ class Void(models.Model):
 
     @property
     def target_date(self):
-        return self.handback_date or self.expected_completion
+        return self.handback_date
 
     @property
     def days_since_update(self):
@@ -227,10 +232,6 @@ class Void(models.Model):
             return "amber"
         return ""
 
-    @property
-    def is_late_risk(self):
-        """Expected completion is after the client's hand-back date."""
-        return bool(self.handback_date and self.expected_completion and self.expected_completion > self.handback_date)
 
 
 class TradeTask(models.Model):
@@ -251,6 +252,8 @@ class TradeTask(models.Model):
     assignee = models.CharField("who", max_length=100, blank=True)
     date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    updated_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    updated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = [("void", "trade")]

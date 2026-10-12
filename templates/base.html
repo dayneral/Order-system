@@ -69,5 +69,17 @@
   {% block help %}{% endblock %}
   {% block content %}{% endblock %}
 </main>
+<script>
+  // Voids tiles: only one open at a time.
+  function voidTileToggle(d) {
+    var tile = d.parentElement;
+    tile.classList.toggle('open', d.open);
+    if (!d.open) return;
+    document.querySelectorAll('.tile details[open]').forEach(function (o) {
+      if (o !== d) { o.open = false; o.parentElement.classList.remove('open'); }
+    });
+    tile.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+</script>
 </body>
 </html>
