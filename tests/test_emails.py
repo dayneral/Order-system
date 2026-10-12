@@ -148,3 +148,20 @@ def test_print_view_matches_email_content(order):
     print_html = documents.render_to_string_for_print(order, "submitted", back_url="/")
     strip = lambda h: h.split('<div class="doc">')[1].split("Generated")[0]  # noqa: E731
     assert strip(email_html) == strip(print_html)
+
+
+def test_order_emails_copy_by_property_type(order, settings):
+    settings.VOIDS_CC_EMAIL, settings.OCCUPIED_CC_EMAIL = "voids@bfsuk.org", "info@bfsuk.org"
+    services.submit(order, order.owner)
+    assert mail.outbox[-1].cc == ["info@bfsuk.org"]
+    assert OrderEmail.objects.filter(order=order).latest("created_at").recipient == "stores@bfsuk.org (cc info@bfsuk.org)"
+    services.cancel(order, order.owner)
+    assert mail.outbox[-1].cc == ["info@bfsuk.org"]  # cancellations copied too
+    order.property_type = "void"
+    assert sending.copy_to(order) == ["voids@bfsuk.org"]
+
+
+def test_no_copy_when_settings_blank(order, settings):
+    settings.VOIDS_CC_EMAIL = settings.OCCUPIED_CC_EMAIL = ""
+    services.submit(order, order.owner)
+    assert mail.outbox[-1].cc == []

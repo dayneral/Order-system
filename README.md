@@ -334,6 +334,8 @@ user needs the `CREATEDB` permission (`ALTER USER bfs CREATEDB;`).
 | `EMAIL_HOST_USER` | No | Default `materialorders@bfsuk.org`. |
 | `EMAIL_HOST_PASSWORD` | Yes (production) | Password for the mailbox above. Set it only in the Render dashboard. |
 | `DEFAULT_FROM_EMAIL` | No | Default `BFS Material Orders <materialorders@bfsuk.org>`. |
+| `VOIDS_CC_EMAIL` | No | Copied on every order email (new, amended, cancelled) for **void** properties. Blank = no copy. Go-live: voids@bfsuk.org. |
+| `OCCUPIED_CC_EMAIL` | No | As above for **occupied** properties. Go-live: info@bfsuk.org. |
 | `ORDER_VALUES_ENABLED` | No | Default off: prices and order values are hidden and don't block ordering. Set to `1` to show them. |
 | `STORES_EMAIL` | No | Where orders are sent. Default `stores@bfsuk.org`. |
 | `LOG_LEVEL` | No | Default `INFO`. |

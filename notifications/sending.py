@@ -30,6 +30,17 @@ def last_sent_snapshot(order, before=None):
     return latest.snapshot if latest else None
 
 
+def copy_to(order):
+    """Copy address by property type: VOIDS_CC_EMAIL for voids, OCCUPIED_CC_EMAIL for occupied. Blank = no copy."""
+    address = {"void": settings.VOIDS_CC_EMAIL, "occupied": settings.OCCUPIED_CC_EMAIL}.get(order.property_type, "")
+    return [address] if address else []
+
+
+def _recipients_text(order):
+    cc = copy_to(order)
+    return settings.STORES_EMAIL + (f" (cc {cc[0]})" if cc else "")
+
+
 def _build_message(order, kind, previous=None):
     reply_to = [order.owner.email] if order.owner_id and order.owner and order.owner.email else None
     message = EmailMultiAlternatives(
@@ -37,6 +48,7 @@ def _build_message(order, kind, previous=None):
         body=documents.render_text(order, kind, previous),
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=[settings.STORES_EMAIL],
+        cc=copy_to(order),
         reply_to=reply_to,
     )
     message.attach_alternative(documents.render_html(order, kind, previous), "text/html")
@@ -63,7 +75,7 @@ def send_order_email(order, kind):
     previous = last_sent_snapshot(order) if kind == "amended" else None
     ok, error = _attempt(order, kind, previous)
     log = OrderEmail.objects.create(
-        order=order, kind=kind, recipient=settings.STORES_EMAIL, subject=documents.subject(order, kind, previous),
+        order=order, kind=kind, recipient=_recipients_text(order), subject=documents.subject(order, kind, previous),
         status=OrderEmail.Status.SENT if ok else OrderEmail.Status.FAILED,
         last_error=error, sent_at=timezone.now() if ok else None, snapshot=documents.snapshot(order),
     )

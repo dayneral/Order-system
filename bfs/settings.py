@@ -151,6 +151,9 @@ ORDER_VALUES_ENABLED = env_bool("ORDER_VALUES_ENABLED", False)
 
 # Where submitted orders are sent.
 STORES_EMAIL = os.environ.get("STORES_EMAIL", "stores@bfsuk.org")
+# Copy of every order email (new, amended, cancelled) by property type. Blank = no copy.
+VOIDS_CC_EMAIL = os.environ.get("VOIDS_CC_EMAIL", "").strip()
+OCCUPIED_CC_EMAIL = os.environ.get("OCCUPIED_CC_EMAIL", "").strip()
 
 # --- Security (production) -------------------------------------------------
 if not DEBUG:
