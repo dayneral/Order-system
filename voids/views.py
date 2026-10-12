@@ -57,8 +57,6 @@ def filtered_voids(request):
     if f.get("q"):
         q = f["q"].strip()
         qs = qs.filter(Q(address__icontains=q) | Q(postcode__icontains=q) | Q(simpro__icontains=q))
-    if f.get("job") and f.get("flag") != "electrical":  # Electrical covers every job type
-        qs = qs.filter(job_type=f["job"])
     status = f.get("status")
     if status == "all":
         pass
@@ -106,22 +104,33 @@ def filtered_voids(request):
         voids = [v for v in voids if v.stale_level]
     elif f.get("flag") == "stale_red":
         voids = [v for v in voids if v.stale_level == "red"]
-    # Area and supervisor buttons show counts, so those two filters are applied here:
-    # each set of counts respects the other filter but not its own.
+    # Area, supervisor and job type buttons show counts, so those filters are applied here.
+    # Area and supervisor are alternative ways in: a view is by one or the other, never both.
     sups = list(Supervisor.objects.filter(active=True).select_related("trade"))
     area = f.get("area")
     sup = f.get("supervisor")
-    # Area and supervisor are alternative ways in: a view is by one or the other, never both.
+    job = f.get("job") if f.get("flag") != "electrical" else None  # Electrical covers every job type
+
+    def by_place(items):
+        if sup:
+            return [v for v in items if services.supervises(sup, v)]
+        if area:
+            return [v for v in items if v.area_id == area.pk]
+        return items
+
+    placed = by_place(voids)
+    job_counts = {None: len(placed)}
+    for v in placed:
+        job_counts[v.job_type_id] = job_counts.get(v.job_type_id, 0) + 1
+    if job:
+        voids = [v for v in voids if v.job_type_id == job.pk]
     area_counts = {}
     for v in voids:
         area_counts[v.area_id] = area_counts.get(v.area_id, 0) + 1
     sup_counts = {s.pk: sum(1 for v in voids if services.supervises(s, v)) for s in sups}
     sup_counts[None] = len(voids)
-    if sup:
-        voids = [v for v in voids if services.supervises(sup, v)]
-    elif area:
-        voids = [v for v in voids if v.area_id == area.pk]
-    return form, voids, params, {"areas": area_counts, "sups": sup_counts, "sup_list": sups}
+    voids = by_place(voids)
+    return form, voids, params, {"areas": area_counts, "sups": sup_counts, "sup_list": sups, "jobs": job_counts}
 
 
 # The status buttons on each trade, in workflow order.
@@ -180,6 +189,7 @@ def void_list(request):
         if p.get("flag") == "electrical":
             p["flag"] = ""  # Electrical is its own button across all job types
         job_links.append({"label": jt.name if jt else "All", "query": p.urlencode(),
+                          "count": counts["jobs"].get(jt.pk if jt else None, 0),
                           "active": (str(jt.pk) if jt else "") == current_job
                           and params.get("flag") != "electrical"})
     current_sup = params.get("supervisor", "")

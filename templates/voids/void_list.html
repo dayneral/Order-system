@@ -11,14 +11,18 @@
   </div>
 </div>
 
+<div class="filter-rows">
+<span class="filter-label">Area</span>
 <nav class="areas" aria-label="Area">
   {% for a in area_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
 </nav>
-<nav class="areas sups" aria-label="Supervisor"><span class="or-label">or by supervisor:</span>
+<span class="filter-label">Supervisor</span>
+<nav class="areas sups" aria-label="Supervisor">
   {% for a in sup_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
 </nav>
+</div>
 <nav class="quick" aria-label="Job type">
-  {% for j in job_links %}<a href="?{{ j.query }}"{% if j.active %} class="on" aria-current="true"{% endif %}>{{ j.label }}</a>{% endfor %}
+  {% for j in job_links %}<a href="?{{ j.query }}"{% if j.active %} class="on" aria-current="true"{% endif %}>{{ j.label }} <span class="count">{{ j.count }}</span></a>{% endfor %}
   <a href="?{{ electrical_link.query }}" class="elec-chip{% if electrical_link.active %} on{% endif %}"{% if electrical_link.active %} aria-current="true"{% endif %}>⚡ Electrical works</a>
   <a href="?{{ completed_link.query }}" class="done-chip{% if completed_link.active %} on{% endif %}">✓ Completed</a>
   <span class="sorttoggle">Sort: {% for o in sort_toggle %}<a href="?{{ o.query }}"{% if o.active %} class="on" aria-current="true"{% endif %}>{{ o.label }}</a>{% endfor %}</span>

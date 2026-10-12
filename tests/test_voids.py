@@ -394,7 +394,7 @@ def test_supervisor_buttons_and_own_voids_by_default(client, make_user):
     client.force_login(user)
     body = client.get(reverse("voids:list")).content.decode()
     assert "Stee Flat" in body and "Martin Temp Flat" not in body  # starts on own voids
-    assert "or by supervisor" in body and "Jamie H (Electrical)" in body
+    assert "filter-label" in body and "Jamie H (Electrical)" in body
     body = client.get(reverse("voids:list"), {"supervisor": jamie.pk}).content.decode()
     assert "Martin Temp Flat" in body and "Stee Flat" not in body
     # Electrical button shows electrical voids of every job type, with electrical prominent.
@@ -573,3 +573,15 @@ def test_in_progress_asks_who(voids_client):
     voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "snagging"})
     voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"})
     assert TradeTask.objects.get(void=v, trade=t).status == "in_progress"
+
+
+def test_job_type_buttons_show_counts(voids_client):
+    from voids.models import JobType
+    jt_void, jt_temp = JobType.objects.get(name="Void"), JobType.objects.get(name="Temp")
+    for i in range(2):
+        Void.objects.create(job_type=jt_void, address=f"V{i}", status="stc")
+    Void.objects.create(job_type=jt_temp, address="T0", status="stc")
+    resp = voids_client.get(reverse("voids:list"), {"job": jt_temp.pk, "status": ""})
+    counts = {j["label"]: j["count"] for j in resp.context["job_links"]}
+    assert counts == {"All": 3, "Void": 2, "Temp": 1}
+    assert len(resp.context["rows"]) == 1

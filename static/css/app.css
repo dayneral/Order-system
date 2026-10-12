@@ -524,3 +524,9 @@ td.late { color: #b00020; font-weight: 700; }
 .st-btn.on { box-shadow: none; }
 .trade-line { min-height: 2.6rem; }
 @media (max-width: 900px) { .status-toggle { grid-template-columns: repeat(4, 1fr); width: 100%; } }
+/* Area / supervisor rows: a small label column so the two rows line up. */
+.filter-rows { display: grid; grid-template-columns: auto 1fr; gap: .4rem .9rem; align-items: center; margin: .75rem 0 .25rem; }
+.filter-rows .areas { margin: 0; }
+.filter-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.quick a .count { font-weight: 400; opacity: .8; margin-left: .2rem; }
+@media (max-width: 700px) { .filter-rows { grid-template-columns: 1fr; } }
