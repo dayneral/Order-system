@@ -255,7 +255,6 @@ class TradeTask(models.Model):
     class Status(models.TextChoices):
         NOT_REQUIRED = "not_required", "Not required"
         STC = "stc", "STC"
-        BOOKED = "booked", "Booked / ordered"
         IN_PROGRESS = "in_progress", "In progress"
         SNAGGING = "snagging", "Snagging / follow on"
         COMPLETE = "complete", "Complete"

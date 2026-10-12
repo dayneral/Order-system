@@ -356,9 +356,10 @@ def test_autosave_keeps_editor_open_and_merges_diary_lines(voids_client, voids_u
     t = Trade.objects.get(name="Joinery")
     TradeTask.objects.create(void=v, trade=t)
     url = reverse("voids:task_cell", args=[v.pk, t.pk]) + "?in=tile"
-    resp = voids_client.post(url, {"status": "in_progress", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    resp = voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "autosave": "1"}, HTTP_HX_REQUEST="true")
     assert b"autosave" in resp.content and b"Saved" in resp.content  # still editing
-    voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "notes": "first fix", "autosave": "1"},
+                      HTTP_HX_REQUEST="true")
     lines = list(VoidUpdate.objects.filter(void=v, kind="trade").values_list("text", flat=True))
     assert lines == ["Joinery → In progress (Kev)"]
     task = TradeTask.objects.get(void=v, trade=t)
@@ -393,7 +394,7 @@ def test_supervisor_buttons_and_own_voids_by_default(client, make_user):
     client.force_login(user)
     body = client.get(reverse("voids:list")).content.decode()
     assert "Stee Flat" in body and "Martin Temp Flat" not in body  # starts on own voids
-    assert "All supervisors" in body and "Jamie H (Electrical)" in body
+    assert "or by supervisor" in body and "Jamie H (Electrical)" in body
     body = client.get(reverse("voids:list"), {"supervisor": jamie.pk}).content.decode()
     assert "Martin Temp Flat" in body and "Stee Flat" not in body
     # Electrical button shows electrical voids of every job type, with electrical prominent.
@@ -497,3 +498,78 @@ def test_overview_counts_and_links(voids_client):
     assert ctx["trades"][0]["trade"].name == "Painting"
     body = voids_client.get(overdue_cell["url"]).content.decode()
     assert "Late Flat" in body and "Soon Flat" not in body
+
+
+def test_electrical_snagging_goes_to_jamie_not_patch_supervisor(db, mailoutbox):
+    from voids import services
+    from voids.digest import send_all
+    from voids.models import JobType
+    stee, jamie = Supervisor.objects.get(name="Stee L"), Supervisor.objects.get(name="Jamie H")
+    stee.email, jamie.email = "stee@bfsuk.org", "jamie@bfsuk.org"
+    stee.save()
+    jamie.save()
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Spark Snag Flat", supervisor=stee,
+                            status="in_progress")
+    TradeTask.objects.create(void=v, trade=Trade.objects.get(name="Electrical"), status="snagging")
+    TradeTask.objects.create(void=v, trade=Trade.objects.get(name="Joinery"), status="complete")
+    services.refresh_status(v)
+    send_all()
+    by_to = {m.to[0]: m for m in mailoutbox}
+    assert "Snagging: Electrical" in by_to["jamie@bfsuk.org"].alternatives[0][0]
+    assert "snagging" in by_to["jamie@bfsuk.org"].subject
+    stee_mail = by_to.get("stee@bfsuk.org")
+    assert stee_mail is None or "Snagging: Electrical" not in stee_mail.alternatives[0][0]
+
+
+def test_status_buttons_set_dates_and_area_or_supervisor(voids_client):
+    from django.utils import timezone
+
+    from voids.models import Area, JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Tap Flat", status="stc")
+    t = Trade.objects.get(name="Joinery")
+    TradeTask.objects.create(void=v, trade=t, assignee="Kev")
+    resp = voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"},
+                             HTTP_HX_REQUEST="true")
+    assert b"st-btn t-in_progress on" in resp.content
+    task = TradeTask.objects.get(void=v, trade=t)
+    assert task.status == "in_progress" and task.date == timezone.localdate()
+    v.refresh_from_db()
+    assert v.status == Void.Status.IN_PROGRESS and v.last_inspection == timezone.localdate()
+    # Area and supervisor are either/or: picking a supervisor ignores the area.
+    stee = Supervisor.objects.get(name="Stee L")
+    se = Area.objects.get(code="SE")
+    Void.objects.create(job_type=JobType.objects.first(), address="Stee NW Flat", supervisor=stee,
+                        area=Area.objects.get(code="NW"), status="stc")
+    body = voids_client.get(reverse("voids:list"), {"area": se.pk, "supervisor": stee.pk}).content.decode()
+    assert "Stee NW Flat" in body
+
+
+def test_no_booked_status():
+    assert "booked" not in TradeTask.Status.values
+    from voids.views import QUICK_STATUSES
+    assert [s for s, _ in QUICK_STATUSES] == ["stc", "in_progress", "snagging", "complete"]
+
+
+def test_in_progress_asks_who(voids_client):
+    from voids.models import JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Who Flat", status="stc")
+    t = Trade.objects.get(name="Plumbing")
+    TradeTask.objects.create(void=v, trade=t)
+    # Button with nobody assigned: opens the editor asking who, nothing saved yet.
+    resp = voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"},
+                             HTTP_HX_REQUEST="true")
+    assert b"Who is doing the plumbing?" in resp.content and b"autofocus" in resp.content
+    from django.utils import timezone
+    assert timezone.localdate().isoformat().encode() in resp.content  # date filled in, still editable
+    assert TradeTask.objects.get(void=v, trade=t).status == "stc"
+    url = reverse("voids:task_cell", args=[v.pk, t.pk]) + "?in=tile"
+    resp = voids_client.post(url, {"status": "in_progress", "assignee": "", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    assert b"Who is doing it?" in resp.content
+    assert TradeTask.objects.get(void=v, trade=t).status == "stc"
+    voids_client.post(url, {"status": "in_progress", "assignee": "Kyle", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    task = TradeTask.objects.get(void=v, trade=t)
+    assert task.status == "in_progress" and task.assignee == "Kyle"
+    # Once someone is assigned the button changes status straight away.
+    voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "snagging"})
+    voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"})
+    assert TradeTask.objects.get(void=v, trade=t).status == "in_progress"

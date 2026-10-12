@@ -12,6 +12,7 @@ urlpatterns = [
     path("<int:void_id>/", views.void_detail, name="detail"),
     path("<int:void_id>/edit/", views.void_edit, name="edit"),
     path("<int:void_id>/trade/<int:trade_id>/", views.task_cell, name="task_cell"),
+    path("<int:void_id>/trade/<int:trade_id>/status/", views.set_task_status, name="set_task_status"),
     path("<int:void_id>/trade/<int:trade_id>/claim/", views.toggle_claim, name="toggle_claim"),
     path("<int:void_id>/claim-complete/", views.claim_complete, name="claim_complete"),
     path("<int:void_id>/final-check/", views.final_check, name="final_check"),

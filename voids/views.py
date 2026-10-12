@@ -111,20 +111,27 @@ def filtered_voids(request):
     sups = list(Supervisor.objects.filter(active=True).select_related("trade"))
     area = f.get("area")
     sup = f.get("supervisor")
-    by_sup = [v for v in voids if not sup or services.supervises(sup, v)]
-    by_area = [v for v in voids if not area or v.area_id == area.pk]
+    # Area and supervisor are alternative ways in: a view is by one or the other, never both.
     area_counts = {}
-    for v in by_sup:
+    for v in voids:
         area_counts[v.area_id] = area_counts.get(v.area_id, 0) + 1
-    sup_counts = {s.pk: sum(1 for v in by_area if services.supervises(s, v)) for s in sups}
-    sup_counts[None] = len(by_area)
-    voids = [v for v in by_sup if not area or v.area_id == area.pk]
+    sup_counts = {s.pk: sum(1 for v in voids if services.supervises(s, v)) for s in sups}
+    sup_counts[None] = len(voids)
+    if sup:
+        voids = [v for v in voids if services.supervises(sup, v)]
+    elif area:
+        voids = [v for v in voids if v.area_id == area.pk]
     return form, voids, params, {"areas": area_counts, "sups": sup_counts, "sup_list": sups}
 
 
+# The status buttons on each trade, in workflow order.
+QUICK_STATUSES = [(TradeTask.Status.STC, "STC"),
+                  (TradeTask.Status.IN_PROGRESS, "In progress"), (TradeTask.Status.SNAGGING, "Snagging"),
+                  (TradeTask.Status.COMPLETE, "Complete")]
+
 STALE_STATUSES = [Void.Status.NEW, Void.Status.STC, Void.Status.IN_PROGRESS, Void.Status.SNAGGING]
 
-OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.BOOKED, TradeTask.Status.IN_PROGRESS,
+OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.IN_PROGRESS,
                TradeTask.Status.SNAGGING]
 
 
@@ -150,6 +157,7 @@ def grid_rows(voids, trades):
                      "latest": updates[0] if updates else None, "update_form": UpdateForm(),
                      "on_job": on_job, "not_needed": not_needed, "others": others,
                      "can_sign_off": services.can_sign_off(v),
+                     "status_choices": QUICK_STATUSES,
                      "electrical": next((t for trade, t in on_job if trade.name.lower() == "electrical"), None),
                      "claimable": sum(1 for _, t in on_job if t.status == TradeTask.Status.COMPLETE and not t.claimed),
                      "percent": round(100 * done / len(needed)) if needed else 0,
@@ -174,23 +182,26 @@ def void_list(request):
         job_links.append({"label": jt.name if jt else "All", "query": p.urlencode(),
                           "active": (str(jt.pk) if jt else "") == current_job
                           and params.get("flag") != "electrical"})
-    current_area = params.get("area", "")
+    current_sup = params.get("supervisor", "")
+    current_area = "" if current_sup else params.get("area", "")
     area_links = []
     for a in [None, *Area.objects.all()]:
         p = params.copy()
         p["area"] = str(a.pk) if a else ""
+        p["supervisor"] = ""  # by area OR by supervisor, not both
         area_links.append({"label": a.code if a else "All properties",
                            "count": sum(area_counts.values()) if a is None else area_counts.get(a.pk, 0),
-                           "query": p.urlencode(), "active": (str(a.pk) if a else "") == current_area})
+                           "query": p.urlencode(),
+                           "active": (str(a.pk) if a else "") == current_area and (a or not current_sup)})
     unassigned = area_counts.get(None, 0)
-    current_sup = params.get("supervisor", "")
     sup_links = []
-    for sp in [None, *counts["sup_list"]]:
+    for sp in counts["sup_list"]:
         p = params.copy()
-        p["supervisor"] = str(sp.pk) if sp else ""
+        p["supervisor"] = str(sp.pk)
+        p["area"] = ""
         sup_links.append({"label": (f"{sp.name} ({sp.trade.name})" if sp and sp.trade_id else sp.name) if sp
-                          else "All supervisors", "count": counts["sups"].get(sp.pk if sp else None, 0),
-                          "query": p.urlencode(), "active": (str(sp.pk) if sp else "") == current_sup})
+                          else "All supervisors", "count": counts["sups"].get(sp.pk, 0),
+                          "query": p.urlencode(), "active": str(sp.pk) == current_sup})
     p = params.copy()
     elec_on = params.get("flag") == "electrical"
     p["flag"] = "" if elec_on else "electrical"
@@ -313,6 +324,8 @@ def task_cell(request, void_id, trade_id):
         if form.is_valid():
             before = TradeTask.objects.filter(pk=task.pk).first()
             task = form.save(commit=False)
+            if before and form.cleaned_data.get("date") == before.date:
+                services.auto_date(task, before.status)  # unless a date was typed in
             fields = ["status", "assignee", "date", "claimed", "notes"]
             changes = services.changed_fields(before, task, fields) if before else {"status": {}}
             comment = form.cleaned_data.get("comment", "").strip()
@@ -355,6 +368,32 @@ def _tile(request, void, **extra):
     saved = QueryDict(request.session.get(SESSION_KEY, ""))
     return render(request, "voids/_tile.html", {"row": row, "open": True,
                                                 "electrical_mode": saved.get("flag") == "electrical", **extra})
+
+
+@login_required
+@require_POST
+def set_task_status(request, void_id, trade_id):
+    """One tap on a trade's status button."""
+    void = get_object_or_404(Void, pk=void_id)
+    task = get_object_or_404(TradeTask, void=void, trade_id=trade_id)
+    status = request.POST.get("status")
+    if status == TradeTask.Status.IN_PROGRESS and not task.assignee:
+        # Ask who is doing it before setting In progress: open the editor with the status chosen.
+        form = TaskForm(instance=task, initial={"status": status, "date": timezone.localdate()},
+                        auto_id=_task_ids(void, task.trade))
+        return _tile(request, void, editing=task.trade_id, form=form, ask_who=True)
+    if status in TradeTask.Status.values and status != task.status:
+        old = task.status
+        task.status = status
+        services.auto_date(task, old)
+        task.updated_by, task.updated_at = request.user, timezone.now()
+        task.save(update_fields=["status", "date", "updated_by", "updated_at"])
+        record(request.user, "void.trade", void, f"{task.trade}: {task.get_status_display()}",
+               {"status": {"from": old, "to": status}})
+        services.log_trade_change(void, request.user, task, "")
+        Void.objects.filter(pk=void.pk).update(last_inspection=timezone.localdate())
+        services.refresh_status(void, request.user)
+    return _after_action(request, void)
 
 
 @login_required
@@ -505,7 +544,7 @@ def hide_update(request, update_id):
 STATUS_FILLS = {"in_progress": "FFF4B183", "snagging": "FFFFF2A8", "complete": "FFC6E8C6", "new": "FFE3DAF5",
                 "handed_back": "FFDDDDDD"}
 TASK_FILLS = {"complete": "FFC6E8C6", "in_progress": "FFF4B183", "snagging": "FFFFF2A8",
-              "booked": "FFCFE2F3"}
+              }
 
 
 @login_required

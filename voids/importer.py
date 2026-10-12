@@ -8,7 +8,7 @@ using the colour key in the top rows of each tab:
     Works in Progress   -> trade in progress
     Snagging / Follow On (yellow) -> snagging
     Issue (red fill)    -> issue
-    Glazing / Comp Door (light blue) -> booked / ordered
+    Glazing / Comp Door (light blue) -> in progress (ordered)
     Hand Back This Week (lavender, on the address) -> no import value; worked out from dates
     Electrical Flag (purple) -> electrical flag
     Red writing         -> claimed for payment
@@ -52,7 +52,7 @@ LEGEND = {
     "snagging issued": S.SNAGGING,
     "follow on": S.SNAGGING,
     "issue": ISSUE,
-    "glazing comp door": S.BOOKED,
+    "glazing comp door": S.IN_PROGRESS,
     "electrical flag": "electrical",
     "hand back this week": "handback",
 }
@@ -123,7 +123,7 @@ def to_date(value, today):
     return guess_date(clean(value), today) if value else None
 
 
-WORK_COLOURS = (S.COMPLETE, S.IN_PROGRESS, S.SNAGGING, ISSUE, S.BOOKED)
+WORK_COLOURS = (S.COMPLETE, S.IN_PROGRESS, S.SNAGGING, ISSUE)
 
 
 def parse_task(cell, legend, today):

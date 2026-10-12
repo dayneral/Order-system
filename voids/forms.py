@@ -33,6 +33,12 @@ class TaskForm(forms.ModelForm):
         fields = ["status", "assignee", "date", "claimed", "notes"]
         widgets = {"date": DATE, "notes": forms.Textarea(attrs={"rows": 2})}
 
+    def clean(self):
+        data = super().clean()
+        if data.get("status") == TradeTask.Status.IN_PROGRESS and not (data.get("assignee") or "").strip():
+            self.add_error("assignee", "Who is doing it? Fill this in to set the trade In progress.")
+        return data
+
 
 class UpdateForm(forms.Form):
     kind = forms.ChoiceField(label="Type", initial="general",

@@ -41,7 +41,7 @@
 <section class="ov-section">
   <h2>Trades holding jobs up</h2>
   <p class="hint">Open voids where each trade is not yet complete. Click a trade to see them.</p>
-  <p class="legend"><span class="sw t-stc"></span>STC (no one assigned) <span class="sw t-booked"></span>Booked <span class="sw t-in_progress"></span>In progress <span class="sw t-snagging"></span>Snagging</p>
+  <p class="legend"><span class="sw t-stc"></span>STC (no one assigned) <span class="sw t-in_progress"></span>In progress <span class="sw t-snagging"></span>Snagging</p>
   <table class="bars">
     {% for r in trades %}
     <tr><th scope="row"><a href="{{ r.url }}">{{ r.trade.name }}</a></th>
