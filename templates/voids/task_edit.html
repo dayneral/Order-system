@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ trade }} · {{ void.address }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'voids:detail' void.pk %}">&larr; {{ void.address }}</a></p>
+<h1>{{ trade }}: {{ void.address }}</h1>
+<form method="post" class="panel">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <button class="primary">Save</button>
+</form>
+{% endblock %}

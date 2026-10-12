@@ -4,7 +4,7 @@ The second module of the BFS system, alongside Material Orders. It replaces the
 Excel Void Tracker (Voids/ECC, TEMP, ARK, Concierge Stations, Electrical, TEMP
 STOCK, Completed tabs).
 
-Status: **planning**. Decisions agreed with BFS are in the table at the end.
+Status: **Stage 1 built** (list, void pages, trade updates, import, export, module access). Decisions agreed with BFS are in the table at the end.
 
 ---
 
@@ -260,4 +260,9 @@ is patchy, and the columns moved over time, so:
 | 2026-10-12 | Electrical | Jamie supervises all electrical work, in every area |
 | 2026-10-12 | Concierge C / ? | Early-version values; ignored |
 | 2026-10-12 | History | Completed tab imported once; columns matched by header; incomplete records are flagged and left out of dashboard figures they can't support |
-| 2026-10-12 | WhatsApp | Outgoing to supervisors' own WhatsApp via the official API; Meta test number for testing; a dedicated BFS number when live |
+| 2026-10-12 | WhatsApp (superseded) | Outgoing to supervisors' own WhatsApp via the official API; Meta test number for testing; a dedicated BFS number when live |
+| 2026-10-12 | Notifications (revised) | **Email only.** WhatsApp is dropped |
+| 2026-10-12 | Tabs imported | Only the **Voids** and **TEMP** tabs for now (Job type "Void" and "Temp"). Concierge, ARK, Electrical and TEMP STOCK are ignored |
+| 2026-10-12 | Job types | One list for every job, with a **Job type** label (Void, Temp, Concierge Station; admins can add more). Job type is a filter (quick buttons on the list), not a separate tab |
+| 2026-10-12 | Claimed | "Claimed" (red writing) is stored as a tick on each trade, separate from its status, because the tracker shows red writing on work in progress as well as complete work |
+| 2026-10-12 | Supervisor details | Emails and phone numbers to be added later by BFS under Voids settings → Supervisors |

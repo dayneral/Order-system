@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Voids · BFS{% endblock %}
+{% block main_class %}page wide{% endblock %}
+{% block content %}
+<div class="vhead">
+  <h1>Voids <span class="muted">({{ count }})</span></h1>
+  <div class="actions">
+    <a class="button primary" href="{% url 'voids:new' %}">New void</a>
+    <a class="button" href="{% url 'voids:export' %}">Export to Excel</a>
+  </div>
+</div>
+
+<nav class="quick" aria-label="Job type">
+  {% for j in job_links %}<a href="?{{ j.query }}"{% if j.active %} class="on" aria-current="true"{% endif %}>{{ j.label }}</a>{% endfor %}
+</nav>
+
+<form method="get" class="filters">
+  {% for field in form %}{% if field.is_hidden %}{{ field }}{% else %}
+  <label>{{ field.label }} {{ field }}</label>{% endif %}{% endfor %}
+  <label>Trade outstanding
+    <select name="trade"><option value="">Any</option>
+      {% for t in trades %}<option value="{{ t.pk }}"{% if trade_filter == t.pk|stringformat:"s" %} selected{% endif %}>{{ t.name }}</option>{% endfor %}
+    </select></label>
+  <button class="primary">Filter</button>
+  <a href="?clear=1">Clear</a>
+</form>
+
+<p class="key">
+  <span class="k st-new">New: needs visit</span><span class="k st-stc">STC</span>
+  <span class="k st-in_progress">In progress</span><span class="k st-snagging">Snagging</span>
+  <span class="k st-complete">Complete</span>
+  &nbsp;Trades: <span class="k t-booked">Booked</span><span class="k t-assigned">Assigned</span>
+  <span class="k t-in_progress">In progress</span><span class="k t-snagging">Snagging</span>
+  <span class="k t-issue">Issue</span><span class="k t-complete">Complete</span><span class="k claimed">Red = claimed</span>
+  &nbsp;Click a trade cell to update it.
+</p>
+
+<div class="vgrid-wrap">
+<table class="vgrid">
+  <thead><tr>
+    <th class="stick"><a href="?sort=address">Address</a></th>
+    <th><a href="?sort=job">Job</a></th>
+    <th><a href="?sort=postcode">Post Code</a></th>
+    <th><a href="?sort=supervisor">Supervisor</a></th>
+    <th><a href="?sort=area">Area</a></th>
+    <th><a href="?sort=simpro">SIMPRO</a></th>
+    <th><a href="?sort=handback">Hand-back</a></th>
+    <th>Expected</th>
+    <th>Access</th>
+    <th>Note</th>
+    {% for t in trades %}<th class="trade">{{ t.name }}</th>{% endfor %}
+    <th>Last insp.</th>
+  </tr></thead>
+  <tbody>
+  {% for row in rows %}{% include "voids/_row.html" %}
+  {% empty %}<tr><td colspan="{{ trades|length|add:11 }}">No voids match these filters.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

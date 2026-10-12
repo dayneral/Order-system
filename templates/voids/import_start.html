@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Voids import · BFS{% endblock %}
+{% block help %}<p class="help">Upload the void tracker workbook. You will see what would change <strong>before</strong> anything is saved. Voids are matched by SIMPRO number (or address when there is none), so uploading again updates them rather than adding duplicates. While testing, the spreadsheet is the master: an import overwrites trades and details for the voids it contains.</p>{% endblock %}
+{% block content %}
+<h1>Voids import</h1>
+<form method="post" enctype="multipart/form-data" class="panel">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <p class="hint">Tabs imported: {% for j in job_types %}<b>{{ j.sheet_name }}</b> → {{ j.name }}{% if not forloop.last %}, {% endif %}{% empty %}none set up{% endfor %}. Other tabs are ignored. Change this under Voids settings → Job types.</p>
+  <button class="primary">Upload and preview</button>
+</form>
+<h2>Recent imports</h2>
+<table class="grid">
+  <thead><tr><th>Uploaded</th><th>File</th><th>By</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for run in runs %}
+    <tr><td>{{ run.created_at|date:"d M Y H:i" }}</td><td>{{ run.filename }}</td><td>{{ run.uploaded_by.full_name|default:"—" }}</td>
+        <td><span class="pill pill-{{ run.status }}">{{ run.get_status_display }}</span></td>
+        <td><a href="{% url 'voids:import_detail' run.pk %}">Report</a></td></tr>
+  {% empty %}<tr><td colspan="5">No imports yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

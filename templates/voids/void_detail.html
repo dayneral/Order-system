@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ void.address }} · Voids{% endblock %}
+{% block content %}
+<p><a href="{% url 'voids:list' %}">&larr; Voids</a></p>
+<div class="vhead">
+  <h1>{{ void.address }} <span class="pill st-{{ void.status }}">{{ void.get_status_display }}</span></h1>
+  <div class="actions"><a class="button primary" href="{% url 'voids:edit' void.pk %}">Edit details</a></div>
+</div>
+{% if void.is_late_risk %}<div class="msg msg-warning">Expected completion ({{ void.expected_completion|date:"d M Y" }}) is after the client's hand-back date ({{ void.handback_date|date:"d M Y" }}).</div>{% endif %}
+<table class="details panel">
+  <tr><th>Job type</th><td>{{ void.job_type }}</td><th>SIMPRO</th><td>{{ void.simpro|default:"—" }}</td></tr>
+  <tr><th>Postcode</th><td>{{ void.postcode|default:"—" }}</td><th>Area</th><td>{{ void.area|default:"—" }}</td></tr>
+  <tr><th>Supervisor</th><td>{{ void.supervisor|default:"—" }}{% for s in trade_supervisors %}<br>{{ s }} ({{ s.trade }}){% endfor %}</td><th>Access</th><td>{{ void.access|default:"—" }}</td></tr>
+  <tr><th>Client hand-back</th><td>{{ void.handback_date|date:"d M Y"|default:"—" }}</td><th>Expected completion</th><td>{{ void.expected_completion|date:"d M Y"|default:"—" }}</td></tr>
+  <tr><th>Keys received</th><td>{{ void.keys_received|date:"d M Y"|default:"—" }}</td><th>Last inspection</th><td>{{ void.last_inspection|date:"d M Y"|default:"—" }}</td></tr>
+  <tr><th>Flags</th><td>{% if void.electrical_flag %}⚡ Electrical {% endif %}{% if void.issue_flag %}<span class="tag bad">Issue</span>{% endif %}{% if not void.electrical_flag and not void.issue_flag %}—{% endif %}</td><th>Note</th><td>{{ void.status_note|default:"—" }}</td></tr>
+</table>
+{% if void.notes %}<h2>Notes</h2><p class="panel">{{ void.notes|linebreaksbr }}</p>{% endif %}
+
+<h2>Trades</h2>
+<table class="grid trades">
+  <thead><tr><th>Trade</th><th>Status</th><th>Who</th><th>Date</th><th>Notes</th><th></th></tr></thead>
+  <tbody>
+  {% for trade, task in trades %}
+  <tr>
+    <td>{{ trade.name }}</td>
+    <td><span class="k t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}">{% if task %}{{ task.get_status_display }}{% if task.claimed %} · claimed{% endif %}{% else %}—{% endif %}</span></td>
+    <td>{{ task.assignee }}</td><td>{{ task.date|date:"d/m/y" }}</td><td>{{ task.notes|linebreaksbr }}</td>
+    <td><a href="{% url 'voids:task_cell' void.pk trade.pk %}">Update</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>History</h2>
+<table class="grid">
+  <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+  <tbody>{% for h in history %}<tr><td class="nowrap">{{ h.timestamp|date:"d M Y H:i" }}</td><td>{{ h.actor.full_name|default:"System" }}</td><td>{{ h.summary }}</td></tr>
+  {% empty %}<tr><td colspan="3">No changes recorded yet.</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}
