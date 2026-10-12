@@ -6,6 +6,7 @@ app_name = "voids"
 
 urlpatterns = [
     path("", views.void_list, name="list"),
+    path("overview/", views.overview, name="overview"),
     path("export/", views.export, name="export"),
     path("new/", views.void_new, name="new"),
     path("<int:void_id>/", views.void_detail, name="detail"),

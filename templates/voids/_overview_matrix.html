@@ -1,0 +1,8 @@
+<div class="vgrid-wrap ov-wrap"><table class="matrix">
+  <thead><tr><th>{{ first }}</th>{% for k, label, f in columns %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for r in rows %}<tr><th scope="row">{{ r.label }}</th>
+    {% for c in r.cells %}<td class="m-{{ c.key }}{% if not c.n %} zero{% endif %}">{% if c.n %}<a href="{{ c.url }}" style="--a: {% for k, m in col_max.items %}{% if k == c.key %}{% widthratio c.n m 100 %}{% endif %}{% endfor %}%">{{ c.n }}</a>{% else %}–{% endif %}</td>{% endfor %}
+  </tr>{% endfor %}
+  </tbody>
+</table></div>
