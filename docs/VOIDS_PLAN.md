@@ -300,3 +300,4 @@ is patchy, and the columns moved over time, so:
 | 2026-10-12 | Automatic trade dates | Changing a trade to Booked or In progress sets its date to today (assigned); to Complete sets it to today (completed). A date typed in by hand in the same edit wins |
 | 2026-10-12 | Electrical snagging | Snagging on a trade that has a trade supervisor (Electrical → Jamie) goes in **that supervisor's** nightly email, in every area, and not in the patch supervisor's |
 | 2026-10-12 | Area or supervisor | The list is filtered **by area or by supervisor, never both**: choosing one clears the other ("All properties" clears both) |
+| 2026-10-12 | Trade statuses (revised) | **Booked is removed.** Trade statuses are STC, In progress, Snagging, Complete (plus Not required). Existing Booked trades became In progress; the tracker's light-blue "Glazing / Comp Door" colour imports as In progress |

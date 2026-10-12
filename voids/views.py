@@ -125,13 +125,13 @@ def filtered_voids(request):
 
 
 # The status buttons on each trade, in workflow order.
-QUICK_STATUSES = [(TradeTask.Status.STC, "STC"), (TradeTask.Status.BOOKED, "Booked"),
+QUICK_STATUSES = [(TradeTask.Status.STC, "STC"),
                   (TradeTask.Status.IN_PROGRESS, "In progress"), (TradeTask.Status.SNAGGING, "Snagging"),
                   (TradeTask.Status.COMPLETE, "Complete")]
 
 STALE_STATUSES = [Void.Status.NEW, Void.Status.STC, Void.Status.IN_PROGRESS, Void.Status.SNAGGING]
 
-OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.BOOKED, TradeTask.Status.IN_PROGRESS,
+OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.IN_PROGRESS,
                TradeTask.Status.SNAGGING]
 
 
@@ -539,7 +539,7 @@ def hide_update(request, update_id):
 STATUS_FILLS = {"in_progress": "FFF4B183", "snagging": "FFFFF2A8", "complete": "FFC6E8C6", "new": "FFE3DAF5",
                 "handed_back": "FFDDDDDD"}
 TASK_FILLS = {"complete": "FFC6E8C6", "in_progress": "FFF4B183", "snagging": "FFFFF2A8",
-              "booked": "FFCFE2F3"}
+              }
 
 
 @login_required

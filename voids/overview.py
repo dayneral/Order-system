@@ -87,7 +87,6 @@ def build(job=None):
     for t in Trade.objects.filter(active=True):
         tasks = [x for v in open_v for x in v.tasks.all() if x.trade_id == t.pk]
         counts = {"stc": sum(x.status == T.STC for x in tasks),
-                  "booked": sum(x.status == T.BOOKED for x in tasks),
                   "in_progress": sum(x.status == T.IN_PROGRESS for x in tasks),
                   "snagging": sum(x.status == T.SNAGGING for x in tasks)}
         waiting = sum(counts.values())

@@ -541,3 +541,9 @@ def test_status_buttons_set_dates_and_area_or_supervisor(voids_client):
                         area=Area.objects.get(code="NW"), status="stc")
     body = voids_client.get(reverse("voids:list"), {"area": se.pk, "supervisor": stee.pk}).content.decode()
     assert "Stee NW Flat" in body
+
+
+def test_no_booked_status():
+    assert "booked" not in TradeTask.Status.values
+    from voids.views import QUICK_STATUSES
+    assert [s for s, _ in QUICK_STATUSES] == ["stc", "in_progress", "snagging", "complete"]
