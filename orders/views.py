@@ -324,6 +324,9 @@ def draft_delete(request, order_id):
 
 @login_required
 def home(request):
+    user = request.user
+    if user.is_authenticated and not user.can_order and user.can_voids:
+        return redirect("voids:list")
     return redirect("orders:list")
 
 

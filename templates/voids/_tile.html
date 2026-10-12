@@ -1,0 +1,73 @@
+{% with v=row.void %}
+<article class="tile st-{{ v.status }}{% if row.overdue %} overdue{% endif %}{% if v.on_hold %} held{% endif %}" id="tile-{{ v.pk }}">
+<details{% if open %} open{% endif %}>
+  <summary>
+    <div class="tile-top">
+      <span class="tile-addr">{{ v.address }}</span>
+      <span class="pill st-{{ v.status }}">{% if v.on_hold %}On hold{% else %}{{ v.get_status_display }}{% endif %}</span>
+    </div>
+    {% if v.key_info %}<div class="keyinfo" role="note"><span aria-hidden="true">⚠</span> {{ v.key_info|linebreaksbr }}</div>{% endif %}
+    <div class="tile-meta">
+      {% if v.simpro %}<span>#{{ v.simpro }}</span>{% endif %}
+      <span>{{ v.job_type.name }}</span>
+      {% if v.area %}<span>{{ v.area }}</span>{% endif %}
+      {% if v.supervisor %}<span>{{ v.supervisor }}</span>{% endif %}
+      {% if v.electrical_flag %}<span class="tag elec" title="Electrical flag">⚡</span>{% endif %}
+      {% if v.issue_flag %}<span class="tag bad">Issue</span>{% endif %}
+    </div>
+    <div class="dots" aria-label="Trades">
+      {% for trade, task in row.cells %}{% if task and task.status != "not_required" %}<span class="dot t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}" title="{{ trade.name }}: {{ task.get_status_display }}{% if task.claimed %} (claimed){% endif %}">{{ trade.badge }}</span>{% endif %}{% endfor %}
+    </div>
+    <div class="tile-foot">
+      <span class="bar" role="img" aria-label="{{ row.done }} of {{ row.needed }} trades complete"><span style="width: {{ row.percent }}%"></span></span>
+      <span>{{ row.done }}/{{ row.needed }} done</span>
+      {% if v.handback_date %}<span class="{% if row.overdue %}late{% elif row.this_week %}soon{% endif %}">Hand back {{ v.handback_date|date:"d M" }}</span>
+      {% elif v.expected_completion %}<span>Expected {{ v.expected_completion|date:"d M" }}</span>{% endif %}
+    </div>
+    <div class="latest{% if v.stale_level %} stale-{{ v.stale_level }}{% endif %}">
+      {% if v.stale_level %}<span class="stale-tag">No update · {{ v.days_since_update }} day{{ v.days_since_update|pluralize }}</span>{% endif %}
+      {% if row.latest %}<span class="latest-text">“{{ row.latest.text|truncatechars:90 }}”</span>
+        <span class="latest-by">{{ row.latest.author.get_short_name|default:"System" }} · {{ row.latest.created_at|timesince }} ago</span>
+      {% elif not v.stale_level %}<span class="latest-by">No updates yet</span>{% endif %}
+    </div>
+  </summary>
+  <div class="tile-body">
+    <form class="add-update" hx-post="{% url 'voids:add_update' v.pk %}" hx-target="closest article" hx-swap="outerHTML">
+      {% with f=row.update_form %}
+      <label class="visually-hidden" for="upd-{{ v.pk }}">Add an update</label>
+      <textarea id="upd-{{ v.pk }}" name="text" rows="2" placeholder="Add an update… e.g. Visited – strip-out done, plasterer booked Thurs" required>{{ f.text.value|default:"" }}</textarea>
+      <span class="add-row">{{ f.kind }} <button class="primary">Add update</button></span>
+      {% endwith %}
+    </form>
+    {% if v.status_note %}<p class="tile-note">{{ v.status_note }}</p>{% endif %}
+    <ul class="trade-list">
+    {% for trade, task in row.cells %}
+      <li{% if not task or task.status == "not_required" %} class="unused"{% endif %}>
+        {% if editing == trade.pk %}
+        <form hx-post="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML" class="cellform">
+          <b>{{ trade.name }}</b>
+          <label>Status {{ form.status }}</label>
+          <label>Who {{ form.assignee }}</label>
+          <label>Date {{ form.date }}</label>
+          <label class="inline">{{ form.claimed }} Claimed</label>
+          <label>Notes {{ form.notes }}</label>
+          <label>{{ form.comment.label }} {{ form.comment }}</label>
+          <span class="actions"><button class="primary">Save</button><button name="cancel" value="1">Cancel</button></span>
+        </form>
+        {% else %}
+        <button class="trade-row" hx-get="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML">
+          <span class="dot t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span>
+          <span class="tname">{{ trade.name }}</span>
+          <span class="tinfo">{% if task %}{{ task.get_status_display }}{% if task.assignee %} · {{ task.assignee }}{% endif %}{% if task.date %} · {{ task.date|date:"d/m" }}{% endif %}{% if task.notes %}<br><small>{{ task.notes|linebreaksbr }}</small>{% endif %}{% else %}<small>Not set – tap to add</small>{% endif %}</span>
+        </button>
+        {% endif %}
+      </li>
+    {% endfor %}
+    </ul>
+    {% if row.latest %}<p class="tile-links"><b>Recent updates</b></p>
+    <ul class="diary compact">{% for u in v.visible_updates|slice:":3" %}<li class="k-{{ u.kind }}"><span class="when">{{ u.created_at|date:"d M H:i" }} · {{ u.author.get_short_name|default:"System" }}{% if not u.is_auto and u.kind != "general" %} · {{ u.get_kind_display }}{% endif %}</span> {{ u.text|linebreaksbr }}</li>{% endfor %}</ul>{% endif %}
+    <p class="tile-links"><a href="{% url 'voids:detail' v.pk %}">Open void page (full diary)</a> · {{ v.postcode }}{% if v.access %} · Access: {{ v.access }}{% endif %}</p>
+  </div>
+</details>
+</article>
+{% endwith %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ void.address }} · Voids{% endblock %}
+{% block content %}
+<p><a href="{% url 'voids:list' %}">&larr; Voids</a></p>
+<div class="vhead">
+  <h1>{{ void.address }} <span class="pill st-{{ void.status }}">{{ void.get_status_display }}</span>{% if void.on_hold %} <span class="pill">On hold</span>{% endif %}</h1>
+  <div class="actions"><a class="button primary" href="{% url 'voids:edit' void.pk %}">Edit details</a></div>
+</div>
+{% if void.key_info %}<div class="keyinfo big" role="note"><b>⚠ Key info</b><br>{{ void.key_info|linebreaksbr }}</div>{% endif %}
+{% if void.stale_level %}<div class="msg msg-warning">No update for {{ void.days_since_update }} days. Add an update below.</div>{% endif %}
+{% if void.is_late_risk %}<div class="msg msg-warning">Expected completion ({{ void.expected_completion|date:"d M Y" }}) is after the client's hand-back date ({{ void.handback_date|date:"d M Y" }}).</div>{% endif %}
+<table class="details panel">
+  <tr><th>Job type</th><td>{{ void.job_type }}</td><th>SIMPRO</th><td>{{ void.simpro|default:"—" }}</td></tr>
+  <tr><th>Postcode</th><td>{{ void.postcode|default:"—" }}</td><th>Area</th><td>{{ void.area|default:"—" }}</td></tr>
+  <tr><th>Supervisor</th><td>{{ void.supervisor|default:"—" }}{% for s in trade_supervisors %}<br>{{ s }} ({{ s.trade }}){% endfor %}</td><th>Access</th><td>{{ void.access|default:"—" }}</td></tr>
+  <tr><th>Client hand-back</th><td>{{ void.handback_date|date:"d M Y"|default:"—" }}</td><th>Expected completion</th><td>{{ void.expected_completion|date:"d M Y"|default:"—" }}</td></tr>
+  <tr><th>Keys received</th><td>{{ void.keys_received|date:"d M Y"|default:"—" }}</td><th>Last inspection</th><td>{{ void.last_inspection|date:"d M Y"|default:"—" }}</td></tr>
+  <tr><th>Flags</th><td>{% if void.electrical_flag %}⚡ Electrical {% endif %}{% if void.issue_flag %}<span class="tag bad">Issue</span>{% endif %}{% if not void.electrical_flag and not void.issue_flag %}—{% endif %}</td><th>Note</th><td>{{ void.status_note|default:"—" }}</td></tr>
+</table>
+<h2>Job diary</h2>
+<form method="post" action="{% url 'voids:add_update' void.pk %}" class="panel add-update">{% csrf_token %}
+  {{ update_form.text }}
+  <span class="add-row">{{ update_form.kind }} <button class="primary">Add update</button></span>
+  <p class="hint">Choosing <b>Site visit</b> also records today as the last inspection. You can change your own update for {{ edit_minutes }} minutes after adding it.</p>
+</form>
+<ul class="diary">
+{% for u in updates %}
+  <li class="k-{{ u.kind }}{% if u.hidden %} hidden-upd{% endif %}">
+    <span class="when">{{ u.created_at|date:"D d M Y H:i" }} · <b>{{ u.author.full_name|default:"System" }}</b>{% if u.kind != "general" %} · <span class="kind">{{ u.get_kind_display }}</span>{% endif %}{% if u.edited_at %} · edited{% endif %}{% if u.hidden %} · hidden by {{ u.hidden_by.full_name }}{% endif %}</span>
+    <div>{{ u.text|linebreaksbr }}</div>
+    <span class="upd-actions">
+      {% if u.author_id == user.pk and not u.is_auto and not u.hidden and u.created_at > edit_cutoff %}<a href="{% url 'voids:edit_update' u.pk %}">Edit</a>{% endif %}
+      {% if user.is_admin %}<form method="post" action="{% url 'voids:hide_update' u.pk %}" class="inline">{% csrf_token %}<button class="link">{% if u.hidden %}Restore{% else %}Hide{% endif %}</button></form>{% endif %}
+    </span>
+  </li>
+{% empty %}<li>No updates yet.</li>{% endfor %}
+</ul>
+
+<h2>Trades</h2>
+<table class="grid trades">
+  <thead><tr><th>Trade</th><th>Status</th><th>Who</th><th>Date</th><th>Notes</th><th></th></tr></thead>
+  <tbody>
+  {% for trade, task in trades %}
+  <tr>
+    <td>{{ trade.name }}</td>
+    <td><span class="k t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}">{% if task %}{{ task.get_status_display }}{% if task.claimed %} · claimed{% endif %}{% else %}—{% endif %}</span></td>
+    <td>{{ task.assignee }}</td><td>{{ task.date|date:"d/m/y" }}</td><td>{{ task.notes|linebreaksbr }}</td>
+    <td><a href="{% url 'voids:task_cell' void.pk trade.pk %}">Update</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<details><summary><h2 class="inline-h">Change history</h2></summary>
+<table class="grid">
+  <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+  <tbody>{% for h in history %}<tr><td class="nowrap">{{ h.timestamp|date:"d M Y H:i" }}</td><td>{{ h.actor.full_name|default:"System" }}</td><td>{{ h.summary }}</td></tr>
+  {% empty %}<tr><td colspan="3">No changes recorded yet.</td></tr>{% endfor %}</tbody>
+</table>
+</details>
+{% endblock %}

@@ -76,6 +76,23 @@ def set_role(user, role, actor):
            {"role": {"from": old, "to": role}})
 
 
+MODULES = {"orders": ("can_use_orders", "Material Orders"), "voids": ("can_use_voids", "Voids")}
+
+
+def set_module_access(user, module, allowed, actor):
+    """Switch a user's access to one module (Material Orders or Voids) on or off."""
+    if module not in MODULES:
+        raise AccountActionError("Unknown module.")
+    field, label = MODULES[module]
+    if getattr(user, field) == allowed:
+        return
+    setattr(user, field, allowed)
+    user.save(update_fields=[field])
+    record(actor, "account.access", user,
+           f"{'Gave' if allowed else 'Removed'} {label} access {'to' if allowed else 'from'} {user.full_name}",
+           {field: {"from": not allowed, "to": allowed}})
+
+
 def password_reset_link(user, request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)

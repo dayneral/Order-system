@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Voids import report · BFS{% endblock %}
+{% block main_class %}page wide{% endblock %}
+{% block help %}{% if run.status == "preview" %}<p class="help">This is a preview. <strong>Nothing has been changed yet.</strong> Check the report, then press <b>Apply import</b> or <b>Discard</b>.</p>{% endif %}{% endblock %}
+{% block content %}
+<p><a href="{% url 'voids:import' %}">&larr; Voids import</a></p>
+<h1>Import report: {{ run.filename }}</h1>
+<p>Uploaded {{ run.created_at|date:"d M Y H:i" }} by {{ run.uploaded_by.full_name|default:"—" }} · <span class="pill pill-{{ run.status }}">{{ run.get_status_display }}</span>{% if run.applied_at %} on {{ run.applied_at|date:"d M Y H:i" }}{% endif %}</p>
+<div class="cards">
+  <div class="card"><div class="num">{{ r.total }}</div>voids read</div>
+  <div class="card ok"><div class="num">{{ r.new }}</div>new</div>
+  <div class="card"><div class="num">{{ r.updated }}</div>to update</div>
+  {% for s in r.sheets %}<div class="card"><div class="num">{{ s.rows }}</div>{{ s.name }} → {{ s.job_type }}</div>{% endfor %}
+</div>
+{% if run.status == "preview" %}
+<div class="actions panel">
+  <form method="post" action="{% url 'voids:import_apply' run.pk %}">{% csrf_token %}<button class="primary">Apply import</button></form>
+  <form method="post" action="{% url 'voids:import_discard' run.pk %}">{% csrf_token %}<button>Discard</button></form>
+</div>
+{% endif %}
+{% if r.skipped_tabs %}<p>Tabs not imported: {{ r.skipped_tabs|join:", " }}.</p>{% endif %}
+{% if r.problems %}<h2>To check ({{ r.problems|length }})</h2><ul class="panel">{% for p in r.problems %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+<h2>What was read</h2>
+<div class="vgrid-wrap"><table class="grid">
+  <thead><tr><th>Tab / row</th><th>SIMPRO</th><th>Address</th><th>Postcode</th><th>Supervisor</th><th>Area</th><th>Note</th><th>Trades</th></tr></thead>
+  <tbody>{% for x in rows %}<tr><td class="nowrap">{{ x.sheet }} {{ x.row }}</td><td>{{ x.simpro }}</td><td>{{ x.address }}</td><td>{{ x.postcode }}</td><td>{{ x.supervisor }}</td><td>{{ x.area }}</td><td>{{ x.status_note }} {{ x.expected_note }}</td>
+  <td>{% for name, t in x.tasks.items %}<span class="k t-{{ t.status|default:'none' }}{% if t.claimed %} claimed{% endif %}">{{ name }}</span> {% endfor %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}
