@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<title>{% if label %}{{ label }} {% endif %}{{ order.order_number|default:"Draft order" }}</title>
+<title>{% if label %}{{ label }} {% endif %}Material order - {{ address_line|default:"Draft order" }}</title>
 <style>
   body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #000; margin: 0; }
   .doc { max-width: 800px; }
@@ -38,9 +38,9 @@
 <body>
 {% if show_toolbar %}<div class="toolbar"><button onclick="window.print()">Print</button> <a href="{{ back_url }}">Back to order</a></div>{% endif %}
 <div class="doc">
-<h1>{% if label %}<span class="label{% if kind == 'amended' %} label-amended{% endif %}">{{ label }}</span> {% endif %}BFS material order {{ order.order_number|default:"(draft, not submitted)" }}</h1>
+<h1>{% if label %}<span class="label{% if kind == 'amended' %} label-amended{% endif %}">{{ label }}</span> {% endif %}BFS material order - {{ address_line|default:"(no address)" }}</h1>
 {% if kind == "cancelled" %}<div class="warn">This order has been CANCELLED. Please do not pick or deliver it.</div>{% endif %}
-{% if kind == "amended" %}<div class="warn">This order has been AMENDED. It replaces all earlier versions of {{ order.order_number }}.</div>
+{% if kind == "amended" %}<div class="warn">This order has been AMENDED. It replaces all earlier versions of this order ({{ order.order_number }}).</div>
 {% if changes %}<div class="changes"><b>Changes since the last version:</b>
   {% if changes.new %}<span class="tag new">{{ changes.new }} NEW</span>{% endif %}
   {% if changes.changed %}<span class="tag changed">{{ changes.changed }} CHANGED</span>{% endif %}
@@ -69,7 +69,7 @@
     {% for line in group.lines %}
     <tr class="{% if line.change %}line-{{ line.change }}{% endif %}">
       <td>{{ line.number }}</td>
-      <td>{% if line.is_non_stocked %}<span class="nonstock">NON-STOCKED</span>{% else %}<span class="code">{{ line.code }}</span>{% endif %}&nbsp;&mdash;&nbsp;{{ line.description }}{% if line.is_flammable %} <span class="flam">[FLAMMABLE]</span>{% endif %}{% if line.kit_name %} <span class="kit">[KIT: {{ line.kit_name }}]</span>{% endif %}{% if line.change == "new" %} <span class="tag new">NEW</span>{% elif line.change == "changed" %} <span class="tag changed">CHANGED</span>{% elif line.change == "removed" %} <span class="tag removed">REMOVED</span>{% endif %}</td>
+      <td>{% if show_codes and line.code %}<span class="code">{{ line.code }}</span>&nbsp;&mdash;&nbsp;{% endif %}{{ line.description }}{% if line.is_flammable %} <span class="flam">[FLAMMABLE]</span>{% endif %}{% if line.kit_name %} <span class="kit">[KIT: {{ line.kit_name }}]</span>{% endif %}{% if line.change == "new" %} <span class="tag new">NEW</span>{% elif line.change == "changed" %} <span class="tag changed">CHANGED</span>{% elif line.change == "removed" %} <span class="tag removed">REMOVED</span>{% endif %}</td>
       <td>{% if line.change == "removed" %}<s>{{ line.quantity }}</s> → do not supply{% else %}{{ line.quantity }}{% if line.was %}<div class="was">was: {{ line.was }}</div>{% endif %}{% endif %}</td>
     </tr>
     {% endfor %}
@@ -78,7 +78,7 @@
 </table>
 <p class="note">{{ line_count }} line{{ line_count|pluralize }}.
 {% if has_flammable %}<span class="flam">Includes FLAMMABLE items: pick from the flammable store.</span>{% endif %}
-{% if has_non_stocked %}NON-STOCKED items are not held in stores and need to be sourced.{% endif %}</p>
+{% if has_non_stocked %}Other items are not held in stores and need to be sourced.{% endif %}</p>
 <p class="note">Sent by BFS Material Orders to {{ stores_email }}. Generated {{ generated_at|date:"d M Y H:i" }}.</p>
 </div>
 </body>

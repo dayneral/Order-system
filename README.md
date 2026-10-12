@@ -182,8 +182,8 @@ for review before items are moved into live sections with Sort catalogue.
   - **Area (vinyl and other flooring):** the exact length and width to be cut, in metres
     to 0.1 m. Stores cut to size. The app works out the m², with no waste allowance.
   - **Cut to order (worktops, splashbacks):** a length in metres, to 0.1 m.
-  - **Non-stocked items:** typed in by name, unit and quantity. They are marked
-    NON-STOCKED and have no price.
+  - **Other items** (not in the catalogue): typed in as a full description and quantity,
+    with no unit. They have no price and are listed under one "Other items" heading for stores.
 - **Drafts:** saved at any time and visible only to their owner. A draft is
   deleted 30 days after it was last saved. Users are warned at sign-in when a
   draft will be deleted within 5 days.
@@ -203,7 +203,7 @@ for review before items are moved into live sections with Sort catalogue.
   - Each, pack and whole items: quantity × trade price.
   - Area (vinyl and other flooring): m² (to 2 decimal places) × price per m², no waste allowance.
   - Worktops and splashbacks: length ÷ catalogue length × price (an estimate).
-  - Each line is rounded to the penny. Non-stocked items are excluded.
+  - Each line is rounded to the penny. Other items are excluded.
   - The code is in `orders/pricing.py`.
 
 ## Linked items and kits
@@ -240,7 +240,10 @@ submitting is never blocked.
   or REMOVED (do not supply), and changed job details highlighted.
 - **Reply-To** is the person who placed the order, so a reply from stores goes to them.
 - **Body:** a print-friendly HTML table, with items grouped under section headings in catalogue order. There is no PDF attachment: stores print the email itself.
-  - Each item shows its Part No. and display name. Non-stocked items show NON-STOCKED.
+  - Each item shows its display name. Part Nos. are hidden while many codes are placeholders
+    (set `EMAIL_SHOW_PART_NUMBERS=1` to show them).
+  - The subject and heading show the first line of the property address instead of the order
+    number (the order number stays in the details table).
   - Flammable items are marked.
   - Worktops show a cut instruction (e.g. "cut to 1.9m"), and flooring shows
     "Cut to L × W = A m²".
@@ -334,6 +337,7 @@ user needs the `CREATEDB` permission (`ALTER USER bfs CREATEDB;`).
 | `EMAIL_HOST_USER` | No | Default `materialorders@bfsuk.org`. |
 | `EMAIL_HOST_PASSWORD` | Yes (production) | Password for the mailbox above. Set it only in the Render dashboard. |
 | `DEFAULT_FROM_EMAIL` | No | Default `BFS Material Orders <materialorders@bfsuk.org>`. |
+| `EMAIL_SHOW_PART_NUMBERS` | No | `1` shows Part Nos. on order emails. Default off. |
 | `VOIDS_CC_EMAIL` | No | Copied on every order email (new, amended, cancelled) for **void** properties. Blank = no copy. Go-live: voids@bfsuk.org. |
 | `OCCUPIED_CC_EMAIL` | No | As above for **occupied** properties. Go-live: info@bfsuk.org. |
 

@@ -338,22 +338,21 @@ def add_kit(order, user, kit, data):
 
 def add_non_stocked_line(order, user, name, unit, quantity):
     _require_editable(order, user)
+    """An "Other item" (not in the catalogue). The description covers the unit, so none is asked for."""
     name, unit = (name or "").strip(), (unit or "").strip()
     if not name:
-        raise OrderError("Non-stocked item: enter a name.")
-    if not unit:
-        raise OrderError("Non-stocked item: enter a unit (e.g. each, box, m).")
+        raise OrderError("Other item: enter a description.")
     try:
         qty = Decimal(str(quantity).strip())
     except (InvalidOperation, ValueError):
-        raise OrderError("Non-stocked item: enter a quantity.")
+        raise OrderError("Other item: enter a quantity.")
     if qty <= 0 or qty > MAX_QUANTITY or qty != qty.quantize(TENTH):
-        raise OrderError("Non-stocked item: enter a quantity above 0 (up to 1 decimal place).")
+        raise OrderError("Other item: enter a quantity above 0 (up to 1 decimal place).")
     line = OrderLine(order=order, position=_next_position(order), is_non_stocked=True, name=name[:300],
                      unit=unit[:40], measure_type=MeasureType.EACH, quantity=qty)
     line.save()
     recalculate_total(order)
-    _touch(order, user, f"added NON-STOCKED {line.name} ({line.measurement_text})")
+    _touch(order, user, f"added other item {line.name} ({line.measurement_text})")
     return line
 
 
@@ -376,7 +375,7 @@ def update_line(line, user, data):
     line.save()
     recalculate_total(order)
     if before != line.measurement_text:
-        _touch(order, user, f"changed {line.part_no or 'NON-STOCKED'} {line.name}",
+        _touch(order, user, f"changed {line.part_no or 'Other item:'} {line.name}",
                {"quantity": {"from": before, "to": line.measurement_text}})
     return line
 
@@ -386,7 +385,7 @@ def remove_line(line, user):
     _require_editable(order, user)
     if order.status == Order.Status.SUBMITTED and order.lines.count() == 1:
         raise OrderError("A submitted order must keep at least one item. Cancel the order instead.")
-    description = f"{line.part_no or 'NON-STOCKED'} {line.name} ({line.measurement_text})"
+    description = f"{line.part_no or 'Other item:'} {line.name} ({line.measurement_text})"
     line.delete()
     recalculate_total(order)
     _touch(order, user, f"removed {description}")

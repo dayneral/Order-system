@@ -355,7 +355,7 @@ def test_full_order_through_the_website(client, make_user, items):
                        {"item_id": items["silicone"].pk, "quantity": "0"}, HTTP_HX_REQUEST="true")
     assert "msg-error" in resp.content.decode()
     client.post(reverse("orders:line_add_non_stocked", args=[order.pk]),
-                {"name": "Odd bracket", "unit": "each", "quantity": "2"}, HTTP_HX_REQUEST="true")
+                {"name": "Odd bracket", "quantity": "2"}, HTTP_HX_REQUEST="true")
     line = order.lines.get(is_non_stocked=False)
     client.post(reverse("orders:line_update", args=[order.pk, line.pk]), {"length": "3.0", "width": "2.0"},
                 HTTP_HX_REQUEST="true")
@@ -366,7 +366,7 @@ def test_full_order_through_the_website(client, make_user, items):
     assert resp.status_code == 302 and order.status == Order.Status.SUBMITTED
     assert order.order_value == D("111.00")
     detail = client.get(reverse("orders:detail", args=[order.pk])).content.decode()
-    assert "NON-STOCKED" in detail and "Odd bracket" in detail and order.order_number in detail
+    assert "Other item" in detail and "Odd bracket" in detail and order.order_number in detail
 
 
 def test_submit_errors_shown_on_page(client, make_user, items):

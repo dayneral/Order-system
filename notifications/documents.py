@@ -41,7 +41,7 @@ HEADER_LABELS = {
 def _line_dict(line):
     return {
         "key": str(line.pk),
-        "code": "NON-STOCKED" if line.is_non_stocked else line.part_no,
+        "code": "" if line.is_non_stocked else line.part_no,
         "is_non_stocked": line.is_non_stocked,
         "description": item_description(line),
         "quantity": quantity_text(line),
@@ -98,6 +98,7 @@ def document_context(order, kind="submitted", previous=None):
         }
         lines = lines + removed
     return {
+        "show_codes": settings.EMAIL_SHOW_PART_NUMBERS, "address_line": address_first_line(order),
         "order": order,
         "kind": kind,
         "label": LABELS.get(kind, ""),
@@ -112,6 +113,15 @@ def document_context(order, kind="submitted", previous=None):
     }
 
 
+OTHER_ITEMS = "Other items"
+
+
+def address_first_line(order):
+    """First line of the property address (up to the first line break or comma)."""
+    text = (order.property_address or "").strip()
+    return text.splitlines()[0].split(",")[0].strip() if text else ""
+
+
 def group_by_section(lines):
     """Lines grouped under section headings for stores, in catalogue section order."""
     from catalogue.models import Section
@@ -119,9 +129,9 @@ def group_by_section(lines):
     order = {name: index for index, name in enumerate(Section.objects.values_list("name", flat=True))}
     groups = {}
     for line in lines:
-        name = line["section"] or ("Non-stocked" if line["is_non_stocked"] else "Other")
+        name = OTHER_ITEMS if line["is_non_stocked"] else (line["section"] or "Other")
         groups.setdefault(name, []).append(line)
-    ranked = sorted(groups.items(), key=lambda g: (order.get(g[0], len(order) + (g[0] == "Non-stocked")),))
+    ranked = sorted(groups.items(), key=lambda g: (order.get(g[0], len(order) + (g[0] == OTHER_ITEMS)),))
     number = 0
     for _, group in ranked:
         group.sort(key=lambda line: line.get("change") == "removed")  # removed lines last in their section
@@ -140,7 +150,7 @@ def subject(order, kind="submitted", previous=None):
             previous.get("header", {}).get("delivery_date", "") != _header_dict(order)["delivery_date"]:
         label = "AMENDED (NEW DATE)"
     delivery = f"{order.delivery_date:%d %b %Y}" if order.delivery_date else "no date"
-    text = f"Material order {order.order_number} - Job {order.job_number} - deliver {delivery}"
+    text = f"Material order - {address_first_line(order) or 'no address'} - Job {order.job_number} - deliver {delivery}"
     return f"{label}: {text}" if label else text
 
 

@@ -48,15 +48,20 @@ def test_submit_emails_stores_with_html_body_and_no_attachment(order, settings):
     assert msg.to == [settings.STORES_EMAIL] == ["stores@bfsuk.org"]
     assert "materialorders@bfsuk.org" in msg.from_email
     assert msg.reply_to == [order.owner.email]
-    assert msg.subject.startswith(f"Material order {order.order_number} - Job J-24017")
+    assert msg.subject.startswith("Material order - 14 Mill Lane - Job J-24017")
+    assert order.order_number not in msg.subject
     html = msg.alternatives[0][0]
+    assert "BFS material order - 14 Mill Lane</h1>" in html
     for expected in (order.order_number, "Sam Ordering", "J-24017", "14 Mill Lane", "Occupied",
-                     "Side gate code 1234", "ADH014</span>&nbsp;&mdash;&nbsp;Multi-purpose silicone 270ml white",
+                     "Side gate code 1234", "Multi-purpose silicone 270ml white",
                      "Black granite bullnose worktop, cut to 1.9m", "Cut to 4.5m × 2.0m = 9.00 m²",
-                     "[FLAMMABLE]", "NON-STOCKED", "Brass kick plate", "2 packs of 100"):
+                     "[FLAMMABLE]", ">Other items<", "Brass kick plate", "2 packs of 100"):
         assert expected in html, expected
+    # Part Nos. are off by default; "Other items" is one heading, not a label on each line.
+    assert "ADH014" not in html and "ADH014" not in msg.body
+    assert "NON-STOCKED" not in html and "NON-STOCKED" not in msg.body
     assert msg.attachments == []
-    for expected in (order.order_number, "J-24017", "cut to 1.9m", "9.00 m²", "[FLAMMABLE]", "NON-STOCKED"):
+    for expected in (order.order_number, "J-24017", "cut to 1.9m", "9.00 m²", "[FLAMMABLE]", "-- OTHER ITEMS --"):
         assert expected in msg.body, expected
     assert OrderEmail.objects.get().status == OrderEmail.Status.SENT
 
@@ -167,3 +172,16 @@ def test_no_copy_when_settings_blank(order, settings):
     settings.VOIDS_CC_EMAIL = settings.OCCUPIED_CC_EMAIL = ""
     services.submit(order, order.owner)
     assert mail.outbox[-1].cc == [order.owner.email]  # the person placing the order is always copied
+
+
+def test_part_numbers_can_be_switched_back_on(order, settings):
+    settings.EMAIL_SHOW_PART_NUMBERS = True
+    services.submit(order, order.owner)
+    msg = mail.outbox[0]
+    assert "ADH014</span>&nbsp;&mdash;&nbsp;Multi-purpose silicone" in msg.alternatives[0][0]
+    assert "ADH014 - Multi-purpose silicone" in msg.body
+
+
+def test_other_item_needs_no_unit(order):
+    line = services.add_non_stocked_line(order, order.owner, "Box of 100 50mm brass screws", "", "2")
+    assert line.measurement_text == "2"

@@ -249,10 +249,10 @@ def line_add_non_stocked(request, order_id):
     order = _get_order(request, order_id, edit=True)
     try:
         line = services.add_non_stocked_line(order, request.user, request.POST.get("name"),
-                                             request.POST.get("unit"), request.POST.get("quantity"))
+                                             "", request.POST.get("quantity"))
     except OrderError as exc:
         return _lines_response(request, order, error=str(exc))
-    return _lines_response(request, order, notice=f"Added non-stocked item {line.name}.")
+    return _lines_response(request, order, notice=f"Added other item {line.name}.")
 
 
 @login_required

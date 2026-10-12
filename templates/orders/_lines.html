@@ -30,7 +30,7 @@
     <tbody>
     {% for line in lines %}
       <tr>
-        <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">NON-STOCKED</span>{% else %}{{ line.part_no }}{% endif %}</td>
+        <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">Other item</span>{% else %}{{ line.part_no }}{% endif %}</td>
         <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
         <td>
           <form method="post" action="{% url 'orders:line_update' order.pk line.pk %}" class="inline-fields"
@@ -62,7 +62,7 @@
       <tr><th colspan="3" class="num">Order value</th><th class="num">£{{ order.order_value }}</th><th></th></tr>
     </tfoot>{% endif %}
   </table>
-  {% if show_values %}<p class="hint">Order value uses trade prices and excludes non-stocked items. It is not shown to stores.
+  {% if show_values %}<p class="hint">Order value uses trade prices and excludes other items. It is not shown to stores.
     {% if order.has_estimates %}* Estimate: cut-to-order items are priced pro rata.{% endif %}</p>{% endif %}
   {% else %}
   <p class="hint">No items yet. Add items from the list.</p>

@@ -48,3 +48,6 @@ build brief. Newest first.
 | Hidden items for admins | Hidden sections/subsections appear to admins only in a separate "Hidden" tab on the order page, not in the normal tabs or search. |
 | Design and readability | Cream background, charcoal text, teal accent (#1E6B66), Atkinson Hyperlegible default font, following British Dyslexia Association guidance. Per-user Display options (background, font, text size) saved on the account. Print view stays white. |
 | Order email copies | Every order email (new, amended, cancelled) is copied by property type: voids → VOIDS_CC_EMAIL (voids@bfsuk.org), occupied → OCCUPIED_CC_EMAIL (info@bfsuk.org). Set in Render; blank means no copy, so testing doesn't reach those inboxes. |
+| Other items | "Non-stocked" items renamed "Other items". No unit is asked for (the description covers it). Emails list them under one "Other items" heading with no per-line label. |
+| Email subject and heading | Show the first line of the property address instead of the order number. The order number stays in the details table. |
+| Part Nos. on emails | Hidden for now (too many placeholder codes). `EMAIL_SHOW_PART_NUMBERS=1` switches them back on. |

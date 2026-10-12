@@ -152,6 +152,8 @@ ORDER_VALUES_ENABLED = env_bool("ORDER_VALUES_ENABLED", False)
 # Where submitted orders are sent.
 STORES_EMAIL = os.environ.get("STORES_EMAIL", "stores@bfsuk.org")
 # Copy of every order email (new, amended, cancelled) by property type. Blank = no copy.
+# Part Nos. on order emails to stores. Off while many codes are placeholders (TBC/temporary).
+EMAIL_SHOW_PART_NUMBERS = os.environ.get("EMAIL_SHOW_PART_NUMBERS", "0") == "1"
 VOIDS_CC_EMAIL = os.environ.get("VOIDS_CC_EMAIL", "").strip()
 OCCUPIED_CC_EMAIL = os.environ.get("OCCUPIED_CC_EMAIL", "").strip()
 

@@ -91,7 +91,7 @@ def test_amended_email_marks_new_changed_and_removed_lines_and_header(setup):
     assert "do not supply" in html and "Item PLU2" in html
     assert "Delivery date (was:" in html and 'class="chg"' in html
     assert msg.subject.startswith("AMENDED (NEW DATE): ")
-    assert "[NEW] PLU3" in text and "[CHANGED] PLU1" in text and "REMOVED - do not supply: PLU2" in text
+    assert "[NEW] Item PLU3" in text and "[CHANGED] Item PLU1" in text and "REMOVED - do not supply: Item PLU2" in text
 
 
 def test_second_amendment_compares_with_the_first_amendment(setup):

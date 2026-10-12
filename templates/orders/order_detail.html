@@ -37,7 +37,7 @@
   <tbody>
   {% for line in lines %}
     <tr>
-      <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">NON-STOCKED</span>{% else %}{{ line.part_no }}{% endif %}</td>
+      <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">Other item</span>{% else %}{{ line.part_no }}{% endif %}</td>
       <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
       <td>{{ line.section_name|default:"—" }}</td>
       <td>{{ line.measurement_text }}</td>
@@ -48,7 +48,7 @@
   </tbody>
   {% if show_values %}<tfoot><tr><th colspan="5" class="num">Order value</th><th class="num">£{{ order.order_value }}</th></tr></tfoot>{% endif %}
 </table>
-{% if show_values %}<p class="hint">Trade prices as at the time each item was ordered. Non-stocked items are excluded from the order value.{% if order.has_estimates %} * Estimate (cut to order).{% endif %}</p>{% endif %}
+{% if show_values %}<p class="hint">Trade prices as at the time each item was ordered. Other items are excluded from the order value.{% if order.has_estimates %} * Estimate (cut to order).{% endif %}</p>{% endif %}
 
 {% if history %}
 <h2>History</h2>

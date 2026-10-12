@@ -17,13 +17,12 @@
     <h2 class="first">Add items</h2>
     {% include "orders/_items.html" %}
     <details class="nonstock">
-      <summary>Can't find an item? Add a non-stocked item</summary>
-      <p class="hint">Non-stocked items are marked NON-STOCKED for stores and are not included in the order value.</p>
+      <summary>Can't find an item? Add an other item</summary>
+      <p class="hint">Describe the item fully, including size and unit (e.g. "Box of 100 50mm brass screws"). Other items are listed separately for stores and are not included in the order value.</p>
       <form method="post" action="{% url 'orders:line_add_non_stocked' order.pk %}"
             hx-post="{% url 'orders:line_add_non_stocked' order.pk %}" hx-target="#lines" hx-swap="outerHTML"
             hx-on::after-request="if(event.detail.successful) this.reset()" class="inline-fields">{% csrf_token %}
-        <label>Name <input name="name" maxlength="300" required size="30"></label>
-        <label>Unit <input name="unit" maxlength="40" required size="8" placeholder="each"></label>
+        <label>Description <input name="name" maxlength="300" required size="36"></label>
         <label>Quantity <input name="quantity" type="number" min="0.1" step="0.1" required class="qty"></label>
         <button>Add</button>
       </form>

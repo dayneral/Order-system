@@ -113,7 +113,7 @@ class OrderLine(models.Model):
         ordering = ["position", "id"]
 
     def __str__(self):
-        return f"{self.part_no or 'NON-STOCKED'} {self.name}"
+        return f"{self.part_no or 'Other item:'} {self.name}"
 
     @property
     def measurement_text(self):
@@ -128,7 +128,7 @@ class OrderLine(models.Model):
         qty = f"{qty:f}" if qty != "" else ""
         if self.measure_type == MeasureType.PACK:
             return f"{qty} pack{'s' if self.quantity != 1 else ''} of {self.pack_size}"
-        return f"{qty} {self.unit}"
+        return f"{qty} {self.unit}".strip()
 
 
 class OrderNumberCounter(models.Model):

@@ -116,7 +116,7 @@ def test_stores_email_is_grouped_by_section_in_catalogue_order(make_user):
     services.submit(order, user)
     msg = mail.outbox[0]
     html, text = msg.alternatives[0][0], msg.body
-    positions = [html.index(f">{name}<") for name in ("Adhesives", "Electrical", "Joinery", "Non-stocked")]
+    positions = [html.index(f">{name}<") for name in ("Adhesives", "Electrical", "Joinery", "Other items")]
     assert positions == sorted(positions)
     assert text.index("-- ADHESIVES --") < text.index("-- ELECTRICAL --") < text.index("-- JOINERY --")
-    assert "1. ADH1" in text and "2. ELE1" in text and "3. ELE2" in text and "4. JOI1" in text
+    assert "1. Glue" in text and "2. Socket" in text and "3. Switch" in text and "4. Hinge" in text
