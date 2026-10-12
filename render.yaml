@@ -39,9 +39,9 @@ services:
       - key: OCCUPIED_CC_EMAIL     # copy for occupied orders; blank = none (go-live: info@bfsuk.org)
         sync: false
 
-  # Daily data retention job: anonymises orders 30 days after delivery and
-  # deletes drafts not saved for 30 days. Schedule is in UTC (02:15 UTC is
-  # 02:15 in winter and 03:15 in summer, UK time).
+  # Nightly job: data retention (orders 30 days after delivery, old drafts),
+  # then the voids supervisor email (snagging first). Schedule is in UTC
+  # (02:15 UTC is 02:15 in winter and 03:15 in summer, UK time).
   - type: cron
     name: bfs-orders-retention
     runtime: python
@@ -49,7 +49,7 @@ services:
     plan: starter
     schedule: "15 2 * * *"
     buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py wait_for_db && python manage.py run_retention
+    startCommand: python manage.py wait_for_db && python manage.py run_retention; python manage.py send_void_digest
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -60,3 +60,15 @@ services:
           type: web
           name: bfs-orders
           envVarKey: SECRET_KEY
+      # For the voids supervisor email:
+      - key: EMAIL_HOST
+        value: smtp.ionos.co.uk
+      - key: EMAIL_HOST_USER
+        value: materialorders@bfsuk.org
+      - key: EMAIL_HOST_PASSWORD
+        fromService:
+          type: web
+          name: bfs-orders
+          envVarKey: EMAIL_HOST_PASSWORD
+      - key: SITE_URL              # address of the site, for links in the email, e.g. https://bfs-orders.onrender.com
+        sync: false

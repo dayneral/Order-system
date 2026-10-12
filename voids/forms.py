@@ -8,17 +8,15 @@ DATE = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
 class VoidForm(forms.ModelForm):
     class Meta:
         model = Void
-        fields = ["key_info", "job_type", "simpro", "address", "postcode", "area", "supervisor", "access", "keys_received",
-                  "start_date", "handback_date", "status", "status_fixed", "status_note",
-                  "electrical_flag", "issue_flag", "issue_note", "on_hold", "last_inspection"]
-        widgets = {"keys_received": DATE, "start_date": DATE, "handback_date": DATE,
-                   "last_inspection": DATE,
+        # Status, the electrical flag and the last inspection date are automatic.
+        fields = ["key_info", "job_type", "simpro", "address", "postcode", "area", "supervisor", "access",
+                  "start_date", "handback_date", "status_note", "issue_flag", "issue_note", "on_hold"]
+        widgets = {"start_date": DATE, "handback_date": DATE,
                    "key_info": forms.Textarea(attrs={"rows": 3, "placeholder": "e.g. Key safe 1234 · Asbestos on chimney · Dog next door"})}
         help_texts = {
             "area": "Leave blank to fill in from the postcode.",
             "supervisor": "Leave blank to fill in from the postcode (the supervisor's patch).",
             "handback_date": "The client's nominated hand-back date (expected completion).",
-            "status_fixed": "Tick to keep the status you choose. Otherwise it is worked out from the trades.",
         }
 
     def __init__(self, *args, **kwargs):

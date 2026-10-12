@@ -36,7 +36,7 @@ def trade_supervisors(void):
 
 def derive_status(void):
     """Work out the overall status (the row colour) from the trades."""
-    if void.status_fixed or void.status == Void.Status.HANDED_BACK:
+    if void.status == Void.Status.HANDED_BACK:
         return void.status
     statuses = [t.status for t in void.tasks.all() if t.status != S.NOT_REQUIRED]
     if not statuses:
@@ -50,9 +50,32 @@ def derive_status(void):
     return Void.Status.IN_PROGRESS
 
 
+def sync_electrical(void):
+    """The electrical flag is automatic: on when Electrical work is on the job."""
+    flag = any(t.trade.name.lower() == "electrical" and t.status != S.NOT_REQUIRED
+               for t in void.tasks.select_related("trade"))
+    if flag != void.electrical_flag:
+        void.electrical_flag = flag
+        Void.objects.filter(pk=void.pk).update(electrical_flag=flag)
+
+
+def can_sign_off(void):
+    """A void can move to Completed only when every trade on it is complete (or removed / not required)."""
+    return void.status != Void.Status.HANDED_BACK and all(
+        t.status in (S.COMPLETE, S.NOT_REQUIRED) for t in void.tasks.all())
+
+
 def refresh_status(void, actor=None, activity=True):
     """Re-work the overall status. `activity` is False for imports, which don't count as progress."""
+    sync_electrical(void)
     new = derive_status(void)
+    since = void.snagging_since
+    if new == Void.Status.SNAGGING and not since:
+        void.snagging_since = timezone.now()
+    elif new != Void.Status.SNAGGING and since:
+        void.snagging_since = None
+    if void.snagging_since != since:
+        Void.objects.filter(pk=void.pk).update(snagging_since=void.snagging_since)
     if new != void.status:
         old = void.status
         void.status = new
@@ -80,6 +103,8 @@ def request_final_check(void, actor=None):
 
 def confirm_final_check(void, user):
     """The supervisor has final checked the property: the void moves to Completed."""
+    if not can_sign_off(void):
+        raise ValueError("Every trade on the job must be complete (or removed) before it can be signed off.")
     void.status = Void.Status.HANDED_BACK
     void.final_checked_at = timezone.now()
     void.final_checked_by = user
@@ -93,11 +118,10 @@ def confirm_final_check(void, user):
 
 def reopen(void, user):
     void.status = Void.Status.IN_PROGRESS
-    void.status_fixed = False
     void.final_checked_at = None
     void.final_checked_by = None
     void.handed_back_at = None
-    void.save(update_fields=["status", "status_fixed", "final_checked_at", "final_checked_by", "handed_back_at",
+    void.save(update_fields=["status", "final_checked_at", "final_checked_by", "handed_back_at",
                              "updated_at"])
     record(user, "void.reopen", void, f"Reopened {void}")
     add_update(void, user, VoidUpdate.Kind.STATUS, "Reopened (taken out of Completed)")
@@ -177,3 +201,15 @@ def log_trade_change(void, user, task, comment):
         touch(void)
         return last
     return add_update(void, user, VoidUpdate.Kind.TRADE, text)
+
+
+def supervises(sup, void):
+    """A void is a supervisor's if it is in their patch, or (for a trade supervisor such as
+    electrical) if their trade is on the job."""
+    if void.supervisor_id == sup.pk:
+        return True
+    if sup.trade_id:
+        if any(t.trade_id == sup.trade_id and t.status != S.NOT_REQUIRED for t in void.tasks.all()):
+            return True
+        return sup.trade.name.lower() == "electrical" and void.electrical_flag
+    return False

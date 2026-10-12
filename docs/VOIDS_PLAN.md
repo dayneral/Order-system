@@ -289,3 +289,9 @@ is patchy, and the columns moved over time, so:
 | 2026-10-12 | Saving trades | Trade changes **save automatically** as each field changes (no Save button; **Done** closes it). Quick successive edits to the same trade by the same person make one diary line |
 | 2026-10-12 | One open tile | Opening a tile closes any other open tile |
 | 2026-10-12 | Claims | One-click **£ Claim / ✓ Claimed** on each trade, and **£ Claim all complete** for the whole job |
+| 2026-10-12 | Hand-back countdown | Tiles show the hand-back date with **days left** ("5 days left", "Due today", "3 days overdue") |
+| 2026-10-12 | Sorting | Main toggle is **Job number / Hand-back date**; the other sorts are in Search and more filters |
+| 2026-10-12 | Layout | **One tile per row**: a horizontal summary (address and details · hand-back · trades and progress · latest update); opening it shows trades and updates underneath. Only issues get a red outline |
+| 2026-10-12 | Sign-off | **Confirm final check** only appears (and only works) when every trade on the job is complete or removed. Signing off moves the void off the main list to **Completed** |
+| 2026-10-12 | Automatic fields | Removed from the void form: keys received, status set by hand, electrical flag and last inspection. **Status** follows the trades; the **electrical flag** is on when Electrical is on the job (tracker purple flags add Electrical, STC); **last inspection** is set when someone updates a trade's status |
+| 2026-10-12 | Nightly supervisor email | Sent every night after the retention job (`send_void_digest`), to each supervisor with an email address. **Snagging is at the top in a highlighted box** (every night while a job stays in snagging, with the trades and days in snagging), then issues, ready for final check, new needing a visit, hand-backs due and no update in N days (oldest first). Nothing to report = no email |

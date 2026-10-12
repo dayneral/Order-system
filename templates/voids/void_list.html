@@ -20,10 +20,7 @@
   {% for j in job_links %}<a href="?{{ j.query }}"{% if j.active %} class="on" aria-current="true"{% endif %}>{{ j.label }}</a>{% endfor %}
   <a href="?{{ electrical_link.query }}" class="elec-chip{% if electrical_link.active %} on{% endif %}"{% if electrical_link.active %} aria-current="true"{% endif %}>⚡ Electrical works</a>
   <a href="?{{ completed_link.query }}" class="done-chip{% if completed_link.active %} on{% endif %}">✓ Completed</a>
-  <label class="sortpick">Sort
-    <select onchange="window.location.search = this.value">
-      {% for o in sort_options %}<option value="?{{ o.query }}"{% if o.active %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
-    </select></label>
+  <span class="sorttoggle">Sort: {% for o in sort_toggle %}<a href="?{{ o.query }}"{% if o.active %} class="on" aria-current="true"{% endif %}>{{ o.label }}</a>{% endfor %}</span>
   <span class="viewtoggle">View: <a href="?view=tiles"{% if view == "tiles" %} class="on"{% endif %}>Tiles</a><a href="?view=table"{% if view == "table" %} class="on"{% endif %}>Table</a></span>
 </nav>
 

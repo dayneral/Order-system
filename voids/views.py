@@ -111,27 +111,15 @@ def filtered_voids(request):
     sups = list(Supervisor.objects.filter(active=True).select_related("trade"))
     area = f.get("area")
     sup = f.get("supervisor")
-    by_sup = [v for v in voids if not sup or supervises(sup, v)]
+    by_sup = [v for v in voids if not sup or services.supervises(sup, v)]
     by_area = [v for v in voids if not area or v.area_id == area.pk]
     area_counts = {}
     for v in by_sup:
         area_counts[v.area_id] = area_counts.get(v.area_id, 0) + 1
-    sup_counts = {s.pk: sum(1 for v in by_area if supervises(s, v)) for s in sups}
+    sup_counts = {s.pk: sum(1 for v in by_area if services.supervises(s, v)) for s in sups}
     sup_counts[None] = len(by_area)
     voids = [v for v in by_sup if not area or v.area_id == area.pk]
     return form, voids, params, {"areas": area_counts, "sups": sup_counts, "sup_list": sups}
-
-
-def supervises(sup, void):
-    """A void is a supervisor's if it is in their patch, or (for a trade supervisor such as
-    electrical) if their trade is on the job."""
-    if void.supervisor_id == sup.pk:
-        return True
-    if sup.trade_id:
-        if any(t.trade_id == sup.trade_id and t.status != TradeTask.Status.NOT_REQUIRED for t in void.tasks.all()):
-            return True
-        return sup.trade.name.lower() == "electrical" and void.electrical_flag
-    return False
 
 
 STALE_STATUSES = [Void.Status.NEW, Void.Status.STC, Void.Status.IN_PROGRESS, Void.Status.SNAGGING]
@@ -161,6 +149,7 @@ def grid_rows(voids, trades):
         rows.append({"void": v, "cells": cells, "done": done, "needed": len(needed),
                      "latest": updates[0] if updates else None, "update_form": UpdateForm(),
                      "on_job": on_job, "not_needed": not_needed, "others": others,
+                     "can_sign_off": services.can_sign_off(v),
                      "electrical": next((t for trade, t in on_job if trade.name.lower() == "electrical"), None),
                      "claimable": sum(1 for _, t in on_job if t.status == TradeTask.Status.COMPLETE and not t.claimed),
                      "percent": round(100 * done / len(needed)) if needed else 0,
@@ -212,6 +201,11 @@ def void_list(request):
     p["status"] = "" if done_on else Void.Status.HANDED_BACK
     completed_link = {"query": p.urlencode(), "active": done_on}
     current_sort = params.get("sort", "")
+    sort_toggle = []
+    for value, label in (("", "Job number"), ("handback", "Hand-back date")):
+        p = params.copy()
+        p["sort"] = value
+        sort_toggle.append({"label": label, "query": p.urlencode(), "active": value == current_sort})
     sort_options = []
     for value, label in form.fields["sort"].choices:
         p = params.copy()
@@ -225,11 +219,10 @@ def void_list(request):
     form.fields["trade"].widget = form.fields["trade"].hidden_widget()
     form.fields["job"].widget = form.fields["job"].hidden_widget()
     form.fields["area"].widget = form.fields["area"].hidden_widget()
-    form.fields["sort"].widget = form.fields["sort"].hidden_widget()
     form.fields["supervisor"].widget = form.fields["supervisor"].hidden_widget()
     return render(request, "voids/void_list.html", {
         "area_links": area_links, "unassigned": unassigned, "view": view,
-        "electrical_link": electrical_link, "sort_options": sort_options, "sup_links": sup_links,
+        "electrical_link": electrical_link, "sort_options": sort_options, "sort_toggle": sort_toggle, "sup_links": sup_links,
         "completed_link": completed_link, "electrical_mode": params.get("flag") == "electrical",
         "task_statuses": [c for c in TradeTask.Status.choices if c[0]],
         "form": form, "rows": grid_rows(voids, trades), "trades": trades, "count": len(voids),
@@ -329,6 +322,10 @@ def task_cell(request, void_id, trade_id):
                 record(request.user, "void.trade", void, f"{trade}: {task.get_status_display()} {task.display}"[:500],
                        changes)
                 services.log_trade_change(void, request.user, task, comment)
+                # A trade update by a supervisor means they have been on top of the job: record it as the
+                # last inspection.
+                if "status" in changes or not before:
+                    Void.objects.filter(pk=void.pk).update(last_inspection=timezone.localdate())
                 services.refresh_status(void, request.user)
             if "autosave" in request.POST and in_tile:
                 # Saved as you go: keep the editor open with the saved values.
@@ -400,8 +397,12 @@ def final_check(request, void_id):
         services.reopen(void, request.user)
         messages.success(request, f"{void.address} reopened.")
     elif void.status != Void.Status.HANDED_BACK:
-        services.confirm_final_check(void, request.user)
-        messages.success(request, f"Final check confirmed: {void.address} moved to Completed.")
+        try:
+            services.confirm_final_check(void, request.user)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, f"Final check confirmed: {void.address} moved to Completed.")
     return _after_action(request, void)
 
 
