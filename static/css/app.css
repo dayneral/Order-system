@@ -515,3 +515,5 @@ td.late { color: #b00020; font-weight: 700; }
 @media (max-width: 900px) { .trade-line { flex-wrap: wrap; } .status-toggle { order: 3; width: 100%; } .st-btn { flex: 1; } }
 @media (min-width: 701px) { .tile.open .tile-body { grid-template-columns: 2.3fr 1fr; } }
 .claim-btn { width: 6.6rem; text-align: center; flex-shrink: 0; }
+.ask-who { background: #fff4cc; border: 2px solid #e0a800; border-radius: 6px; padding: .35rem .6rem; margin: .2rem 0; font-size: .9rem; color: #3a2d00; }
+.cellform .error { color: #b00020; font-weight: 700; font-size: .82rem; }

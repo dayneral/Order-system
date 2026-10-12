@@ -6,7 +6,9 @@
     <div class="editor-head"><span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span> <b>{{ trade.name }}</b>
       <span class="saved-note">{% if saved %}✓ Saved{% else %}Changes save automatically{% endif %}</span></div>
     <label>Status {{ form.status }}</label>
-    <label>Who {{ form.assignee }}</label>
+    {% if ask_who %}<p class="ask-who">Who is doing the {{ trade.name|lower }}? Fill in <b>Who</b> to set it In progress.</p>{% endif %}
+    <label{% if form.assignee.errors %} class="has-error"{% endif %}>Who {% if ask_who %}<input type="text" name="assignee" id="{{ form.assignee.id_for_label }}" maxlength="100" autofocus placeholder="e.g. Kev, P Works">{% else %}{{ form.assignee }}{% endif %}
+      {% for e in form.assignee.errors %}<span class="error">{{ e }}</span>{% endfor %}</label>
     <label>Date {{ form.date }}</label>
     <label class="inline">{{ form.claimed }} Claimed</label>
     <label>Notes {{ form.notes }}</label>

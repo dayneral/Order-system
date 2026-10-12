@@ -356,9 +356,10 @@ def test_autosave_keeps_editor_open_and_merges_diary_lines(voids_client, voids_u
     t = Trade.objects.get(name="Joinery")
     TradeTask.objects.create(void=v, trade=t)
     url = reverse("voids:task_cell", args=[v.pk, t.pk]) + "?in=tile"
-    resp = voids_client.post(url, {"status": "in_progress", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    resp = voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "autosave": "1"}, HTTP_HX_REQUEST="true")
     assert b"autosave" in resp.content and b"Saved" in resp.content  # still editing
-    voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "notes": "first fix", "autosave": "1"},
+                      HTTP_HX_REQUEST="true")
     lines = list(VoidUpdate.objects.filter(void=v, kind="trade").values_list("text", flat=True))
     assert lines == ["Joinery → In progress (Kev)"]
     task = TradeTask.objects.get(void=v, trade=t)
@@ -526,7 +527,7 @@ def test_status_buttons_set_dates_and_area_or_supervisor(voids_client):
     from voids.models import Area, JobType
     v = Void.objects.create(job_type=JobType.objects.first(), address="Tap Flat", status="stc")
     t = Trade.objects.get(name="Joinery")
-    TradeTask.objects.create(void=v, trade=t)
+    TradeTask.objects.create(void=v, trade=t, assignee="Kev")
     resp = voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"},
                              HTTP_HX_REQUEST="true")
     assert b"st-btn t-in_progress on" in resp.content
@@ -547,3 +548,26 @@ def test_no_booked_status():
     assert "booked" not in TradeTask.Status.values
     from voids.views import QUICK_STATUSES
     assert [s for s, _ in QUICK_STATUSES] == ["stc", "in_progress", "snagging", "complete"]
+
+
+def test_in_progress_asks_who(voids_client):
+    from voids.models import JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Who Flat", status="stc")
+    t = Trade.objects.get(name="Plumbing")
+    TradeTask.objects.create(void=v, trade=t)
+    # Button with nobody assigned: opens the editor asking who, nothing saved yet.
+    resp = voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"},
+                             HTTP_HX_REQUEST="true")
+    assert b"Who is doing the plumbing?" in resp.content and b"autofocus" in resp.content
+    assert TradeTask.objects.get(void=v, trade=t).status == "stc"
+    url = reverse("voids:task_cell", args=[v.pk, t.pk]) + "?in=tile"
+    resp = voids_client.post(url, {"status": "in_progress", "assignee": "", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    assert b"Who is doing it?" in resp.content
+    assert TradeTask.objects.get(void=v, trade=t).status == "stc"
+    voids_client.post(url, {"status": "in_progress", "assignee": "Kyle", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    task = TradeTask.objects.get(void=v, trade=t)
+    assert task.status == "in_progress" and task.assignee == "Kyle"
+    # Once someone is assigned the button changes status straight away.
+    voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "snagging"})
+    voids_client.post(reverse("voids:set_task_status", args=[v.pk, t.pk]), {"status": "in_progress"})
+    assert TradeTask.objects.get(void=v, trade=t).status == "in_progress"

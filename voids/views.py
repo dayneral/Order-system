@@ -377,6 +377,10 @@ def set_task_status(request, void_id, trade_id):
     void = get_object_or_404(Void, pk=void_id)
     task = get_object_or_404(TradeTask, void=void, trade_id=trade_id)
     status = request.POST.get("status")
+    if status == TradeTask.Status.IN_PROGRESS and not task.assignee:
+        # Ask who is doing it before setting In progress: open the editor with the status chosen.
+        form = TaskForm(instance=task, initial={"status": status}, auto_id=_task_ids(void, task.trade))
+        return _tile(request, void, editing=task.trade_id, form=form, ask_who=True)
     if status in TradeTask.Status.values and status != task.status:
         old = task.status
         task.status = status
