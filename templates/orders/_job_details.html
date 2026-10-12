@@ -2,6 +2,30 @@
 <div class="jd-grid">
   <div class="field{% if f.job_number.errors %} has-error{% endif %}">
     <label for="{{ f.job_number.id_for_label }}">Job number <span class="req">*</span></label>{{ f.job_number }}
+    {% if void_jobs %}<div class="hint">Start typing a SIMPRO number or pick one from the void list to fill in the address.</div>
+    <datalist id="void-jobs">{% for j in void_jobs %}<option value="{{ j.simpro }}">{{ j.address }}{% if j.postcode %}, {{ j.postcode }}{% endif %}</option>{% endfor %}</datalist>
+    {{ void_jobs|json_script:"void-jobs-data" }}
+    <script>
+      (function () {
+        var data = JSON.parse(document.getElementById("void-jobs-data").textContent);
+        var job = document.getElementById("{{ f.job_number.id_for_label }}");
+        var addr = document.getElementById("{{ f.property_address.id_for_label }}");
+        function norm(s) { return (s || "").replace(/\s+/g, " ").trim().toUpperCase(); }
+        function fill() {
+          var hit = data.find(function (j) { return norm(j.simpro) === norm(job.value); });
+          if (!hit) return;
+          var text = [hit.address, hit.postcode].filter(Boolean).join(", ");
+          if (!addr.value.trim() || addr.dataset.fromVoid === "1") { addr.value = text; addr.dataset.fromVoid = "1"; }
+          var radio = job.form.querySelector('input[name="property_type"][value="void"]');
+          if (radio && !job.form.querySelector('input[name="property_type"]:checked')) {
+            radio.checked = true; radio.dispatchEvent(new Event("change", {bubbles: true}));
+          }
+        }
+        job.addEventListener("change", fill);
+        job.addEventListener("input", fill);
+        addr.addEventListener("input", function () { addr.dataset.fromVoid = ""; });
+      })();
+    </script>{% endif %}
   </div>
   <div class="field{% if f.delivery_date.errors %} has-error{% endif %}">
     <label for="{{ f.delivery_date.id_for_label }}">Delivery date <span class="req">*</span></label>{{ f.delivery_date }}

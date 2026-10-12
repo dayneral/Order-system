@@ -261,6 +261,7 @@ def void_detail(request, void_id):
     return render(request, "voids/void_detail.html", {
         "void": void, "trades": trades, "history": history, "updates": updates, "update_form": UpdateForm(),
         "edit_minutes": VoidUpdate.EDIT_MINUTES,
+        "orders": void.orders.exclude(status="draft", lines__isnull=True).distinct(),
         "edit_cutoff": timezone.now() - timedelta(minutes=VoidUpdate.EDIT_MINUTES),
         "trade_supervisors": services.trade_supervisors(void)})
 

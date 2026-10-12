@@ -586,3 +586,38 @@ def test_job_type_buttons_show_counts(voids_client):
     counts = {j["label"]: j["count"] for j in resp.context["job_links"]}
     assert counts == {"All": 3, "Void": 2, "Temp": 1}
     assert len(resp.context["rows"]) == 1
+
+
+def test_order_materials_from_void(client, make_user):
+    from orders.models import Order
+    from voids.models import JobType
+    user = make_user("both@bfsuk.org", "Bo Both")
+    user.can_use_voids = True
+    user.save()
+    client.force_login(user)
+    v = Void.objects.create(job_type=JobType.objects.first(), address="38 Balmwell Terrace", postcode="EH16 6PR",
+                            simpro="7968", status="in_progress")
+    assert b"Order materials" in client.get(reverse("voids:detail", args=[v.pk])).content
+    resp = client.get(reverse("orders:new"), {"void": v.pk})
+    order = Order.objects.get(owner=user)
+    assert resp["Location"] == reverse("orders:edit", args=[order.pk])
+    assert order.job_number == "7968" and order.property_address == "38 Balmwell Terrace, EH16 6PR"
+    assert order.property_type == "void" and order.void == v
+    page = client.get(reverse("orders:edit", args=[order.pk])).content.decode()
+    assert 'list="void-jobs"' in page and "38 Balmwell Terrace" in page
+    # Typing a job number that matches a void links the order to it.
+    other = Order.objects.create(owner=user, requester_name="Bo Both")
+    from orders import services
+    services.update_header(other, user, {"job_number": " 7968 "})
+    other.refresh_from_db()
+    assert other.void == v
+
+
+def test_ordering_only_user_sees_no_order_button_link_from_voids(client, make_user):
+    from voids.models import JobType
+    user = make_user("v@bfsuk.org", "Vi Voids")
+    user.can_use_orders, user.can_use_voids = False, True
+    user.save()
+    client.force_login(user)
+    v = Void.objects.create(job_type=JobType.objects.first(), address="No Order Flat", status="stc")
+    assert b"Order materials" not in client.get(reverse("voids:detail", args=[v.pk])).content

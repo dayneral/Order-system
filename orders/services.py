@@ -148,13 +148,30 @@ HEADER_FIELDS = ["job_number", "property_address", "property_type", "operative_n
                  "special_instructions"]
 
 
-def create_draft(user, **header):
+def void_for_job(job_number_key):
+    """The open void whose SIMPRO number is this job number, if any."""
+    from voids.models import Void
+    if not job_number_key:
+        return None
+    for v in Void.objects.exclude(simpro="").exclude(status=Void.Status.HANDED_BACK).order_by("-created_at"):
+        if normalise_job_number(v.simpro) == job_number_key:
+            return v
+    return None
+
+
+def create_draft(user, void=None, **header):
     order = Order(owner=user, requester_name=user.full_name)
+    if void is not None:
+        # Started from a void: fill in its details.
+        header.setdefault("job_number", void.simpro)
+        header.setdefault("property_address", ", ".join(x for x in (void.address, void.postcode) if x))
+        header.setdefault("property_type", Order.PropertyType.VOID)
     for name in HEADER_FIELDS:
         if name in header:
             setattr(order, name, header[name])
     order.job_number = (order.job_number or "").strip()
     order.job_number_key = normalise_job_number(order.job_number)
+    order.void = void or void_for_job(order.job_number_key)
     order.save()
     return order
 
@@ -201,6 +218,8 @@ def update_header(order, user, data, today=None):
             setattr(order, name, data[name] if data[name] is not None else ("" if name != "delivery_date" else None))
     order.job_number = order.job_number.strip()
     order.job_number_key = normalise_job_number(order.job_number)
+    if order.job_number_key != normalise_job_number(old["job_number"]) or not order.void_id:
+        order.void = void_for_job(order.job_number_key)
     order.operative_name = order.operative_name.strip() if order.property_type == Order.PropertyType.OCCUPIED else ""
 
     if order.delivery_date and order.delivery_date != old["delivery_date"] and order.delivery_date < today:

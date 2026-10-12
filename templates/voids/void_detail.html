@@ -4,7 +4,8 @@
 <p><a href="{% url 'voids:list' %}">&larr; Voids</a></p>
 <div class="vhead">
   <h1>{{ void.address }} <span class="pill st-{{ void.status }}">{{ void.get_status_display }}</span>{% if void.on_hold %} <span class="pill">On hold</span>{% endif %}</h1>
-  <div class="actions"><a class="button primary" href="{% url 'voids:edit' void.pk %}">Edit details</a></div>
+  <div class="actions">{% if user.can_order %}<a class="button" href="{% url 'orders:new' %}?void={{ void.pk }}">🛒 Order materials</a>{% endif %}
+    <a class="button primary" href="{% url 'voids:edit' void.pk %}">Edit details</a></div>
 </div>
 {% if void.issue_flag %}<form method="post" action="{% url 'voids:clear_issue' void.pk %}" class="issue-banner big" role="alert">{% csrf_token %}⚠ ISSUE{% if void.issue_note %}: {{ void.issue_note }}{% endif %} <button>Clear issue</button></form>{% endif %}
 {% if void.key_info %}<div class="keyinfo big" role="note"><b>⚠ Key info</b><br>{{ void.key_info|linebreaksbr }}</div>{% endif %}
@@ -18,6 +19,16 @@
   <tr><th>Hand-back</th><td>{{ void.handback_label|default:"—" }}</td><th>Last inspection</th><td>{{ void.last_inspection|date:"d M Y"|default:"—" }}</td></tr>
   <tr><th>Flags</th><td>{% if void.electrical_flag %}⚡ Electrical {% endif %}{% if not void.electrical_flag %}—{% endif %}</td><th>Note</th><td>{{ void.status_note|default:"—" }}</td></tr>
 </table>
+{% if orders %}
+<h2>Material orders</h2>
+<table class="grid compact">
+  <thead><tr><th>Order</th><th>Status</th><th>Delivery</th><th>Ordered by</th></tr></thead>
+  <tbody>{% for o in orders %}<tr>
+    <td>{% if user.can_order %}<a href="{% url 'orders:detail' o.pk %}">{{ o.order_number|default:"Draft" }}</a>{% else %}{{ o.order_number|default:"Draft" }}{% endif %}</td>
+    <td>{{ o.get_status_display }}</td><td>{{ o.delivery_date|date:"d M Y"|default:"—" }}</td><td>{{ o.requester_name }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+
 <h2>Job diary</h2>
 <form method="post" action="{% url 'voids:add_update' void.pk %}" class="panel add-update">{% csrf_token %}
   {{ update_form.text }}

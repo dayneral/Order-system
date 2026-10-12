@@ -530,3 +530,4 @@ td.late { color: #b00020; font-weight: 700; }
 .filter-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .quick a .count { font-weight: 400; opacity: .8; margin-left: .2rem; }
 @media (max-width: 700px) { .filter-rows { grid-template-columns: 1fr; } }
+.order-btn { padding: .25rem .7rem; font-size: .85rem; margin-right: .5rem; }
