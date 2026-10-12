@@ -24,6 +24,15 @@ filled in.
 Access is limited to **supervisors and managers**. Subcontractors and operatives
 get no access.
 
+**Access to each module is separate.** Each user has a switch per module:
+**Material Orders** and **Voids** (and any later modules). An admin sets these on
+the user approval and edit screen.
+- Someone can order materials without seeing Voids, or the other way round.
+- Users only see menu links and the home page tiles for the modules they can use.
+- Typing a Voids web address without access gives "no access".
+- Existing users keep Material Orders and start without Voids.
+- Each change of access is logged in the audit history.
+
 | Role | Can |
 |---|---|
 | Voids admin | Everything: settings, areas, trades, contracts, import |
@@ -200,6 +209,7 @@ needed.
 | 2026-10-12 | Status colours | Orange = in progress, Yellow = complete with minor snagging, Green = fully complete; red text = claimed for payment; STC = still to have trades assigned |
 | 2026-10-12 | Contracts | ECC, TEMP, ARK and Concierge all use the same workflow |
 | 2026-10-12 | Access | Supervisors and managers only |
+| 2026-10-12 | Module access | Each module is switched on per user by an admin; ordering doesn't give access to Voids |
 | 2026-10-12 | Notifications | Email first; WhatsApp for supervisors |
 | 2026-10-12 | Areas | Supervisors have default areas, but area and supervisor are separate, editable fields and filters |
 | 2026-10-12 | Target | The client-nominated hand-back date is the main target |
