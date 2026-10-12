@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Area, JobType, Supervisor, TradeTask, Void
+from .models import Area, JobType, Supervisor, TradeTask, Void, VoidUpdate
 
 DATE = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
 
@@ -8,11 +8,12 @@ DATE = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
 class VoidForm(forms.ModelForm):
     class Meta:
         model = Void
-        fields = ["job_type", "simpro", "address", "postcode", "area", "supervisor", "access", "keys_received",
+        fields = ["key_info", "job_type", "simpro", "address", "postcode", "area", "supervisor", "access", "keys_received",
                   "handback_date", "expected_completion", "status", "status_fixed", "status_note",
-                  "electrical_flag", "issue_flag", "last_inspection", "notes"]
+                  "electrical_flag", "issue_flag", "on_hold", "last_inspection"]
         widgets = {"keys_received": DATE, "handback_date": DATE, "expected_completion": DATE,
-                   "last_inspection": DATE, "notes": forms.Textarea(attrs={"rows": 4})}
+                   "last_inspection": DATE,
+                   "key_info": forms.Textarea(attrs={"rows": 3, "placeholder": "e.g. Key safe 1234 · Asbestos on chimney · Dog next door"})}
         help_texts = {
             "area": "Leave blank to fill in from the postcode.",
             "supervisor": "Leave blank to fill in from the postcode (the supervisor's patch).",
@@ -25,10 +26,20 @@ class VoidForm(forms.ModelForm):
 
 
 class TaskForm(forms.ModelForm):
+    comment = forms.CharField(required=False, label="Comment for the job diary (optional)",
+                              widget=forms.TextInput(attrs={"placeholder": "e.g. Waiting on parts"}))
+
     class Meta:
         model = TradeTask
         fields = ["status", "assignee", "date", "claimed", "notes"]
         widgets = {"date": DATE, "notes": forms.Textarea(attrs={"rows": 2})}
+
+
+class UpdateForm(forms.Form):
+    kind = forms.ChoiceField(label="Type", initial="general",
+                             choices=[(k, label) for k, label in VoidUpdate.Kind.choices if k in VoidUpdate.WRITTEN_KINDS])
+    text = forms.CharField(label="Update", max_length=2000, widget=forms.Textarea(
+        attrs={"rows": 2, "placeholder": "What's happened? e.g. Visited – strip-out done, plasterer booked Thurs"}))
 
 
 class UploadForm(forms.Form):
@@ -57,4 +68,9 @@ class FilterForm(forms.Form):
     due = forms.ChoiceField(required=False, label="Hand-back", choices=[
         ("", "Any date"), ("overdue", "Overdue"), ("week", "Due in 7 days"), ("none", "No date")])
     flag = forms.ChoiceField(required=False, label="Flag", choices=[
-        ("", "Any"), ("electrical", "Electrical"), ("issue", "Issue"), ("late", "Expected after hand-back")])
+        ("", "Any"), ("stale", "No update in 7+ days"), ("stale_amber", "Needs an update (amber or red)"),
+        ("stale_red", "Needs an update (red)"), ("on_hold", "On hold"), ("electrical", "Electrical"), ("issue", "Issue"),
+        ("late", "Expected after hand-back")])
+    sort = forms.ChoiceField(required=False, label="Sort", choices=[
+        ("", "Hand-back date"), ("stale", "Least recently updated"), ("recent", "Most recently updated"),
+        ("address", "Address"), ("simpro", "SIMPRO number")])

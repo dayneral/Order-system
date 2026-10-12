@@ -378,7 +378,7 @@ def apply_run(run, user):
                 "status": t["status"], "claimed": t["claimed"], "assignee": t["assignee"][:100],
                 "date": date.fromisoformat(t["date"]) if t["date"] else None, "notes": t["notes"]})
         void.tasks.exclude(trade__name__in=list(item["tasks"])).delete()
-        services.refresh_status(void, user)
+        services.refresh_status(void, user, activity=False)
         if is_new:
             created += 1
             record(user, "void.import", void, f"Imported {void} from {item['sheet']} row {item['row']}")

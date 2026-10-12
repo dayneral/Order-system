@@ -191,3 +191,70 @@ def test_tiles_by_area_and_tile_edit(voids_client):
     assert b'class="tile' in resp.content and b"dot t-in_progress" in resp.content
     a.refresh_from_db()
     assert a.status == Void.Status.IN_PROGRESS
+
+
+def test_diary_update_visit_and_stale_flags(voids_client, voids_user, settings):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from voids.models import JobType, VoidUpdate
+    jt = JobType.objects.first()
+    fresh = Void.objects.create(job_type=jt, address="Fresh Flat", status=Void.Status.NEW,
+                                key_info="Key safe 4321")
+    old = Void.objects.create(job_type=jt, address="Old Flat", status=Void.Status.IN_PROGRESS,
+                              last_activity=timezone.now() - timedelta(days=12))
+    mid = Void.objects.create(job_type=jt, address="Mid Flat", status=Void.Status.STC,
+                              last_activity=timezone.now() - timedelta(days=8))
+    Void.objects.create(job_type=jt, address="Held Flat", status=Void.Status.STC, on_hold=True,
+                        last_activity=timezone.now() - timedelta(days=30))
+    assert old.stale_level == "red" and mid.stale_level == "amber" and fresh.stale_level == ""
+
+    resp = voids_client.get(reverse("voids:list"), {"flag": "stale", "sort": "stale"})
+    body = resp.content.decode()
+    assert "Held Flat" not in body and "Fresh Flat" not in body
+    assert body.index("Old Flat") < body.index("Mid Flat")  # oldest first
+    assert "No update · 12 days" in body
+
+    resp = voids_client.get(reverse("voids:list"), {"flag": "", "sort": ""})
+    assert b"Key safe 4321" in resp.content
+
+    # A site visit from a tile clears "needs visit", sets the inspection date and resets the clock.
+    resp = voids_client.post(reverse("voids:add_update", args=[old.pk]),
+                             {"kind": "visit", "text": "Visited, plasterer booked"}, HTTP_HX_REQUEST="true")
+    assert b"Visited, plasterer booked" in resp.content
+    old.refresh_from_db()
+    assert old.stale_level == "" and old.last_inspection == timezone.localdate()
+    voids_client.post(reverse("voids:add_update", args=[fresh.pk]), {"kind": "visit", "text": "First visit"})
+    fresh.refresh_from_db()
+    assert fresh.status == Void.Status.STC
+
+    # Trade changes are written to the diary automatically, with the optional comment.
+    trade = Trade.objects.get(name="Joinery")
+    voids_client.post(reverse("voids:task_cell", args=[mid.pk, trade.pk]),
+                      {"status": "complete", "assignee": "Kev", "comment": "all done"})
+    texts = list(VoidUpdate.objects.filter(void=mid).values_list("text", flat=True))
+    assert any(t.startswith("Joinery → Complete (Kev)") and t.endswith("all done") for t in texts)
+    mid.refresh_from_db()
+    assert mid.stale_level == ""
+
+    upd = VoidUpdate.objects.get(void=old, kind="visit")
+    voids_client.post(reverse("voids:edit_update", args=[upd.pk]), {"kind": "visit", "text": "Fixed typo"})
+    upd.refresh_from_db()
+    assert upd.text == "Fixed typo" and upd.edited_at
+    VoidUpdate.objects.filter(pk=upd.pk).update(created_at=timezone.now() - timedelta(minutes=20))
+    voids_client.post(reverse("voids:edit_update", args=[upd.pk]), {"kind": "visit", "text": "Too late"})
+    upd.refresh_from_db()
+    assert upd.text == "Fixed typo"
+
+
+def test_import_does_not_count_as_activity(db, admin_user):
+    from datetime import timedelta
+
+    from django.utils import timezone
+    run = importer.preview_upload("t.xlsx", tracker(ROWS), admin_user, today=TODAY)
+    importer.apply_run(run, admin_user)
+    Void.objects.update(last_activity=timezone.now() - timedelta(days=20))
+    run = importer.preview_upload("t.xlsx", tracker(ROWS), admin_user, today=TODAY)
+    importer.apply_run(run, admin_user)
+    assert all(v.stale_level == "red" for v in Void.objects.all())

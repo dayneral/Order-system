@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Edit update · Voids{% endblock %}
+{% block content %}
+<p><a href="{% url 'voids:detail' upd.void_id %}">&larr; {{ upd.void.address }}</a></p>
+<h1>Edit your update</h1>
+<form method="post" class="panel">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <button class="primary">Save</button>
+</form>
+{% endblock %}

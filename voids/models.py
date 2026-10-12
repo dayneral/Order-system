@@ -143,7 +143,12 @@ class Void(models.Model):
     issue_flag = models.BooleanField("issue", default=False)
     status_note = models.CharField(max_length=300, blank=True,
                                    help_text="Short note shown in the list, e.g. \"Rewire\", \"Awaiting lines\".")
-    notes = models.TextField(blank=True)
+    key_info = models.TextField("key info", blank=True,
+                                help_text="Important information shown prominently: key safe numbers, warnings, hazards.")
+    on_hold = models.BooleanField(default=False, help_text="Paused (e.g. waiting on an asbestos survey). "
+                                                           "Not flagged as needing an update.")
+    # Last real progress: a diary update, a trade change or a status change.
+    last_activity = models.DateTimeField(default=timezone.now, db_index=True)
     last_inspection = models.DateField(null=True, blank=True)
     imported = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
@@ -163,6 +168,24 @@ class Void(models.Model):
     @property
     def target_date(self):
         return self.handback_date or self.expected_completion
+
+    @property
+    def days_since_update(self):
+        return (timezone.now() - self.last_activity).days
+
+    @property
+    def stale_level(self):
+        """'' (fine), 'amber' or 'red' when nobody has updated an open void for a while."""
+        from django.conf import settings
+        if self.on_hold or self.status not in (self.Status.NEW, self.Status.STC, self.Status.IN_PROGRESS,
+                                               self.Status.SNAGGING):
+            return ""
+        days = self.days_since_update
+        if days >= settings.VOIDS_STALE_RED_DAYS:
+            return "red"
+        if days >= settings.VOIDS_STALE_AMBER_DAYS:
+            return "amber"
+        return ""
 
     @property
     def is_late_risk(self):
@@ -206,6 +229,45 @@ class TradeTask(models.Model):
             return "STC"
         bits = [self.assignee, self.date.strftime("%d/%m") if self.date else ""]
         return " ".join(b for b in bits if b) or (self.get_status_display() if self.status else "")
+
+
+class VoidUpdate(models.Model):
+    """One entry in a void's job diary."""
+
+    class Kind(models.TextChoices):
+        GENERAL = "general", "General"
+        VISIT = "visit", "Site visit"
+        ISSUE = "issue", "Issue"
+        CLIENT = "client", "Client contact"
+        SNAG = "snag", "Snag"
+        TRADE = "trade", "Trade update"
+        STATUS = "status", "Status change"
+
+    WRITTEN_KINDS = [Kind.GENERAL, Kind.VISIT, Kind.ISSUE, Kind.CLIENT, Kind.SNAG]
+    EDIT_MINUTES = 15
+
+    void = models.ForeignKey(Void, on_delete=models.CASCADE, related_name="updates")
+    author = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.GENERAL)
+    text = models.TextField()
+    edited_at = models.DateTimeField(null=True, blank=True)
+    hidden = models.BooleanField(default=False)
+    hidden_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.void}: {self.text[:40]}"
+
+    @property
+    def is_auto(self):
+        return self.kind in (self.Kind.TRADE, self.Kind.STATUS)
+
+    def can_edit(self, user):
+        return (not self.is_auto and self.author_id == user.pk and not self.hidden
+                and timezone.now() - self.created_at < timezone.timedelta(minutes=self.EDIT_MINUTES))
 
 
 class VoidImportRun(models.Model):

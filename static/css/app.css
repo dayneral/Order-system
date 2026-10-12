@@ -319,3 +319,28 @@ table.vgrid tr .stick a { color: #222; }
   .quick .viewtoggle { margin-left: 0; }
   .trade-row { grid-template-columns: auto 6.5rem 1fr; }
 }
+
+/* --- Voids: key info, job diary, needs-an-update flags ---------------------- */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.keyinfo { background: #fff4cc; color: #3a2d00; border: 2px solid #e0a800; border-radius: 6px; padding: .3rem .5rem; font-size: .88rem; font-weight: 600; }
+.keyinfo.big { font-size: 1rem; padding: .6rem .8rem; margin: .5rem 0 1rem; }
+.tile.held { opacity: .75; border-left-style: dashed; }
+.latest { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .15rem .5rem; align-items: baseline; border-top: 1px dashed var(--line); padding-top: .35rem; }
+.latest-text { color: var(--ink); font-style: italic; }
+.stale-tag { font-weight: 700; padding: .05rem .45rem; border-radius: 4px; }
+.stale-amber .stale-tag { background: #ffe0a3; color: #5c3b00; }
+.stale-red .stale-tag { background: #c62828; color: #fff; }
+.tile:has(.stale-red) { box-shadow: 0 0 0 2px #c62828 inset; }
+.add-update { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .6rem; }
+.add-update textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.add-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.diary { list-style: none; padding: 0; margin: 0 0 1rem; }
+.diary li { border-left: 4px solid var(--line); padding: .35rem .6rem; margin-bottom: .4rem; background: var(--card); }
+.diary .when { font-size: .8rem; color: var(--muted); display: block; }
+.diary li.k-visit { border-left-color: #2e7d32; } .diary li.k-issue { border-left-color: #c62828; }
+.diary li.k-client { border-left-color: #1565c0; } .diary li.k-snag { border-left-color: #e6c619; }
+.diary li.k-trade, .diary li.k-status { border-left-color: #bbb; font-size: .9rem; }
+.diary li.hidden-upd { opacity: .5; text-decoration: line-through; }
+.diary.compact li { font-size: .85rem; padding: .25rem .5rem; }
+.upd-actions { font-size: .8rem; display: flex; gap: .6rem; }
+.inline-h { display: inline; }

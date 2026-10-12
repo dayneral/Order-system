@@ -15,11 +15,18 @@ from accounts.decorators import admin_required
 from audit.models import AuditEntry, record
 
 from . import importer, services
-from .forms import FilterForm, TaskForm, UploadForm, VoidForm
-from .models import Area, JobType, Trade, TradeTask, Void, VoidImportRun
+from .forms import FilterForm, TaskForm, UpdateForm, UploadForm, VoidForm
+from .models import Area, JobType, Trade, TradeTask, Void, VoidImportRun, VoidUpdate
 
 SESSION_KEY = "voids_filters"
 VOID_FIELDS = list(VoidForm.Meta.fields)
+
+
+def with_related(qs):
+    return qs.select_related("job_type", "area", "supervisor").prefetch_related(
+        Prefetch("tasks", queryset=TradeTask.objects.select_related("trade")),
+        Prefetch("updates", queryset=VoidUpdate.objects.filter(hidden=False).select_related("author"),
+                 to_attr="visible_updates"))
 
 
 def filtered_voids(request):
@@ -35,8 +42,7 @@ def filtered_voids(request):
     form = FilterForm(params)
     form.is_valid()
     f = form.cleaned_data if form.is_valid() else {}
-    qs = Void.objects.select_related("job_type", "area", "supervisor").prefetch_related(
-        Prefetch("tasks", queryset=TradeTask.objects.select_related("trade")))
+    qs = with_related(Void.objects.all())
     today = timezone.localdate()
     if f.get("q"):
         q = f["q"].strip()
@@ -67,18 +73,27 @@ def filtered_voids(request):
         qs = qs.filter(handback_date__gte=today, handback_date__lte=today + timedelta(days=7))
     elif f.get("due") == "none":
         qs = qs.filter(handback_date__isnull=True)
-    if f.get("flag") == "electrical":
+    if f.get("flag") == "stale":
+        qs = qs.filter(last_activity__lt=timezone.now() - timedelta(days=7), on_hold=False,
+                       status__in=STALE_STATUSES)
+    elif f.get("flag") == "on_hold":
+        qs = qs.filter(on_hold=True)
+    elif f.get("flag") == "electrical":
         qs = qs.filter(electrical_flag=True)
     elif f.get("flag") == "issue":
         qs = qs.filter(Q(issue_flag=True) | Q(tasks__status=TradeTask.Status.ISSUE)).distinct()
-    sort = request.GET.get("sort") or "handback"
-    order = {"handback": ["handback_date", "expected_completion", "address"], "address": ["address"],
+    sort = request.GET.get("sort") or f.get("sort") or "handback"
+    order = {"stale": ["last_activity"], "recent": ["-last_activity"],"handback": ["handback_date", "expected_completion", "address"], "address": ["address"],
              "simpro": ["simpro"], "area": ["area__code", "address"], "supervisor": ["supervisor__name", "address"],
              "postcode": ["postcode"], "job": ["job_type__position", "address"]}.get(sort, ["handback_date"])
     qs = qs.order_by(*order)
     voids = list(qs)
     if f.get("flag") == "late":
         voids = [v for v in voids if v.is_late_risk]
+    elif f.get("flag") == "stale_amber":
+        voids = [v for v in voids if v.stale_level]
+    elif f.get("flag") == "stale_red":
+        voids = [v for v in voids if v.stale_level == "red"]
     # Counts for the area buttons are taken before the area filter.
     area_counts = {}
     for v in voids:
@@ -87,6 +102,8 @@ def filtered_voids(request):
         voids = [v for v in voids if v.area_id == f["area"].pk]
     return form, voids, params, area_counts
 
+
+STALE_STATUSES = [Void.Status.NEW, Void.Status.STC, Void.Status.IN_PROGRESS, Void.Status.SNAGGING]
 
 OUTSTANDING = [TradeTask.Status.STC, TradeTask.Status.BOOKED, TradeTask.Status.ASSIGNED,
                TradeTask.Status.IN_PROGRESS, TradeTask.Status.SNAGGING, TradeTask.Status.ISSUE]
@@ -100,7 +117,11 @@ def grid_rows(voids, trades):
         cells = [(trade, by_trade.get(trade.pk)) for trade in trades]
         needed = [t for _, t in cells if t and t.status not in ("", TradeTask.Status.NOT_REQUIRED)]
         done = sum(1 for t in needed if t.status == TradeTask.Status.COMPLETE)
+        updates = getattr(v, "visible_updates", None)
+        if updates is None:
+            updates = list(v.updates.filter(hidden=False).select_related("author")[:1])
         rows.append({"void": v, "cells": cells, "done": done, "needed": len(needed),
+                     "latest": updates[0] if updates else None, "update_form": UpdateForm(),
                      "percent": round(100 * done / len(needed)) if needed else 0,
                      "overdue": bool(v.handback_date and v.handback_date < today
                                      and v.status != Void.Status.HANDED_BACK),
@@ -151,8 +172,13 @@ def void_detail(request, void_id):
     tasks = {t.trade_id: t for t in void.tasks.select_related("trade")}
     trades = [(trade, tasks.get(trade.pk)) for trade in Trade.objects.filter(active=True)]
     history = AuditEntry.objects.filter(target_type="voids.void", target_id=str(void.pk)).select_related("actor")[:50]
+    updates = void.updates.select_related("author", "hidden_by")
+    if not request.user.is_admin:
+        updates = updates.filter(hidden=False)
     return render(request, "voids/void_detail.html", {
-        "void": void, "trades": trades, "history": history,
+        "void": void, "trades": trades, "history": history, "updates": updates, "update_form": UpdateForm(),
+        "edit_minutes": VoidUpdate.EDIT_MINUTES,
+        "edit_cutoff": timezone.now() - timedelta(minutes=VoidUpdate.EDIT_MINUTES),
         "trade_supervisors": services.trade_supervisors(void)})
 
 
@@ -167,6 +193,11 @@ def _save_void(request, form, void_before=None):
         record(request.user, "void.edit", void, f"Edited void {void}",
                services.changed_fields(void_before, void, [f if f not in ("job_type", "area", "supervisor")
                                                            else f + "_id" for f in VOID_FIELDS]))
+        if void.on_hold != void_before.on_hold:
+            services.add_update(void, request.user, VoidUpdate.Kind.STATUS,
+                                "Put on hold" if void.on_hold else "Taken off hold")
+        elif void.status != void_before.status:
+            services.add_update(void, request.user, VoidUpdate.Kind.STATUS, f"Status → {void.get_status_display()}")
     services.refresh_status(void, request.user)
     return void
 
@@ -211,13 +242,20 @@ def task_cell(request, void_id, trade_id):
             record(request.user, "void.trade", void, f"{trade}: {task.get_status_display()} {task.display}"[:500],
                    services.changed_fields(before, task, ["status", "assignee", "date", "claimed", "notes"])
                    if before else {})
+            changes = services.changed_fields(before, task, ["status", "assignee", "date", "claimed", "notes"]) \
+                if before else {"status": {}}
+            comment = form.cleaned_data.get("comment", "").strip()
+            if changes or comment:
+                text = services.trade_update_text(task) if changes else trade.name
+                services.add_update(void, request.user, VoidUpdate.Kind.TRADE,
+                                    f"{text}: {comment}" if comment else text)
             services.refresh_status(void, request.user)
             return _cell_response(request, void, trade, in_grid, in_tile)
     else:
         form = TaskForm(instance=task)
     if in_grid:
         trades = list(Trade.objects.filter(active=True))
-        void = Void.objects.select_related("job_type", "area", "supervisor").prefetch_related("tasks__trade").get(pk=void.pk)
+        void = with_related(Void.objects.filter(pk=void.pk)).get()
         tpl = "voids/_tile.html" if in_tile else "voids/_row.html"
         return render(request, tpl, {"row": grid_rows([void], trades)[0], "editing": trade.pk,
                                      "form": form, "open": True})
@@ -227,10 +265,63 @@ def task_cell(request, void_id, trade_id):
 def _cell_response(request, void, trade, in_grid, in_tile=False):
     if not in_grid:
         return redirect("voids:detail", void.pk)
-    void = Void.objects.select_related("job_type", "area", "supervisor").prefetch_related("tasks__trade").get(pk=void.pk)
+    void = with_related(Void.objects.filter(pk=void.pk)).get()
     trades = list(Trade.objects.filter(active=True))
     tpl = "voids/_tile.html" if in_tile else "voids/_row.html"
     return render(request, tpl, {"row": grid_rows([void], trades)[0], "open": True})
+
+
+@login_required
+@require_POST
+def add_update(request, void_id):
+    """Add a job diary entry, from a tile (returns the tile) or the void page."""
+    void = get_object_or_404(Void, pk=void_id)
+    form = UpdateForm(request.POST)
+    in_tile = request.headers.get("HX-Request") == "true"
+    if form.is_valid():
+        services.add_update(void, request.user, form.cleaned_data["kind"], form.cleaned_data["text"])
+        if not in_tile:
+            messages.success(request, "Update added.")
+    elif not in_tile:
+        messages.error(request, "Write something before adding the update.")
+    if in_tile:
+        v = with_related(Void.objects.filter(pk=void.pk)).get()
+        row = grid_rows([v], list(Trade.objects.filter(active=True)))[0]
+        if not form.is_valid():
+            row["update_form"] = form
+        return render(request, "voids/_tile.html", {"row": row, "open": True})
+    return redirect("voids:detail", void.pk)
+
+
+@login_required
+def edit_update(request, update_id):
+    upd = get_object_or_404(VoidUpdate, pk=update_id)
+    if not upd.can_edit(request.user):
+        messages.error(request, f"Updates can only be changed by the person who wrote them, within "
+                                f"{VoidUpdate.EDIT_MINUTES} minutes.")
+        return redirect("voids:detail", upd.void_id)
+    form = UpdateForm(request.POST or None, initial={"kind": upd.kind, "text": upd.text})
+    if request.method == "POST" and form.is_valid():
+        old = upd.text
+        upd.kind, upd.text, upd.edited_at = form.cleaned_data["kind"], form.cleaned_data["text"], timezone.now()
+        upd.save()
+        record(request.user, "void.update_edit", upd.void, "Edited a diary update",
+               {"text": {"from": old, "to": upd.text}})
+        return redirect("voids:detail", upd.void_id)
+    return render(request, "voids/update_edit.html", {"form": form, "upd": upd})
+
+
+@admin_required
+@require_POST
+def hide_update(request, update_id):
+    """Admins hide (never delete) a diary entry, e.g. one added to the wrong void."""
+    upd = get_object_or_404(VoidUpdate, pk=update_id)
+    upd.hidden = not upd.hidden
+    upd.hidden_by = request.user if upd.hidden else None
+    upd.save(update_fields=["hidden", "hidden_by"])
+    record(request.user, "void.update_hide", upd.void,
+           f"{'Hid' if upd.hidden else 'Restored'} diary update: {upd.text[:80]}")
+    return redirect("voids:detail", upd.void_id)
 
 
 STATUS_FILLS = {"in_progress": "FFF4B183", "snagging": "FFFFF2A8", "complete": "FFC6E8C6", "new": "FFE3DAF5",
