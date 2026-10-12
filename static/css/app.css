@@ -402,3 +402,10 @@ table.grid tr.unused td { opacity: .6; }
 }
 .tiles { grid-auto-flow: row; }
 @media (min-width: 701px) { .tile.open .tile-body { grid-template-columns: 1.5fr 1fr; } }
+/* Opened tile: the other tiles close up the gap (dense flow) and the open one gets its
+   own full row, clearly marked as the selected property. */
+.tiles { grid-auto-flow: row dense; }
+.tile.open { border: 3px solid var(--brand) !important; box-shadow: 0 4px 14px #0002; }
+.tile.open summary { background: color-mix(in srgb, var(--brand) 10%, var(--card)); }
+.tile.open summary .tile-addr { font-size: 1.15rem; }
+.tile.open summary::before { content: "Selected"; align-self: flex-start; background: var(--brand); color: var(--brand-ink); font-size: .72rem; font-weight: 700; padding: .05rem .5rem; border-radius: 4px; letter-spacing: .03em; text-transform: uppercase; }

@@ -1,6 +1,6 @@
 {% with v=row.void %}
 <article class="tile st-{{ v.status }}{% if row.overdue %} overdue{% endif %}{% if v.on_hold %} held{% endif %}{% if v.issue_flag %} has-issue{% endif %}{% if open %} open{% endif %}" id="tile-{{ v.pk }}">
-<details{% if open %} open{% endif %} ontoggle="this.parentElement.classList.toggle('open', this.open)">
+<details{% if open %} open{% endif %} ontoggle="this.parentElement.classList.toggle('open', this.open); if (this.open) this.parentElement.scrollIntoView({behavior: 'smooth', block: 'nearest'})">
   <summary>
     {% if v.issue_flag %}<div class="issue-banner" role="alert">⚠ ISSUE{% if v.issue_note %}: {{ v.issue_note|truncatechars:70 }}{% endif %}</div>{% endif %}
     <div class="tile-top">
