@@ -278,3 +278,5 @@ is patchy, and the columns moved over time, so:
 | 2026-10-12 | Tiles | Closed tiles are all the same size; an opened tile takes the full row. **Expected completion** is the large date on the tile, with hand-back and works start beside it. Opened tiles list the trades on the job first, then **Add other trade** |
 | 2026-10-12 | Sorting | Sort menu on the list: **job number (lowest first, the default)**, hand-back date, expected completion, works start, least/most recently updated, address |
 | 2026-10-12 | Electrical quick filter | **⚡ Electrical works** button beside the job types: voids with an electrical flag or Electrical on the job |
+| 2026-10-12 | Opened tile (desktop) | Opens **sideways**: two tiles wide and the same height as a closed tile, with the summary on the left and a scrolling panel (trades on the job, add update, recent updates) on the right. The other tiles move around it. Phones keep the full-width opened tile |
+| 2026-10-12 | Tile colour strip | Removed: the status label on the tile is enough. Only issues (red) and overdue updates keep a coloured outline |

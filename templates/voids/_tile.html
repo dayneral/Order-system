@@ -41,14 +41,6 @@
     </form>
     {% endif %}
     {% if v.key_info %}<div class="keyinfo">⚠ {{ v.key_info|linebreaksbr }}</div>{% endif %}
-    <form class="add-update" hx-post="{% url 'voids:add_update' v.pk %}" hx-target="closest article" hx-swap="outerHTML">
-      {% with f=row.update_form %}
-      <label class="visually-hidden" for="upd-{{ v.pk }}">Add an update</label>
-      <textarea id="upd-{{ v.pk }}" name="text" rows="2" placeholder="Add an update… e.g. Visited – strip-out done, plasterer booked Thurs" required>{{ f.text.value|default:"" }}</textarea>
-      <span class="add-row">{{ f.kind }} <button class="primary">Add update</button></span>
-      <small class="hint">Choose <b>Issue</b> to flag the whole job in red.</small>
-      {% endwith %}
-    </form>
     {% if v.status_note %}<p class="tile-note">{{ v.status_note }}</p>{% endif %}
     <h3 class="tile-h">Trades on this job</h3>
     <ul class="trade-list">
@@ -62,6 +54,15 @@
       <button>Add</button>
     </form>
     {% endif %}
+    <h3 class="tile-h">Add an update</h3>
+    <form class="add-update" hx-post="{% url 'voids:add_update' v.pk %}" hx-target="closest article" hx-swap="outerHTML">
+      {% with f=row.update_form %}
+      <label class="visually-hidden" for="upd-{{ v.pk }}">Add an update</label>
+      <textarea id="upd-{{ v.pk }}" name="text" rows="2" placeholder="Add an update… e.g. Visited – strip-out done, plasterer booked Thurs" required>{{ f.text.value|default:"" }}</textarea>
+      <span class="add-row">{{ f.kind }} <button class="primary">Add update</button></span>
+      <small class="hint">Choose <b>Issue</b> to flag the whole job in red.</small>
+      {% endwith %}
+    </form>
     {% if v.visible_updates %}<h3 class="tile-h">Recent updates</h3>
     <ul class="diary compact">{% for u in v.visible_updates|slice:":3" %}<li class="k-{{ u.kind }}"><span class="when">{{ u.created_at|date:"d M H:i" }} · {{ u.author.get_short_name|default:"System" }}{% if not u.is_auto and u.kind != "general" %} · {{ u.get_kind_display }}{% endif %}</span> {{ u.text|linebreaksbr }}</li>{% endfor %}</ul>{% endif %}
     <p class="tile-links"><a href="{% url 'voids:detail' v.pk %}">Open void page (full diary)</a> · {{ v.postcode }}{% if v.access %} · Access: {{ v.access }}{% endif %}</p>

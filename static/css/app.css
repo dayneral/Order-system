@@ -376,3 +376,19 @@ table.grid tr.unused td { opacity: .6; }
 .tile summary > * { flex-shrink: 0; }
 .tile summary .issue-banner { -webkit-line-clamp: 1; }
 .tile.open summary .issue-banner { -webkit-line-clamp: unset; }
+
+/* No status colour strip down the tile side: the status pill is enough. */
+.tile, .tile.st-new, .tile.st-stc, .tile.st-in_progress, .tile.st-snagging, .tile.st-complete, .tile.st-handed_back { border-left: 1px solid var(--line); }
+.tile.has-issue { border-left-color: #c62828; }
+/* An opened tile opens sideways on desktop: two columns wide, details beside the summary,
+   with the trades panel scrolling so the page below moves as little as possible. */
+.tiles { grid-auto-flow: row dense; }
+@media (min-width: 701px) {
+  .tile.open { grid-column: span 2; }
+  .tile.open details { display: grid; grid-template-columns: minmax(270px, 1fr) minmax(320px, 1.3fr); }
+  .tile.open summary { height: 19rem; }
+  .tile.open .tile-body { border-top: 0; border-left: 1px solid var(--line); max-height: 19rem; overflow-y: auto; }
+  .tile.open summary .issue-banner { -webkit-line-clamp: 1; }
+  .tile.open summary .keyinfo { -webkit-line-clamp: 1; display: -webkit-box; }
+}
+.tile.open .trade-row { grid-template-columns: auto 7.5rem 1fr; }
