@@ -9,12 +9,11 @@
 {% if void.issue_flag %}<form method="post" action="{% url 'voids:clear_issue' void.pk %}" class="issue-banner big" role="alert">{% csrf_token %}⚠ ISSUE{% if void.issue_note %}: {{ void.issue_note }}{% endif %} <button>Clear issue</button></form>{% endif %}
 {% if void.key_info %}<div class="keyinfo big" role="note"><b>⚠ Key info</b><br>{{ void.key_info|linebreaksbr }}</div>{% endif %}
 {% if void.stale_level %}<div class="msg msg-warning">No update for {{ void.days_since_update }} days. Add an update below.</div>{% endif %}
-{% if void.is_late_risk %}<div class="msg msg-warning">Expected completion ({{ void.expected_completion|date:"d M Y" }}) is after the client's hand-back date ({{ void.handback_date|date:"d M Y" }}).</div>{% endif %}
 <table class="details panel">
   <tr><th>Job type</th><td>{{ void.job_type }}</td><th>SIMPRO</th><td>{{ void.simpro|default:"—" }}</td></tr>
   <tr><th>Postcode</th><td>{{ void.postcode|default:"—" }}</td><th>Area</th><td>{{ void.area|default:"—" }}</td></tr>
   <tr><th>Supervisor</th><td>{{ void.supervisor|default:"—" }}{% for s in trade_supervisors %}<br>{{ s }} ({{ s.trade }}){% endfor %}</td><th>Access</th><td>{{ void.access|default:"—" }}</td></tr>
-  <tr><th>Client hand-back</th><td>{{ void.handback_date|date:"d M Y"|default:"—" }}</td><th>Expected completion</th><td>{{ void.expected_completion|date:"d M Y"|default:"—" }}</td></tr>
+  <tr><th>Hand-back date</th><td>{{ void.handback_date|date:"d M Y"|default:"—" }}</td><th>Final check</th><td>{% if void.final_checked_at %}{{ void.final_checked_at|date:"d M Y" }} by {{ void.final_checked_by.full_name }}{% elif void.status == "complete" %}Waiting{% else %}—{% endif %}</td></tr>
   <tr><th>Works start</th><td>{{ void.start_date|date:"d M Y"|default:"—" }}</td><th></th><td></td></tr>
   <tr><th>Keys received</th><td>{{ void.keys_received|date:"d M Y"|default:"—" }}</td><th>Last inspection</th><td>{{ void.last_inspection|date:"d M Y"|default:"—" }}</td></tr>
   <tr><th>Flags</th><td>{% if void.electrical_flag %}⚡ Electrical {% endif %}{% if not void.electrical_flag %}—{% endif %}</td><th>Note</th><td>{{ void.status_note|default:"—" }}</td></tr>

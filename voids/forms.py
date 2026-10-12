@@ -9,14 +9,15 @@ class VoidForm(forms.ModelForm):
     class Meta:
         model = Void
         fields = ["key_info", "job_type", "simpro", "address", "postcode", "area", "supervisor", "access", "keys_received",
-                  "start_date", "handback_date", "expected_completion", "status", "status_fixed", "status_note",
+                  "start_date", "handback_date", "status", "status_fixed", "status_note",
                   "electrical_flag", "issue_flag", "issue_note", "on_hold", "last_inspection"]
-        widgets = {"keys_received": DATE, "start_date": DATE, "handback_date": DATE, "expected_completion": DATE,
+        widgets = {"keys_received": DATE, "start_date": DATE, "handback_date": DATE,
                    "last_inspection": DATE,
                    "key_info": forms.Textarea(attrs={"rows": 3, "placeholder": "e.g. Key safe 1234 · Asbestos on chimney · Dog next door"})}
         help_texts = {
             "area": "Leave blank to fill in from the postcode.",
             "supervisor": "Leave blank to fill in from the postcode (the supervisor's patch).",
+            "handback_date": "The client's nominated hand-back date (expected completion).",
             "status_fixed": "Tick to keep the status you choose. Otherwise it is worked out from the trades.",
         }
 
@@ -69,9 +70,8 @@ class FilterForm(forms.Form):
         ("", "Any date"), ("overdue", "Overdue"), ("week", "Due in 7 days"), ("none", "No date")])
     flag = forms.ChoiceField(required=False, label="Flag", choices=[
         ("", "Any"), ("stale", "No update in 7+ days"), ("stale_amber", "Needs an update (amber or red)"),
-        ("stale_red", "Needs an update (red)"), ("on_hold", "On hold"), ("electrical", "Electrical works"), ("issue", "Issue"),
-        ("late", "Expected after hand-back")])
+        ("stale_red", "Needs an update (red)"), ("on_hold", "On hold"), ("electrical", "Electrical works"), ("issue", "Issue")])
     sort = forms.ChoiceField(required=False, label="Sort", choices=[
-        ("", "Job number (lowest first)"), ("handback", "Hand-back date"), ("expected", "Expected completion"),
+        ("", "Job number (lowest first)"), ("handback", "Hand-back date"),
         ("start", "Works start"), ("stale", "Least recently updated"), ("recent", "Most recently updated"),
         ("address", "Address")])

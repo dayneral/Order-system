@@ -8,7 +8,6 @@
   <td>{{ v.area|default:"" }}</td>
   <td>{{ v.simpro }}</td>
   <td class="nowrap{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}">{{ v.handback_date|date:"d/m/y" }}</td>
-  <td class="nowrap{% if v.is_late_risk %} late{% endif %}">{{ v.expected_completion|date:"d/m/y" }}</td>
   <td>{{ v.access }}</td>
   <td class="note">{{ v.status_note }}</td>
   {% for trade, task in row.cells %}

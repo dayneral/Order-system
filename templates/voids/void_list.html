@@ -13,9 +13,13 @@
 <nav class="areas" aria-label="Area">
   {% for a in area_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
 </nav>
+<nav class="areas sups" aria-label="Supervisor">
+  {% for a in sup_links %}<a href="?{{ a.query }}"{% if a.active %} class="on" aria-current="true"{% endif %}>{{ a.label }} <span class="count">{{ a.count }}</span></a>{% endfor %}
+</nav>
 <nav class="quick" aria-label="Job type">
   {% for j in job_links %}<a href="?{{ j.query }}"{% if j.active %} class="on" aria-current="true"{% endif %}>{{ j.label }}</a>{% endfor %}
   <a href="?{{ electrical_link.query }}" class="elec-chip{% if electrical_link.active %} on{% endif %}"{% if electrical_link.active %} aria-current="true"{% endif %}>⚡ Electrical works</a>
+  <a href="?{{ completed_link.query }}" class="done-chip{% if completed_link.active %} on{% endif %}">✓ Completed</a>
   <label class="sortpick">Sort
     <select onchange="window.location.search = this.value">
       {% for o in sort_options %}<option value="?{{ o.query }}"{% if o.active %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
@@ -45,7 +49,7 @@
   &nbsp;· Tap a property to see and update its trades.
 </p>
 <div class="tiles">
-  {% for row in rows %}{% include "voids/_tile.html" %}
+  {% for row in rows %}{% include "voids/_tile.html" with electrical_mode=electrical_mode %}
   {% empty %}<p>No voids match these filters.</p>{% endfor %}
 </div>
 {% else %}
@@ -68,7 +72,6 @@
     <th><a href="?sort=area">Area</a></th>
     <th><a href="?sort=simpro">SIMPRO</a></th>
     <th><a href="?sort=handback">Hand-back</a></th>
-    <th>Expected</th>
     <th>Access</th>
     <th>Note</th>
     {% for t in trades %}<th class="trade">{{ t.name }}</th>{% endfor %}
@@ -76,7 +79,7 @@
   </tr></thead>
   <tbody>
   {% for row in rows %}{% include "voids/_row.html" %}
-  {% empty %}<tr><td colspan="{{ trades|length|add:11 }}">No voids match these filters.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="{{ trades|length|add:10 }}">No voids match these filters.</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>

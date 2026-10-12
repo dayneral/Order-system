@@ -318,3 +318,84 @@ def test_thresholds_are_editable(voids_client, admin_client):
     resp = admin_client.post(reverse("admin:voids_voidssettings_change", args=[1]), {
         "stale_amber_days": 6, "stale_red_days": 3, "stale_filter_days": 2, "handback_soon_days": 14})
     assert resp.status_code == 200  # red must be more than amber
+
+
+def test_all_trades_complete_requests_final_check_then_completed(voids_client, voids_user, mailoutbox):
+    from voids.models import JobType, VoidUpdate
+    sup = Supervisor.objects.get(name="Andrew F")
+    sup.email = "andrew@bfsuk.org"
+    sup.save()
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Done Flat", supervisor=sup,
+                            status=Void.Status.IN_PROGRESS, simpro="555")
+    j, p = Trade.objects.get(name="Joinery"), Trade.objects.get(name="Plumbing")
+    TradeTask.objects.create(void=v, trade=j, status="complete")
+    TradeTask.objects.create(void=v, trade=p, status="in_progress")
+    voids_client.post(reverse("voids:task_cell", args=[v.pk, p.pk]) + "?in=tile",
+                      {"status": "complete", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    v.refresh_from_db()
+    assert v.status == Void.Status.COMPLETE and v.final_check_requested_at
+    assert len(mailoutbox) == 1 and mailoutbox[0].to == ["andrew@bfsuk.org"]
+    assert "Final check needed: Done Flat" in mailoutbox[0].subject
+    assert VoidUpdate.objects.filter(void=v, text__contains="final check requested").exists()
+    # Not in the Completed list until the final check is confirmed.
+    assert b"Done Flat" not in voids_client.get(reverse("voids:list"), {"status": "handed_back"}).content
+    resp = voids_client.post(reverse("voids:final_check", args=[v.pk]), HTTP_HX_REQUEST="true")
+    assert b"final checked by" in resp.content
+    v.refresh_from_db()
+    assert v.status == Void.Status.HANDED_BACK and v.final_checked_by == voids_user
+    assert b"Done Flat" in voids_client.get(reverse("voids:list"), {"status": "handed_back"}).content
+    assert b"Done Flat" not in voids_client.get(reverse("voids:list"), {"status": ""}).content
+    voids_client.post(reverse("voids:final_check", args=[v.pk]), {"reopen": "1"})
+    v.refresh_from_db()
+    assert v.status != Void.Status.HANDED_BACK
+
+
+def test_autosave_keeps_editor_open_and_merges_diary_lines(voids_client, voids_user):
+    from voids.models import JobType, VoidUpdate
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Auto Flat", status=Void.Status.STC)
+    t = Trade.objects.get(name="Joinery")
+    TradeTask.objects.create(void=v, trade=t)
+    url = reverse("voids:task_cell", args=[v.pk, t.pk]) + "?in=tile"
+    resp = voids_client.post(url, {"status": "in_progress", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    assert b"autosave" in resp.content and b"Saved" in resp.content  # still editing
+    voids_client.post(url, {"status": "in_progress", "assignee": "Kev", "autosave": "1"}, HTTP_HX_REQUEST="true")
+    lines = list(VoidUpdate.objects.filter(void=v, kind="trade").values_list("text", flat=True))
+    assert lines == ["Joinery → In progress (Kev)"]
+    task = TradeTask.objects.get(void=v, trade=t)
+    assert task.updated_by == voids_user and task.assignee == "Kev"
+
+
+def test_one_click_claim_and_claim_all(voids_client):
+    from voids.models import JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Claim Flat", status=Void.Status.IN_PROGRESS)
+    j, p, e = (Trade.objects.get(name=n) for n in ("Joinery", "Plumbing", "Electrical"))
+    TradeTask.objects.create(void=v, trade=j, status="complete")
+    TradeTask.objects.create(void=v, trade=p, status="complete")
+    TradeTask.objects.create(void=v, trade=e, status="in_progress")
+    resp = voids_client.post(reverse("voids:toggle_claim", args=[v.pk, e.pk]), HTTP_HX_REQUEST="true")
+    assert b"Claimed" in resp.content and TradeTask.objects.get(void=v, trade=e).claimed
+    voids_client.post(reverse("voids:claim_complete", args=[v.pk]), HTTP_HX_REQUEST="true")
+    assert TradeTask.objects.filter(void=v, claimed=True).count() == 3
+
+
+def test_supervisor_buttons_and_own_voids_by_default(client, make_user):
+    from voids.models import JobType
+    jt_void, jt_temp = JobType.objects.get(name="Void"), JobType.objects.get(name="Temp")
+    stee, martin, jamie = (Supervisor.objects.get(name=n) for n in ("Stee L", "Martin T", "Jamie H"))
+    Void.objects.create(job_type=jt_void, address="Stee Flat", supervisor=stee, status="stc")
+    m = Void.objects.create(job_type=jt_temp, address="Martin Temp Flat", supervisor=martin, status="stc")
+    TradeTask.objects.create(void=m, trade=Trade.objects.get(name="Electrical"))
+    user = make_user("stee@bfsuk.org", "Stee Lee")
+    user.can_use_voids = True
+    user.save()
+    stee.user = user
+    stee.save()
+    client.force_login(user)
+    body = client.get(reverse("voids:list")).content.decode()
+    assert "Stee Flat" in body and "Martin Temp Flat" not in body  # starts on own voids
+    assert "All supervisors" in body and "Jamie H (Electrical)" in body
+    body = client.get(reverse("voids:list"), {"supervisor": jamie.pk}).content.decode()
+    assert "Martin Temp Flat" in body and "Stee Flat" not in body
+    # Electrical button shows electrical voids of every job type, with electrical prominent.
+    body = client.get(reverse("voids:list"), {"supervisor": "", "job": jt_void.pk, "flag": "electrical"}).content.decode()
+    assert "Martin Temp Flat" in body and "elec-bar" in body
