@@ -91,7 +91,7 @@
     {% if v.visible_updates %}<h3 class="tile-h">Recent updates</h3>
     <ul class="diary compact">{% for u in v.visible_updates|slice:":3" %}<li class="k-{{ u.kind }}"><span class="when">{{ u.created_at|date:"d M H:i" }} · {{ u.author.get_short_name|default:"System" }}{% if not u.is_auto and u.kind != "general" %} · {{ u.get_kind_display }}{% endif %}</span> {{ u.text|linebreaksbr }}</li>{% endfor %}</ul>{% endif %}
     </div>
-    <p class="tile-links"><a href="{% url 'voids:detail' v.pk %}">Open void page (full diary)</a> · {{ v.postcode }}{% if v.access %} · Access: {{ v.access }}{% endif %}</p>
+    <p class="tile-links">{% if user.can_order %}<a class="button order-btn" href="{% url 'orders:new' %}?void={{ v.pk }}">🛒 Order materials</a> {% endif %}<a href="{% url 'voids:detail' v.pk %}">Open void page (full diary)</a> · {{ v.postcode }}{% if v.access %} · Access: {{ v.access }}{% endif %}</p>
   </div>
 </details>
 </article>
