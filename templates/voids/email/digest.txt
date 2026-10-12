@@ -1,0 +1,22 @@
+Voids update – {{ today|date:"l j F" }}
+{{ sup.name }}, your voids that need attention: {{ list_url }}
+{% if s.snagging %}
+*** SNAGGING – {{ s.snagging|length }} job{{ s.snagging|length|pluralize }} waiting ***
+{% for v in s.snagging %}- {{ v.address }}{% if v.simpro %} #{{ v.simpro }}{% endif %}{% if v.snag_trades %} – {{ v.snag_trades|join:", " }}{% endif %}{% if v.snag_days is not None %} ({{ v.snag_days }} days){% endif %}
+  {{ v.link }}
+{% endfor %}{% endif %}{% if s.issues %}
+ISSUES
+{% for v in s.issues %}- {{ v.address }}{% if v.issue_note %} – {{ v.issue_note }}{% endif %} {{ v.link }}
+{% endfor %}{% endif %}{% if s.final_check %}
+READY FOR FINAL CHECK
+{% for v in s.final_check %}- {{ v.address }} {{ v.link }}
+{% endfor %}{% endif %}{% if s.needs_visit %}
+NEW – NEEDS A VISIT
+{% for v in s.needs_visit %}- {{ v.address }} {{ v.link }}
+{% endfor %}{% endif %}{% if s.handbacks %}
+HAND-BACKS DUE
+{% for v in s.handbacks %}- {{ v.address }} – {{ v.handback_date|date:"D j M" }} ({{ v.handback_label }})
+{% endfor %}{% endif %}{% if s.stale %}
+NO UPDATE IN {{ th.stale_filter_days }}+ DAYS (oldest first)
+{% for v in s.stale %}- {{ v.address }} – {{ v.days_since_update }} days
+{% endfor %}{% endif %}

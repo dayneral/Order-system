@@ -399,3 +399,74 @@ def test_supervisor_buttons_and_own_voids_by_default(client, make_user):
     # Electrical button shows electrical voids of every job type, with electrical prominent.
     body = client.get(reverse("voids:list"), {"supervisor": "", "job": jt_void.pk, "flag": "electrical"}).content.decode()
     assert "Martin Temp Flat" in body and "elec-bar" in body
+
+
+def test_sign_off_only_when_all_trades_complete_and_button_on_tile(voids_client):
+    from voids import services
+    from voids.models import JobType
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Sign Flat", status=Void.Status.IN_PROGRESS)
+    j, p = Trade.objects.get(name="Joinery"), Trade.objects.get(name="Plumbing")
+    TradeTask.objects.create(void=v, trade=j, status="complete")
+    pt = TradeTask.objects.create(void=v, trade=p, status="in_progress")
+    voids_client.post(reverse("voids:final_check", args=[v.pk]))
+    v.refresh_from_db()
+    assert v.status != Void.Status.HANDED_BACK  # plumbing still in progress
+    pt.delete()  # removed from the job
+    services.refresh_status(v)
+    resp = voids_client.get(reverse("voids:list"), {"q": "Sign Flat", "status": ""})
+    assert b"Confirm final check" in resp.content
+    voids_client.post(reverse("voids:final_check", args=[v.pk]))
+    v.refresh_from_db()
+    assert v.status == Void.Status.HANDED_BACK
+    assert f'id="tile-{v.pk}"'.encode() not in voids_client.get(reverse("voids:list"), {"q": "", "status": ""}).content
+
+
+def test_days_left_auto_electrical_and_auto_inspection(voids_client):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from voids.models import JobType
+    today = timezone.localdate()
+    v = Void.objects.create(job_type=JobType.objects.first(), address="Count Flat", status=Void.Status.STC,
+                            handback_date=today + timedelta(days=5))
+    assert v.handback_label == "5 days left"
+    v.handback_date = today - timedelta(days=1)
+    assert v.handback_label == "1 day overdue"
+    e = Trade.objects.get(name="Electrical")
+    voids_client.post(reverse("voids:add_trade", args=[v.pk]), {"trade": e.pk})
+    v.refresh_from_db()
+    assert v.electrical_flag
+    voids_client.post(reverse("voids:task_cell", args=[v.pk, e.pk]), {"status": "in_progress", "assignee": "Elite"})
+    v.refresh_from_db()
+    assert v.last_inspection == today
+    voids_client.post(reverse("voids:task_cell", args=[v.pk, e.pk]), {"remove": "1"})
+    v.refresh_from_db()
+    assert not v.electrical_flag
+    form_html = voids_client.get(reverse("voids:new")).content.decode()
+    for gone in ("keys_received", "status_fixed", "electrical_flag", "last_inspection"):
+        assert f'name="{gone}"' not in form_html
+
+
+def test_nightly_email_puts_snagging_first(db, mailoutbox):
+    from voids import services
+    from voids.digest import send_all
+    from voids.models import JobType
+    sup = Supervisor.objects.get(name="Stee L")
+    sup.email = "stee@bfsuk.org"
+    sup.save()
+    jt = JobType.objects.first()
+    snag = Void.objects.create(job_type=jt, address="Snag Flat", supervisor=sup, status=Void.Status.IN_PROGRESS)
+    TradeTask.objects.create(void=snag, trade=Trade.objects.get(name="Painting"), status="snagging")
+    services.refresh_status(snag)
+    snag.refresh_from_db()
+    assert snag.status == Void.Status.SNAGGING and snag.snagging_since
+    Void.objects.create(job_type=jt, address="Visit Flat", supervisor=sup, status=Void.Status.NEW)
+    report = send_all()
+    assert len(mailoutbox) == 1
+    msg = mailoutbox[0]
+    assert msg.to == ["stee@bfsuk.org"] and "1 snagging" in msg.subject
+    html = msg.alternatives[0][0]
+    assert html.index("SNAGGING") < html.index("Visit Flat")
+    assert "Snagging: Painting" in html
+    assert any(r[0] == sup and r[3] for r in report)

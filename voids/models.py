@@ -170,14 +170,11 @@ class Void(models.Model):
     supervisor = models.ForeignKey(Supervisor, null=True, blank=True, on_delete=models.SET_NULL,
                                    related_name="voids")
     access = models.CharField(max_length=100, blank=True)
-    keys_received = models.DateField(null=True, blank=True)
     start_date = models.DateField("works start", null=True, blank=True,
                                   help_text="Not allowed to start before, or works booked to start on, this date.")
     # The client's nominated hand-back date: the job's target / expected completion.
     handback_date = models.DateField("hand-back date", null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
-    # When set, the status is not worked out from the trades.
-    status_fixed = models.BooleanField("status set by hand", default=False)
     electrical_flag = models.BooleanField(default=False)
     issue_flag = models.BooleanField("issue", default=False)
     issue_note = models.CharField("issue details", max_length=300, blank=True)
@@ -194,6 +191,8 @@ class Void(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     handed_back_at = models.DateField(null=True, blank=True)
+    # When the void went into Snagging (for the nightly email).
+    snagging_since = models.DateTimeField(null=True, blank=True)
     # Final check: asked for when every trade is complete, confirmed by a supervisor.
     final_check_requested_at = models.DateTimeField(null=True, blank=True)
     final_checked_at = models.DateTimeField(null=True, blank=True)
@@ -213,6 +212,24 @@ class Void(models.Model):
     @property
     def target_date(self):
         return self.handback_date
+
+    @property
+    def days_to_handback(self):
+        """Whole days until the hand-back date (negative when overdue), or None."""
+        if not self.handback_date:
+            return None
+        return (self.handback_date - timezone.localdate()).days
+
+    @property
+    def handback_label(self):
+        d = self.days_to_handback
+        if d is None:
+            return ""
+        if d == 0:
+            return "Due today"
+        if d < 0:
+            return f"{-d} day{'s' if d != -1 else ''} overdue"
+        return f"{d} day{'s' if d != 1 else ''} left"
 
     @property
     def days_since_update(self):

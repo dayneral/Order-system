@@ -1,0 +1,35 @@
+<!doctype html>
+<html><body style="margin:0;padding:16px;background:#f7f3ea;font-family:Arial,Helvetica,sans-serif;color:#222;font-size:15px;line-height:1.45">
+<div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;padding:18px">
+<h1 style="font-size:20px;margin:0 0 4px">Voids update – {{ today|date:"l j F" }}</h1>
+<p style="margin:0 0 16px;color:#555">{{ sup.name }}, here are your voids that need attention. <a href="{{ list_url }}" style="color:#1f6f6b">Open the voids list</a></p>
+
+{% if s.snagging %}
+<div style="background:#fff2a8;border:3px solid #e0a800;border-radius:8px;padding:12px 14px;margin:0 0 18px">
+  <h2 style="font-size:18px;margin:0 0 8px;color:#5c3b00">⚠ SNAGGING – {{ s.snagging|length }} job{{ s.snagging|length|pluralize }} waiting</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+  {% for v in s.snagging %}
+    <tr><td style="padding:5px 0;border-top:1px solid #e6c619"><a href="{{ v.link }}" style="color:#222;font-weight:bold">{{ v.address }}</a>{% if v.simpro %} · #{{ v.simpro }}{% endif %}<br>
+      <span style="color:#5c3b00">{% if v.snag_trades %}Snagging: {{ v.snag_trades|join:", " }}{% endif %}{% if v.snag_days is not None %} · {{ v.snag_days }} day{{ v.snag_days|pluralize }} in snagging{% endif %}</span></td></tr>
+  {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if s.issues %}<h2 style="font-size:16px;margin:14px 0 6px;color:#c62828">Issues ({{ s.issues|length }})</h2>
+<ul style="margin:0;padding-left:18px">{% for v in s.issues %}<li><a href="{{ v.link }}" style="color:#222">{{ v.address }}</a>{% if v.issue_note %} – {{ v.issue_note }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+
+{% if s.final_check %}<h2 style="font-size:16px;margin:14px 0 6px;color:#2e7d32">Ready for final check ({{ s.final_check|length }})</h2>
+<ul style="margin:0;padding-left:18px">{% for v in s.final_check %}<li><a href="{{ v.link }}" style="color:#222">{{ v.address }}</a>{% if v.simpro %} · #{{ v.simpro }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+
+{% if s.needs_visit %}<h2 style="font-size:16px;margin:14px 0 6px;color:#6a3fb5">New – needs a visit ({{ s.needs_visit|length }})</h2>
+<ul style="margin:0;padding-left:18px">{% for v in s.needs_visit %}<li><a href="{{ v.link }}" style="color:#222">{{ v.address }}</a>{% if v.simpro %} · #{{ v.simpro }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+
+{% if s.handbacks %}<h2 style="font-size:16px;margin:14px 0 6px">Hand-backs due ({{ s.handbacks|length }})</h2>
+<ul style="margin:0;padding-left:18px">{% for v in s.handbacks %}<li><a href="{{ v.link }}" style="color:#222">{{ v.address }}</a> – {{ v.handback_date|date:"D j M" }} ({{ v.handback_label }})</li>{% endfor %}</ul>{% endif %}
+
+{% if s.stale %}<h2 style="font-size:16px;margin:14px 0 6px">No update in {{ th.stale_filter_days }}+ days, oldest first ({{ s.stale|length }})</h2>
+<ul style="margin:0;padding-left:18px">{% for v in s.stale %}<li><a href="{{ v.link }}" style="color:#222">{{ v.address }}</a> – {{ v.days_since_update }} days</li>{% endfor %}</ul>{% endif %}
+
+<p style="margin:18px 0 0;color:#777;font-size:12px">Sent automatically every night by the BFS voids system.</p>
+</div></body></html>

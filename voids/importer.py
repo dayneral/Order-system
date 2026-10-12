@@ -260,6 +260,10 @@ def parse_workbook(data, today=None):
             if issue_trades:
                 item["issue_flag"] = True
                 item["issue_note"] = "Issue on " + ", ".join(issue_trades) + " (from tracker)"
+            if item["electrical_flag"] and "Electrical" not in item["tasks"]:
+                # Flagged purple in the tracker: put Electrical on the job (the flag is automatic now).
+                item["tasks"]["Electrical"] = {"status": S.STC, "claimed": False, "assignee": "", "date": None,
+                                               "notes": "Electrical flag in tracker"}
             if "Electrical" in item["tasks"] and item["tasks"]["Electrical"]["status"] not in ("", S.NOT_REQUIRED):
                 if re.search(r"rewire|electric", " ".join(str(v) for v in item["tasks"]["Electrical"].values()), re.I):
                     item["electrical_flag"] = True

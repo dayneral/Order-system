@@ -3,40 +3,59 @@
 <details{% if open %} open{% endif %} ontoggle="voidTileToggle(this)">
   <summary>
     {% if v.issue_flag %}<div class="issue-banner" role="alert">⚠ ISSUE{% if v.issue_note %}: {{ v.issue_note|truncatechars:70 }}{% endif %}</div>{% endif %}
-    <div class="tile-top">
-      <span class="tile-addr">{{ v.address }}</span>
-      <span class="pill st-{{ v.status }}">{% if v.on_hold %}On hold{% else %}{{ v.get_status_display }}{% endif %}</span>
-    </div>
-    <div class="tile-meta">
-      {% if v.simpro %}<b>#{{ v.simpro }}</b>{% endif %}
-      <span>{{ v.job_type.name }}</span>
-      {% if v.area %}<span>{{ v.area }}</span>{% endif %}
-      {% if v.supervisor %}<span>{{ v.supervisor }}</span>{% endif %}
-      {% if v.electrical_flag %}<span class="tag elec" title="Electrical works">⚡</span>{% endif %}
-    </div>
-    {% if v.status == "complete" %}<div class="final-banner">✔ All trades complete – final check needed</div>
+    {% if v.status == "complete" and row.can_sign_off %}<div class="final-banner">✔ All trades complete – final check needed</div>
     {% elif v.status == "handed_back" %}<div class="done-banner">✓ Completed{% if v.final_checked_by %} · final checked by {{ v.final_checked_by.get_short_name }} {{ v.final_checked_at|date:"d M" }}{% endif %}</div>{% endif %}
-    {% if electrical_mode %}{% with e=row.electrical %}<div class="elec-bar">⚡ <b>Electrical:</b> {% if e %}{{ e.get_status_display }}{% if e.assignee %} · {{ e.assignee }}{% endif %}{% if e.date %} · {{ e.date|date:"d/m" }}{% endif %}{% if e.notes %} · {{ e.notes|truncatechars:50 }}{% endif %}{% else %}flagged – not yet on the job{% endif %}</div>{% endwith %}{% endif %}
-    <div class="tile-dates">
-      <span class="date-main{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}"><small>Hand back</small>{{ v.handback_date|date:"d M"|default:"—" }}</span>
-      {% if v.start_date %}<span class="date-sub"><small>Start</small>{{ v.start_date|date:"d M" }}</span>{% endif %}
-    </div>
-    {% if v.key_info %}<div class="keyinfo" role="note"><span aria-hidden="true">⚠</span> {{ v.key_info }}</div>{% endif %}
-    <div class="dots" aria-label="Trades on this job">
-      {% for trade, task in row.on_job %}<span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}" title="{{ trade.name }}: {{ task.get_status_display }}{% if task.claimed %} (claimed){% endif %}">{{ trade.badge }}</span>{% empty %}<span class="latest-by">No trades on this job yet</span>{% endfor %}
-    </div>
-    <div class="tile-foot">
-      <span class="bar" role="img" aria-label="{{ row.done }} of {{ row.needed }} trades complete"><span style="width: {{ row.percent }}%"></span></span>
-      <span>{{ row.done }}/{{ row.needed }} done</span>
-    </div>
-    <div class="latest{% if v.stale_level %} stale-{{ v.stale_level }}{% endif %}">
-      {% if v.stale_level %}<span class="stale-tag">No update · {{ v.days_since_update }} day{{ v.days_since_update|pluralize }}</span>{% endif %}
-      {% if row.latest %}<span class="latest-text">“{{ row.latest.text|truncatechars:70 }}”</span>
-        <span class="latest-by">{{ row.latest.author.get_short_name|default:"System" }} · {{ row.latest.created_at|timesince }} ago</span>
-      {% elif not v.stale_level %}<span class="latest-by">No updates yet</span>{% endif %}
+    {% if v.status == "snagging" %}<div class="snag-banner">Snagging{% if v.snagging_since %} since {{ v.snagging_since|date:"d M" }}{% endif %}</div>{% endif %}
+    {% if electrical_mode %}{% with e=row.electrical %}<div class="elec-bar">⚡ <b>Electrical:</b> {% if e %}{{ e.get_status_display }}{% if e.assignee %} · {{ e.assignee }}{% endif %}{% if e.date %} · {{ e.date|date:"d/m" }}{% endif %}{% if e.notes %} · {{ e.notes|truncatechars:50 }}{% endif %}{% else %}not on the job{% endif %}</div>{% endwith %}{% endif %}
+    <div class="tile-row">
+      <div class="c-main">
+        <div class="tile-top">
+          <span class="tile-addr">{{ v.address }}</span>
+          <span class="pill st-{{ v.status }}">{% if v.on_hold %}On hold{% else %}{{ v.get_status_display }}{% endif %}</span>
+        </div>
+        <div class="tile-meta">
+          {% if v.simpro %}<b>#{{ v.simpro }}</b>{% endif %}
+          <span>{{ v.job_type.name }}</span>
+          {% if v.area %}<span>{{ v.area }}</span>{% endif %}
+          {% if v.supervisor %}<span>{{ v.supervisor }}</span>{% endif %}
+          {% if v.electrical_flag %}<span class="tag elec" title="Electrical works">⚡</span>{% endif %}
+        </div>
+        {% if v.key_info %}<div class="keyinfo" role="note"><span aria-hidden="true">⚠</span> {{ v.key_info }}</div>{% endif %}
+      </div>
+      <div class="c-dates tile-dates">
+        <span class="date-main{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}"><small>Hand back</small>{{ v.handback_date|date:"d M"|default:"—" }}</span>
+        {% if v.handback_label and v.status != "handed_back" %}<span class="days-left{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}">{{ v.handback_label }}</span>{% endif %}
+        {% if v.start_date %}<span class="date-sub"><small>Start</small>{{ v.start_date|date:"d M" }}</span>{% endif %}
+      </div>
+      <div class="c-trades">
+        <div class="dots" aria-label="Trades on this job">
+          {% for trade, task in row.on_job %}<span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}" title="{{ trade.name }}: {{ task.get_status_display }}{% if task.claimed %} (claimed){% endif %}">{{ trade.badge }}</span>{% empty %}<span class="latest-by">No trades on this job yet</span>{% endfor %}
+        </div>
+        <div class="tile-foot">
+          <span class="bar" role="img" aria-label="{{ row.done }} of {{ row.needed }} trades complete"><span style="width: {{ row.percent }}%"></span></span>
+          <span>{{ row.done }}/{{ row.needed }} done</span>
+        </div>
+      </div>
+      <div class="c-latest latest{% if v.stale_level %} stale-{{ v.stale_level }}{% endif %}">
+        {% if v.stale_level %}<span class="stale-tag">No update · {{ v.days_since_update }} day{{ v.days_since_update|pluralize }}</span>{% endif %}
+        {% if row.latest %}<span class="latest-text">“{{ row.latest.text|truncatechars:90 }}”</span>
+          <span class="latest-by">{{ row.latest.author.get_short_name|default:"System" }} · {{ row.latest.created_at|timesince }} ago</span>
+        {% elif not v.stale_level %}<span class="latest-by">No updates yet</span>{% endif %}
+      </div>
     </div>
   </summary>
   <div class="tile-body">
+    {% if row.can_sign_off and v.status == "complete" %}
+    <form class="final-check" hx-post="{% url 'voids:final_check' v.pk %}" hx-target="closest article" hx-swap="outerHTML">
+      <span>All trades are complete. Once the property has been final checked, sign it off to move it to Completed:</span>
+      <button class="primary">✔ Confirm final check</button>
+    </form>
+    {% elif v.status == "handed_back" %}
+    <form class="final-check done" hx-post="{% url 'voids:final_check' v.pk %}" hx-target="closest article" hx-swap="outerHTML">
+      <span>Completed{% if v.final_checked_by %}: final checked by {{ v.final_checked_by.full_name }} on {{ v.final_checked_at|date:"d M Y H:i" }}{% endif %}.</span>
+      <button name="reopen" value="1" onclick="return confirm('Reopen this void?')">Reopen</button>
+    </form>
+    {% endif %}
     {% if v.issue_flag %}
     <form class="issue-clear" hx-post="{% url 'voids:clear_issue' v.pk %}" hx-target="closest article" hx-swap="outerHTML">
       <span><b>Issue:</b> {{ v.issue_note|default:"(no details)" }}</span> <button>Clear issue</button>
