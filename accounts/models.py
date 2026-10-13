@@ -71,6 +71,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     display_background = models.CharField(max_length=10, choices=Background.choices, default=Background.CREAM)
     display_font = models.CharField(max_length=10, choices=Font.choices, default=Font.ATKINSON)
     display_text_size = models.CharField(max_length=10, choices=TextSize.choices, default=TextSize.NORMAL)
+    # Which modules this user can open. Admins can always open every module.
+    can_use_orders = models.BooleanField("Material Orders access", default=True)
+    can_use_voids = models.BooleanField("Voids access", default=False)
     # Kept in step with status on save; only approved users can sign in.
     is_active = models.BooleanField(default=False, editable=False)
     date_joined = models.DateTimeField(default=timezone.now)
@@ -107,7 +110,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     @property
     def can_order(self):
-        return self.is_active
+        return self.is_active and (self.can_use_orders or self.is_admin)
+
+    @property
+    def can_voids(self):
+        return self.is_active and (self.can_use_voids or self.is_admin)
 
     @property
     def is_staff(self):

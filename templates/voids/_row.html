@@ -1,0 +1,31 @@
+{% with v=row.void %}
+<tr class="st-{{ v.status }}{% if row.overdue %} overdue{% endif %}" id="void-{{ v.pk }}">
+  <th class="stick addr" scope="row"><a href="{% url 'voids:detail' v.pk %}">{{ v.address }}</a>
+    <span class="tags">{% if v.status == "new" %}<span class="tag">Needs visit</span>{% endif %}{% if v.electrical_flag %}<span class="tag elec" title="Electrical flag">⚡</span>{% endif %}{% if v.issue_flag %}<span class="tag bad" title="{{ v.issue_note }}">Issue</span>{% endif %}</span></th>
+  <td>{{ v.job_type.name }}</td>
+  <td class="nowrap">{{ v.postcode }}</td>
+  <td class="nowrap">{{ v.supervisor|default:"" }}</td>
+  <td>{{ v.area|default:"" }}</td>
+  <td>{{ v.simpro }}</td>
+  <td class="nowrap{% if row.overdue %} late{% elif row.this_week %} soon{% endif %}">{{ v.handback_date|date:"d/m/y" }}</td>
+  <td>{{ v.access }}</td>
+  <td class="note">{{ v.status_note }}</td>
+  {% for trade, task in row.cells %}
+    {% if editing == trade.pk %}
+    <td class="cell editing">
+      <form hx-post="{% url 'voids:task_cell' v.pk trade.pk %}" hx-target="closest tr" hx-swap="outerHTML" class="cellform">
+        {{ form.status }} {{ form.assignee }} {{ form.date }}
+        <label>{{ form.claimed }} Claimed</label>
+        {{ form.notes }}
+        <span class="actions"><button class="primary">Save</button><button name="cancel" value="1">Cancel</button></span>
+      </form>
+    </td>
+    {% else %}
+    <td class="cell t-{{ task.status|default:'none' }}{% if task.claimed %} claimed{% endif %}"
+        hx-get="{% url 'voids:task_cell' v.pk trade.pk %}" hx-target="closest tr" hx-swap="outerHTML"
+        tabindex="0" hx-trigger="click, keyup[key=='Enter']" title="{{ trade.name }}{% if task %}: {{ task.get_status_display }}{% endif %}">{% if task %}{{ task.display|linebreaksbr }}{% endif %}</td>
+    {% endif %}
+  {% endfor %}
+  <td class="nowrap">{{ v.last_inspection|date:"d/m/y" }}</td>
+</tr>
+{% endwith %}

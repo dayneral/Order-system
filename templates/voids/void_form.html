@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{% if void %}Edit {{ void.address }}{% else %}New void{% endif %} · Voids{% endblock %}
+{% block help %}<p class="help">Area and supervisor fill in from the postcode if you leave them blank. Every change is recorded in the void's history.</p>{% endblock %}
+{% block content %}
+<p><a href="{% if void %}{% url 'voids:detail' void.pk %}{% else %}{% url 'voids:list' %}{% endif %}">&larr; Back</a></p>
+<h1>{% if void %}Edit {{ void.address }}{% else %}New void{% endif %}</h1>
+<form method="post" class="panel two-col">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <button class="primary">Save</button>
+</form>
+{% endblock %}

@@ -89,6 +89,13 @@ def order_list(request):
 @login_required
 def order_new(request):
     """Open the order page straight away. Reuses the user's untouched empty draft, if any."""
+    void_id = request.GET.get("void")
+    if void_id:
+        from voids.models import Void
+        void = get_object_or_404(Void, pk=void_id)
+        order = services.create_draft(request.user, void=void)
+        messages.info(request, f"Order started for {void.address}: details filled in from the void list.")
+        return redirect("orders:edit", order.pk)
     order = services.empty_draft_for(request.user) or services.create_draft(request.user)
     return redirect("orders:edit", order.pk)
 
@@ -194,7 +201,12 @@ def order_edit(request, order_id):
                 order.refresh_from_db()
     else:
         form = OrderHeaderForm(instance=order)
-    context = {"order": order, "form": form, "errors": errors, **_item_browser(request, order), **_lines_context(order)}
+    # Job numbers from the void list: pick one to fill in the address and property type.
+    from voids.models import Void
+    form.fields["job_number"].widget.attrs.update({"list": "void-jobs", "autocomplete": "off"})
+    void_jobs = list(Void.objects.exclude(simpro="").exclude(status=Void.Status.HANDED_BACK)
+                     .order_by("address").values("simpro", "address", "postcode"))
+    context = {"order": order, "form": form, "errors": errors, "void_jobs": void_jobs, **_item_browser(request, order), **_lines_context(order)}
     return render(request, "orders/order_edit.html", context)
 
 
@@ -324,6 +336,9 @@ def draft_delete(request, order_id):
 
 @login_required
 def home(request):
+    user = request.user
+    if user.is_authenticated and not user.can_order and user.can_voids:
+        return redirect("voids:list")
     return redirect("orders:list")
 
 

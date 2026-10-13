@@ -104,6 +104,11 @@ def user_action(request, user_id):
             role = User.Role.ADMIN if action == "make_admin" else User.Role.ORDERING
             services.set_role(user, role, request.user)
             messages.success(request, f"{user.full_name} is now: {user.get_role_display()}.")
+        elif action in ("grant_orders", "revoke_orders", "grant_voids", "revoke_voids"):
+            allowed, module = action.split("_")
+            services.set_module_access(user, module, allowed == "grant", request.user)
+            label = services.MODULES[module][1]
+            messages.success(request, f"{user.full_name}: {label} access {'on' if allowed == 'grant' else 'off'}.")
         elif action == "send_reset":
             link, sent = services.send_password_reset(user, request.user, request)
             if sent:

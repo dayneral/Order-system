@@ -37,6 +37,7 @@ self-hosted in `static/fonts` (SIL Open Font License).
 | `audit/` | One shared audit history ("who did what, when") used by every module |
 | `orders/` | Orders and order lines, pricing rules (`pricing.py`), order rules (`services.py`), linked-item and kit prompts (`suggestions.py`) and the ordering screens |
 | `notifications/` | The order document (one template for the email and the print page), sending, and the failed-email list with retry |
+| `voids/` | Voids management: the voids list (Excel-style grid with filters), void pages, trade updates, the tracker import (`importer.py`) and Excel export. Areas, supervisor patches, trades and job types are edited under **Admin → Voids settings**. See [`docs/VOIDS_PLAN.md`](docs/VOIDS_PLAN.md). |
 | `retention/` | The daily retention job (`run_retention` command), its run log, and the admin Retention page |
 | `catalogue/` | Material items, the nine sections, the spreadsheet import and its report, linked-item rules and kits |
 | `templates/` | The HTML pages |

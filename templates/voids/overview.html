@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Voids overview · BFS{% endblock %}
+{% block main_class %}page wide{% endblock %}
+{% block content %}
+<div class="vhead">
+  <h1>Voids overview <span class="muted">{{ today|date:"D j M Y" }}</span></h1>
+  <div class="actions"><a class="button" href="{% url 'voids:list' %}">← Voids list</a></div>
+</div>
+<nav class="quick" aria-label="Job type">
+  <a href="?"{% if not job %} class="on"{% endif %}>All job types</a>
+  {% for jt in job_types %}<a href="?job={{ jt.pk }}"{% if job.pk == jt.pk %} class="on"{% endif %}>{{ jt.name }}</a>{% endfor %}
+</nav>
+<p class="hint">Every number opens the matching voids.</p>
+
+<section class="kpis" aria-label="Summary">
+  <a class="kpi" href="{{ links.open }}"><span class="kpi-n">{{ totals.open }}</span><span class="kpi-l">Open voids</span></a>
+  <a class="kpi{% if totals.overdue %} k-crit{% endif %}" href="{{ links.overdue }}"><span class="kpi-n">{{ totals.overdue }}</span><span class="kpi-l">{% if totals.overdue %}⚠ {% endif %}Hand-back overdue</span></a>
+  <a class="kpi{% if totals.due_soon %} k-warn{% endif %}" href="{{ links.due_soon }}"><span class="kpi-n">{{ totals.due_soon }}</span><span class="kpi-l">Due in {{ th.handback_soon_days }} days</span></a>
+  <a class="kpi{% if totals.issues %} k-crit{% endif %}" href="{{ links.issues }}"><span class="kpi-n">{{ totals.issues }}</span><span class="kpi-l">{% if totals.issues %}⚠ {% endif %}Issues</span></a>
+  <a class="kpi{% if totals.snagging %} k-warn{% endif %}" href="{{ links.snagging }}"><span class="kpi-n">{{ totals.snagging }}</span><span class="kpi-l">Snagging</span></a>
+  <a class="kpi{% if totals.final_check %} k-good{% endif %}" href="{{ links.final_check }}"><span class="kpi-n">{{ totals.final_check }}</span><span class="kpi-l">{% if totals.final_check %}✔ {% endif %}Ready for final check</span></a>
+  <a class="kpi{% if totals.new %} k-info{% endif %}" href="{{ links.new }}"><span class="kpi-n">{{ totals.new }}</span><span class="kpi-l">Needs a visit</span></a>
+  <a class="kpi{% if totals.stale %} k-warn{% endif %}" href="{{ links.stale }}"><span class="kpi-n">{{ totals.stale }}</span><span class="kpi-l">No update {{ th.stale_filter_days }}+ days</span></a>
+  <a class="kpi" href="{{ links.on_hold }}"><span class="kpi-n">{{ totals.on_hold }}</span><span class="kpi-l">On hold</span></a>
+  <a class="kpi" href="{{ links.completed }}"><span class="kpi-n">{{ done_30 }}</span><span class="kpi-l">Completed (30 days){% if on_time_pct is not None %}<br><b>{{ on_time_pct }}%</b> on time ({{ on_time }}/{{ dated }}){% endif %}</span></a>
+</section>
+
+<section class="ov-section">
+  <h2>By supervisor</h2>
+  {% include "voids/_overview_matrix.html" with rows=sup_rows first="Supervisor" %}
+  {% if no_sup %}<p class="hint">{{ no_sup }} open void{{ no_sup|pluralize }} {{ no_sup|pluralize:"has,have" }} no supervisor.</p>{% endif %}
+</section>
+
+<section class="ov-section">
+  <h2>By area</h2>
+  {% include "voids/_overview_matrix.html" with rows=area_rows first="Area" %}
+  {% if no_area %}<p class="hint">{{ no_area }} open void{{ no_area|pluralize }} {{ no_area|pluralize:"has,have" }} no area.</p>{% endif %}
+</section>
+
+<div class="ov-two">
+<section class="ov-section">
+  <h2>Trades holding jobs up</h2>
+  <p class="hint">Open voids where each trade is not yet complete. Click a trade to see them.</p>
+  <p class="legend"><span class="sw t-stc"></span>STC (no one assigned) <span class="sw t-in_progress"></span>In progress <span class="sw t-snagging"></span>Snagging</p>
+  <table class="bars">
+    {% for r in trades %}
+    <tr><th scope="row"><a href="{{ r.url }}">{{ r.trade.name }}</a></th>
+      <td><a class="stack" href="{{ r.url }}" title="{{ r.trade.name }}: {% for k, n, w in r.segments %}{{ n }} {{ k|cut:'_' }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+        {% for k, n, w in r.segments %}<span class="seg t-{{ k }}" style="width: {{ w|floatformat:1 }}%"></span>{% endfor %}</a></td>
+      <td class="num">{{ r.total }}{% if r.counts.stc %} <small>({{ r.counts.stc }} STC)</small>{% endif %}</td></tr>
+    {% empty %}<tr><td>No outstanding trades.</td></tr>{% endfor %}
+  </table>
+</section>
+
+<section class="ov-section">
+  <h2>Hand-backs: next 14 days</h2>
+  <div class="days" role="img" aria-label="Hand-backs due per day for the next 14 days">
+    {% for d in days %}
+    <div class="day{% if d.weekend %} weekend{% endif %}" title="{{ d.date|date:'D j M' }}: {{ d.voids|length }} due{% for v in d.voids %}&#10;· {{ v.address }}{% endfor %}">
+      <span class="day-n">{% if d.voids %}{{ d.voids|length }}{% endif %}</span>
+      <span class="day-bar"><span style="height: {% widthratio d.voids|length day_max 100 %}%"></span></span>
+      <span class="day-l">{{ d.date|date:"D" }}<br>{{ d.date|date:"j" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <h3>Overdue ({{ overdue_count }})</h3>
+  <table class="grid compact">
+    {% for v in overdue %}<tr><td><a href="{% url 'voids:detail' v.pk %}">{{ v.address }}</a></td><td class="nowrap">{{ v.supervisor|default:"—" }}</td><td class="late nowrap">{{ v.handback_label }}</td><td>{{ v.get_status_display }}</td></tr>
+    {% empty %}<tr><td>Nothing overdue.</td></tr>{% endfor %}
+  </table>
+  {% if overdue_count > 15 %}<p><a href="{{ links.overdue }}">See all {{ overdue_count }} overdue</a></p>{% endif %}
+</section>
+</div>
+{% endblock %}

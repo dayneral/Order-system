@@ -44,6 +44,8 @@ class Order(models.Model):
     job_number_key = models.CharField(max_length=30, blank=True, db_index=True)
 
     property_type = models.CharField(max_length=10, choices=PropertyType.choices, blank=True)
+    # The void this order is for, when its job number matches a void's SIMPRO number.
+    void = models.ForeignKey("voids.Void", null=True, blank=True, on_delete=models.SET_NULL, related_name="orders")
     delivery_date = models.DateField(null=True, blank=True)
     special_instructions = models.TextField(blank=True)
     order_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)

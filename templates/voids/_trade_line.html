@@ -1,0 +1,38 @@
+{% with v=row.void %}
+<li class="{% if task.status == "not_required" %}unused{% endif %}{% if editing == trade.pk %} editing{% endif %}">
+  {% if editing == trade.pk %}
+  <form hx-post="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML"
+        hx-trigger="change" hx-vals='{"autosave": "1"}' class="cellform autosave">
+    <div class="editor-head"><span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span> <b>{{ trade.name }}</b>
+      <span class="saved-note">{% if saved %}✓ Saved{% else %}Changes save automatically{% endif %}</span></div>
+    <label>Status {{ form.status }}</label>
+    {% if ask_who %}<p class="ask-who">Who is doing the {{ trade.name|lower }}? Fill in <b>Who</b> to set it In progress.</p>{% endif %}
+    <label{% if form.assignee.errors %} class="has-error"{% endif %}>Who {% if ask_who %}<input type="text" name="assignee" id="{{ form.assignee.id_for_label }}" maxlength="100" autofocus placeholder="e.g. Kev, P Works">{% else %}{{ form.assignee }}{% endif %}
+      {% for e in form.assignee.errors %}<span class="error">{{ e }}</span>{% endfor %}</label>
+    <label>Date {{ form.date }}</label>
+    <label class="inline">{{ form.claimed }} Claimed</label>
+    <label>Notes {{ form.notes }}</label>
+    <label>{{ form.comment.label }} {{ form.comment }}</label>
+    <span class="actions">
+      <button type="button" class="primary" hx-post="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-vals='{"cancel": "1"}' hx-target="closest article" hx-swap="outerHTML">Done</button>
+      <button type="button" class="danger" hx-post="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-vals='{"remove": "1"}' hx-confirm="Remove {{ trade.name }} from this job?" hx-target="closest article" hx-swap="outerHTML">Remove from job</button></span>
+  </form>
+  {% else %}
+  <div class="trade-line">
+    <button class="trade-row" hx-get="{% url 'voids:task_cell' v.pk trade.pk %}?in=tile" hx-target="closest article" hx-swap="outerHTML" title="Edit who, date and notes">
+      <span class="dot t-{{ task.status }}{% if task.claimed %} claimed{% endif %}">{{ trade.badge }}</span>
+      <span class="tname">{{ trade.name }}</span>
+      <span class="tinfo">{% if task.assignee %}{{ task.assignee }}{% endif %}{% if task.date %} · {{ task.date|date:"d/m" }}{% endif %}{% if task.status == "not_required" %}Not required{% endif %}{% if task.notes %}<br><small>{{ task.notes|linebreaksbr }}</small>{% endif %}{% if task.updated_by %}<br><small class="changed-by">Changed by {{ task.updated_by.get_short_name }} · {{ task.updated_at|date:"d M H:i" }}</small>{% endif %}</span>
+    </button>
+    {% if task.status != "not_required" %}
+    <span class="status-toggle" role="group" aria-label="{{ trade.name }} status">
+      {% for value, label in row.status_choices %}<button class="st-btn t-{{ value }}{% if task.status == value %} on{% endif %}"{% if task.status == value %} aria-pressed="true" disabled{% endif %}
+        hx-post="{% url 'voids:set_task_status' v.pk trade.pk %}" hx-vals='{"status": "{{ value }}"}' hx-target="closest article" hx-swap="outerHTML">{{ label }}</button>{% endfor %}
+    </span>
+    <button class="claim-btn{% if task.claimed %} on{% endif %}" title="{% if task.claimed %}Claimed – click to undo{% else %}Mark as claimed for payment{% endif %}"
+      hx-post="{% url 'voids:toggle_claim' v.pk trade.pk %}" hx-target="closest article" hx-swap="outerHTML">{% if task.claimed %}✓ Claimed{% else %}£ Claim{% endif %}</button>
+    {% endif %}
+  </div>
+  {% endif %}
+</li>
+{% endwith %}

@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Users · BFS Material Orders{% endblock %}
-{% block help %}<p class="help">Approve new accounts here. Only approved users can sign in and place orders. Every action is recorded in the audit history.</p>{% endblock %}
+{% block help %}<p class="help">Approve new accounts here. Only approved users can sign in. Use Access to choose which modules (Material Orders, Voids) each person can open; admins can open everything. Every action is recorded in the audit history.</p>{% endblock %}
 {% block content %}
 <h1>Users</h1>
 <table class="grid">
-  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Requested</th><th>Last sign-in</th><th>Actions</th></tr></thead>
+  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Status</th><th>Requested</th><th>Last sign-in</th><th>Actions</th></tr></thead>
   <tbody>
   {% for u in users %}
     <tr class="status-{{ u.status }}">
       <td>{{ u.full_name }}</td>
       <td>{{ u.email }}</td>
       <td>{{ u.get_role_display }}</td>
+      <td>
+        <form method="post" action="{% url 'accounts:user_action' u.pk %}" class="actions">{% csrf_token %}
+          {% if u.role == "admin" %}All modules{% else %}
+          {% if u.can_use_orders %}<button name="action" value="revoke_orders" title="Click to remove">✔ Orders</button>{% else %}<button name="action" value="grant_orders" title="Click to give access">✘ Orders</button>{% endif %}
+          {% if u.can_use_voids %}<button name="action" value="revoke_voids" title="Click to remove">✔ Voids</button>{% else %}<button name="action" value="grant_voids" title="Click to give access">✘ Voids</button>{% endif %}
+          {% endif %}
+        </form>
+      </td>
       <td><span class="pill pill-{{ u.status }}">{{ u.get_status_display }}</span></td>
       <td>{{ u.date_joined|date:"d M Y" }}</td>
       <td>{{ u.last_login|date:"d M Y H:i"|default:"Never" }}</td>
@@ -33,7 +41,7 @@
       </td>
     </tr>
   {% empty %}
-    <tr><td colspan="7">No users yet.</td></tr>
+    <tr><td colspan="8">No users yet.</td></tr>
   {% endfor %}
   </tbody>
 </table>

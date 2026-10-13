@@ -12,8 +12,9 @@
   <a class="brand" href="{% url 'home' %}"><span class="logo" role="img" aria-label="BFS logo"></span>BFS Material Orders</a>
   {% if user.is_authenticated %}
   <nav>
-    <a href="{% url 'orders:list' %}">Orders</a>
-    <a href="{% url 'orders:new' %}">New order</a>
+    {% if user.can_order %}<a href="{% url 'orders:list' %}">Orders</a>
+    <a href="{% url 'orders:new' %}">New order</a>{% endif %}
+    {% if user.can_voids %}<a href="{% url 'voids:list' %}">Voids</a>{% endif %}
     {% if user.is_admin %}
       <span class="sep"></span>
       <details class="admin-menu">
@@ -28,6 +29,10 @@
           <a href="{% url 'admin:catalogue_kit_changelist' %}">Kits</a>
           <a href="{% url 'admin:catalogue_linkeditemrule_changelist' %}">Linked items</a>
           <a href="{% url 'catalogue:import_start' %}">Import</a>
+          <hr>
+          <a href="{% url 'voids:import' %}">Voids import</a>
+          <a href="{% url 'admin:app_list' 'voids' %}">Voids settings</a>
+          <a href="{% url 'admin:voids_voidssettings_changelist' %}">Voids warning thresholds</a>
           <hr>
           <a href="{% url 'retention:runs' %}">Retention</a>
           <a href="{% url 'admin:index' %}">Data admin</a>
@@ -64,5 +69,17 @@
   {% block help %}{% endblock %}
   {% block content %}{% endblock %}
 </main>
+<script>
+  // Voids tiles: only one open at a time.
+  function voidTileToggle(d) {
+    var tile = d.parentElement;
+    tile.classList.toggle('open', d.open);
+    if (!d.open) return;
+    document.querySelectorAll('.tile details[open]').forEach(function (o) {
+      if (o !== d) { o.open = false; o.parentElement.classList.remove('open'); }
+    });
+    tile.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+</script>
 </body>
 </html>
