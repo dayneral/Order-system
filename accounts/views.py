@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from . import services
+from . import services, throttle
 from .decorators import admin_required
 from .forms import RegisterForm, SignInForm
 from .models import User
@@ -23,10 +23,19 @@ def register(request):
     if request.user.is_authenticated:
         return redirect("home")
     if request.method == "POST":
+        ip = throttle.client_ip(request)
+        if throttle.blocked("register-ip", ip):
+            messages.error(request, "Too many account requests from this connection. Please try again in an hour.")
+            return render(request, "accounts/register.html", {"form": RegisterForm()}, status=429)
+        throttle.hit("register-ip", ip)
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            services.notify_admins_of_signup(user)
+            if form.email_taken:
+                # Same response as a new request, so the page never reveals who has an account.
+                services.notify_existing_account(form.cleaned_data["email"])
+            else:
+                user = form.save()
+                services.notify_admins_of_signup(user)
             return redirect("accounts:register_done")
     else:
         form = RegisterForm()
@@ -42,6 +51,16 @@ class ForgotPasswordView(auth_views.PasswordResetView):
     email_template_name = "accounts/password_reset_email.txt"
     subject_template_name = "accounts/password_reset_subject.txt"
     success_url = reverse_lazy("accounts:password_reset_done")
+
+    def form_valid(self, form):
+        """Limit reset emails per connection and per address. When over the limit the
+        usual "check your email" page is still shown, but nothing is sent."""
+        ip, email = throttle.client_ip(self.request), form.cleaned_data["email"]
+        if throttle.blocked("reset-ip", ip) or throttle.blocked("reset-email", email):
+            return redirect(self.success_url)
+        throttle.hit("reset-ip", ip)
+        throttle.hit("reset-email", email)
+        return super().form_valid(form)
 
 
 class ResetConfirmView(auth_views.PasswordResetConfirmView):

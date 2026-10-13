@@ -22,3 +22,11 @@ def admin_user(make_user):
 def admin_client(client, admin_user):
     client.force_login(admin_user)
     return client
+
+
+@pytest.fixture(autouse=True)
+def _clear_attempt_limits():
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()

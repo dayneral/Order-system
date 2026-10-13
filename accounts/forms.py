@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import AuthenticationForm
 
+from . import throttle
 from .models import User
 
 
@@ -13,22 +14,37 @@ class SignInForm(AuthenticationForm):
         "invalid_login": "Email address or password not recognised.",
         "pending": "Your account is waiting for an admin to approve it. You will be able to sign in once it is approved.",
         "blocked": "This account cannot sign in. Please contact an admin.",
+        "locked": "Too many sign-in attempts. Please wait 15 minutes and try again, or use Forgot password.",
     }
 
+    def __init__(self, request=None, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        self.ip = throttle.client_ip(request) if request else ""
+
     def clean(self):
+        email = (self.cleaned_data.get("username") or "").lower()
+        if throttle.blocked("login-email", email) or throttle.blocked("login-ip", self.ip):
+            raise forms.ValidationError(self.error_messages["locked"], code="locked")
         try:
-            return super().clean()
+            cleaned = super().clean()
         except forms.ValidationError:
-            # Explain why a correct password was refused for a pending or
-            # disabled account. Wrong passwords always get the generic message.
-            email = (self.cleaned_data.get("username") or "").lower()
-            password = self.cleaned_data.get("password")
-            user = User.objects.filter(email__iexact=email).first()
-            if user and password and user.check_password(password):
-                if user.status == User.Status.PENDING:
-                    raise forms.ValidationError(self.error_messages["pending"], code="pending")
-                raise forms.ValidationError(self.error_messages["blocked"], code="blocked")
+            throttle.hit("login-email", email)
+            throttle.hit("login-ip", self.ip)
+            self._explain_refusal()
             raise
+        throttle.clear("login-email", email)
+        return cleaned
+
+    def _explain_refusal(self):
+        """Explain why a correct password was refused for a pending or disabled account.
+        Wrong passwords always get the generic message."""
+        email = (self.cleaned_data.get("username") or "").lower()
+        password = self.cleaned_data.get("password")
+        user = User.objects.filter(email__iexact=email).first()
+        if user and password and user.check_password(password):
+            if user.status == User.Status.PENDING:
+                raise forms.ValidationError(self.error_messages["pending"], code="pending")
+            raise forms.ValidationError(self.error_messages["blocked"], code="blocked")
 
 
 class RegisterForm(forms.ModelForm):
@@ -43,10 +59,16 @@ class RegisterForm(forms.ModelForm):
         help_texts = {"full_name": "Your first name and surname. This appears on every order you place."}
 
     def clean_email(self):
-        email = self.cleaned_data["email"].strip().lower()
-        if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("An account with this email address already exists.")
-        return email
+        # An existing address is not reported here (that would tell anyone which addresses have
+        # accounts). The view shows the usual "request sent" page and emails the account holder.
+        return self.cleaned_data["email"].strip().lower()
+
+    def validate_unique(self):
+        pass
+
+    @property
+    def email_taken(self):
+        return User.objects.filter(email__iexact=self.cleaned_data.get("email", "")).exists()
 
     def clean(self):
         cleaned = super().clean()

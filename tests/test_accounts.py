@@ -49,8 +49,55 @@ def test_duplicate_email_rejected_case_insensitively(client, make_user):
         "full_name": "Other", "email": "TAKEN@bfsuk.org",
         "password1": "Plaster-Board-77", "password2": "Plaster-Board-77",
     })
-    assert resp.status_code == 200
-    assert "already exists" in resp.content.decode()
+    # Same response as a new request (no "already exists"), no second account,
+    # and the existing account holder is emailed instead.
+    assert resp.status_code == 302 and resp.url == reverse("accounts:register_done")
+    assert User.objects.filter(email__iexact="taken@bfsuk.org").count() == 1
+    assert mail.outbox[-1].to == ["taken@bfsuk.org"] and "already has" in mail.outbox[-1].body
+
+
+def test_sign_in_locks_after_five_failures_per_email(client, make_user):
+    make_user("lock@bfsuk.org")
+    for _ in range(5):
+        assert "not recognised" in sign_in(client, "lock@bfsuk.org", "wrong-pass").content.decode()
+    resp = sign_in(client, "lock@bfsuk.org")  # correct password, but locked
+    assert "Too many sign-in attempts" in resp.content.decode()
+    assert "_auth_user_id" not in client.session
+
+
+def test_successful_sign_in_resets_the_count(client, make_user):
+    make_user("ok@bfsuk.org")
+    for _ in range(4):
+        sign_in(client, "ok@bfsuk.org", "wrong-pass")
+    assert sign_in(client, "ok@bfsuk.org").status_code == 302
+    client.logout()
+    for _ in range(4):
+        sign_in(client, "ok@bfsuk.org", "wrong-pass")
+    assert sign_in(client, "ok@bfsuk.org").status_code == 302
+
+
+def test_sign_in_locks_per_ip_across_addresses(client, make_user):
+    make_user("victim@bfsuk.org")
+    for n in range(20):
+        sign_in(client, f"guess{n}@bfsuk.org", "wrong-pass")
+    assert "Too many sign-in attempts" in sign_in(client, "victim@bfsuk.org").content.decode()
+
+
+def test_registration_limited_per_ip(client):
+    for n in range(5):
+        client.post(reverse("accounts:register"), {"full_name": "Bot", "email": f"bot{n}@x.test",
+                                                   "password1": "Plaster-Board-77", "password2": "Plaster-Board-77"})
+    resp = client.post(reverse("accounts:register"), {"full_name": "Bot", "email": "bot9@x.test",
+                                                      "password1": "Plaster-Board-77", "password2": "Plaster-Board-77"})
+    assert resp.status_code == 429 and not User.objects.filter(email="bot9@x.test").exists()
+
+
+def test_password_reset_emails_limited_per_address(client, make_user):
+    make_user("reset@bfsuk.org")
+    for _ in range(5):
+        resp = client.post(reverse("accounts:password_reset"), {"email": "reset@bfsuk.org"})
+        assert resp.status_code == 302  # always the same "check your email" page
+    assert len([m for m in mail.outbox if m.to == ["reset@bfsuk.org"]]) == 3
 
 
 def test_pending_user_cannot_sign_in_and_is_told_why(client, make_user):

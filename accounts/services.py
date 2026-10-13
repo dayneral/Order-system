@@ -122,3 +122,18 @@ def notify_admins_of_signup(user):
         )
     except Exception:  # noqa: BLE001 - sign-up must still succeed
         logger.exception("Could not notify admins of new sign-up %s", user.email)
+
+
+def notify_existing_account(email):
+    """Someone asked for an account with an address that already has one: tell the account holder."""
+    try:
+        send_mail(
+            "BFS Material Orders: account request for your email address",
+            "Someone asked for a BFS Material Orders account using this email address, which already has "
+            "an account.\n\nIf this was you and you have forgotten your password, use 'Forgot password' on "
+            "the sign-in page. If it was not you, you can ignore this email.",
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+        )
+    except Exception:  # noqa: BLE001 - the page response must not change
+        logger.exception("Could not send existing-account notice to %s", email)

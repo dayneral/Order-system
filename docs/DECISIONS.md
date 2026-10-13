@@ -51,3 +51,4 @@ build brief. Newest first.
 | Other items | "Non-stocked" items renamed "Other items". No unit is asked for (the description covers it). Emails list them under one "Other items" heading with no per-line label. |
 | Email subject and heading | Show the first line of the property address instead of the order number. The order number stays in the details table. |
 | Part Nos. on emails | Hidden for now (too many placeholder codes). `EMAIL_SHOW_PART_NUMBERS=1` switches them back on. |
+| Misuse protection | Sign-in lockout (5 per email / 20 per IP per 15 min), registration limit (5 per IP per hour), password-reset limit (5 per IP, 3 per address per hour). Duplicate registrations get the normal response and the account holder is emailed, so account existence isn't revealed. |

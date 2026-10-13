@@ -3,5 +3,6 @@
 {% block content %}
 <h1>Request sent</h1>
 <p>Thank you. Your account is waiting for an admin to approve it. You will be able to sign in once it is approved.</p>
+<p>If this email address already has an account, we have sent it an email instead.</p>
 <p><a href="{% url 'accounts:login' %}">Back to sign in</a></p>
 {% endblock %}

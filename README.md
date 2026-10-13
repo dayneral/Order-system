@@ -283,6 +283,19 @@ The job runs every night as a Render cron job (`bfs-orders-retention`, 02:15 UTC
 
 ---
 
+## Security
+
+- Accounts need admin approval; staff and admin roles; audit history of changes.
+- **Sign-in lockout:** 5 failed attempts per email address, or 20 per IP address, locks sign-in
+  for 15 minutes (a correct password is refused while locked). A successful sign-in resets the count.
+- **Registration:** 5 requests per IP address per hour. Registering with an address that already
+  has an account shows the usual "Request sent" page and emails the account holder, so the page
+  never reveals who has an account.
+- **Password reset:** 5 requests per IP address and 3 emails per address per hour. Over the limit,
+  the usual "check your email" page shows but nothing is sent.
+- Limits are held in memory (`accounts/throttle.py`), which works because the app runs as one
+  process. If more processes are added, switch `CACHES` to a shared backend. Limits reset on restart.
+
 ## Local setup
 
 You need Python 3.12 or newer and PostgreSQL 14 or newer.
