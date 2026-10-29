@@ -36,18 +36,18 @@
   <aside class="order-side">
     <section class="panel">
       <h2 class="first">This order</h2>
-      {% include "orders/_lines.html" %}
       <div class="side-actions">
       {% if order.is_draft %}
         <button form="header-form" name="action" value="save">Save draft</button>
-        <button form="header-form" name="action" value="submit" class="primary big">Submit order</button>
-        <p class="hint">Submitting sends the order to stores.</p>
+        <button form="header-form" name="action" value="submit" class="primary big">Review and submit</button>
+        <p class="hint">You will see the whole order to check before it is sent.</p>
       {% else %}
         <button form="header-form" name="action" value="save">Save job details</button>
-        <button form="header-form" name="action" value="send_amendment" class="primary big">Send amended order to stores</button>
+        <button form="header-form" name="action" value="send_amendment" class="primary big">Review and send amendment</button>
         <p class="hint">Stores will receive the order marked AMENDED.</p>
       {% endif %}
       </div>
+      {% include "orders/_lines.html" %}
     </section>
   </aside>
 </div>

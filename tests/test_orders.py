@@ -5,6 +5,7 @@ from decimal import Decimal as D
 
 import pytest
 from django.contrib.messages import get_messages
+from django.core import mail
 from django.urls import reverse
 from django.utils import timezone
 
@@ -363,7 +364,14 @@ def test_full_order_through_the_website(client, make_user, items):
     data = {**full_header("WEB-1"), "delivery_date": TOMORROW.isoformat(), "action": "submit"}
     resp = client.post(edit, data)
     order.refresh_from_db()
-    assert resp.status_code == 302 and order.status == Order.Status.SUBMITTED
+    # Submit first shows the review page; nothing is sent until it is confirmed.
+    assert resp.status_code == 302 and resp.url == reverse("orders:review", args=[order.pk])
+    assert order.status == Order.Status.DRAFT and not mail.outbox
+    review = client.get(resp.url).content.decode()
+    assert "Nothing has been sent yet" in review and "Odd bracket" in review and "Confirm and send" in review
+    resp = client.post(resp.url)
+    order.refresh_from_db()
+    assert resp.status_code == 302 and order.status == Order.Status.SUBMITTED and len(mail.outbox) == 1
     assert order.order_value == D("111.00")
     detail = client.get(reverse("orders:detail", args=[order.pk])).content.decode()
     assert "Other item" in detail and "Odd bracket" in detail and order.order_number in detail
@@ -415,3 +423,14 @@ def test_item_grid_plus_minus_and_typed_quantity(client, make_user):
     assert not order.lines.exists() and '"item-counts" type="application/json">{}' in resp.content.decode()
     resp = client.post(set_, {"item_id": item.pk, "quantity": "abc"}, HTTP_HX_REQUEST="true")
     assert "Enter a whole number" in resp.content.decode()
+
+
+def test_review_page_sends_back_to_edit_when_not_ready(client, make_user):
+    user = make_user()
+    client.force_login(user)
+    order = services.create_draft(user)
+    resp = client.get(reverse("orders:review", args=[order.pk]))
+    assert resp.status_code == 302 and resp.url == reverse("orders:edit", args=[order.pk])
+    resp = client.post(reverse("orders:review", args=[order.pk]))
+    order.refresh_from_db()
+    assert order.status == Order.Status.DRAFT

@@ -1,0 +1,4 @@
+<form method="post" action="{% url 'orders:review' order.pk %}" class="review-actions">{% csrf_token %}
+  <a class="button" href="{% url 'orders:edit' order.pk %}">Back to edit</a>
+  <button class="primary big">{% if amending %}Send amended order to stores{% else %}Confirm and send to stores{% endif %}</button>
+</form>

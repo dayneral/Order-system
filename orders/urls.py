@@ -9,6 +9,7 @@ urlpatterns = [
     path("new/", views.order_new, name="new"),
     path("<uuid:order_id>/", views.order_detail, name="detail"),
     path("<uuid:order_id>/edit/", views.order_edit, name="edit"),
+    path("<uuid:order_id>/review/", views.order_review, name="review"),
     path("<uuid:order_id>/items/", views.item_browser, name="items"),
     path("<uuid:order_id>/lines/add/", views.line_add, name="line_add"),
     path("<uuid:order_id>/lines/set/", views.line_set, name="line_set"),

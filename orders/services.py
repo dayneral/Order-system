@@ -419,8 +419,22 @@ def _next_order_number(year):
     return f"BFS-{year}-{number:06d}"
 
 
+def submission_errors(order, user, today=None):
+    """Every problem that would stop this draft being submitted (empty list = ready)."""
+    try:
+        _check_submission(order, user, today)
+    except OrderError as exc:
+        return exc.errors
+    return []
+
+
 def submit(order, user, today=None):
     """Turn a draft into a submitted order. Raises OrderError listing every problem."""
+    lines = _check_submission(order, user, today)
+    return _do_submit(order, user, lines)
+
+
+def _check_submission(order, user, today=None):
     if not (order.is_draft and order.owner_id == user.pk):
         raise OrderError("Only your own draft orders can be submitted.")
     today = today or timezone.localdate()
@@ -446,7 +460,10 @@ def submit(order, user, today=None):
         errors.append(_job_clash_message(other))
     if errors:
         raise OrderError(errors[0], errors)
+    return lines
 
+
+def _do_submit(order, user, lines):
     try:
         with transaction.atomic():
             # Fix prices and details as they are right now.
@@ -494,14 +511,19 @@ def admin_delete(order, user, reason):
     return number
 
 
-def finish_amendment(order, user):
-    """The user has finished amending: send the updated order to stores."""
+def amendment_errors(order, user):
     _require_editable(order, user)
     if order.status != Order.Status.SUBMITTED or not order.amendment_pending:
-        raise OrderError("There are no changes to send.")
+        return ["There are no changes to send."]
     errors = header_errors(order)
     if not order.lines.exists():
         errors.append("Add at least one item.")
+    return errors
+
+
+def finish_amendment(order, user):
+    """The user has finished amending: send the updated order to stores."""
+    errors = amendment_errors(order, user)
     if errors:
         raise OrderError(errors[0], errors)
     order.amendment_pending = False

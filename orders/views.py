@@ -186,14 +186,13 @@ def order_edit(request, order_id):
         if form.is_valid():
             try:
                 services.update_header(order, request.user, form.cleaned_data)
-                if action == "submit":
-                    services.submit(order, request.user)
-                    _report_email(request, order, f"Order {order.order_number} submitted and sent to stores.")
-                    return redirect("orders:detail", order.pk)
-                if action == "send_amendment":
-                    services.finish_amendment(order, request.user)
-                    _report_email(request, order, f"Amended order {order.order_number} sent to stores.")
-                    return redirect("orders:detail", order.pk)
+                if action in ("submit", "send_amendment"):
+                    # Check first, then show the whole order for review before anything is sent.
+                    problems = (services.submission_errors(order, request.user) if action == "submit"
+                                else services.amendment_errors(order, request.user))
+                    if problems:
+                        raise OrderError(problems[0], problems)
+                    return redirect("orders:review", order.pk)
                 messages.success(request, "Draft saved." if order.is_draft else "Changes saved.")
                 if order.is_draft:
                     other = services.active_order_for_job(order.job_number_key)
@@ -212,6 +211,37 @@ def order_edit(request, order_id):
                      .order_by("address").values("simpro", "address", "postcode"))
     context = {"order": order, "form": form, "errors": errors, "void_jobs": void_jobs, **_item_browser(request, order), **_lines_context(order)}
     return render(request, "orders/order_edit.html", context)
+
+
+@login_required
+def order_review(request, order_id):
+    """Review the whole order as stores will receive it, then confirm to send it."""
+    order = _get_order(request, order_id, edit=True)
+    amending = not order.is_draft
+    if request.method == "POST":
+        try:
+            if amending:
+                services.finish_amendment(order, request.user)
+                _report_email(request, order, f"Amended order {order.order_number} sent to stores.")
+            else:
+                services.submit(order, request.user)
+                _report_email(request, order, f"Order {order.order_number} submitted and sent to stores.")
+        except OrderError as exc:
+            for error in exc.errors:
+                messages.error(request, error)
+            return redirect("orders:edit", order.pk)
+        return redirect("orders:detail", order.pk)
+    problems = (services.amendment_errors(order, request.user) if amending
+                else services.submission_errors(order, request.user))
+    if problems:
+        for error in problems:
+            messages.error(request, error)
+        return redirect("orders:edit", order.pk)
+    from notifications.sending import last_sent_snapshot
+    kind = "amended" if amending else "submitted"
+    context = documents.document_context(order, kind, last_sent_snapshot(order) if amending else None)
+    from notifications.sending import cc_list
+    return render(request, "orders/order_review.html", {**context, "amending": amending, "copies": cc_list(order)})
 
 
 @login_required

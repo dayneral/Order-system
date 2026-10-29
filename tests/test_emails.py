@@ -100,7 +100,8 @@ def test_send_failure_keeps_order_warns_user_and_lists_for_retry(order, admin_cl
     client.force_login(order.owner)
     data = {"job_number": "J-24017", "property_address": "14 Mill Lane", "property_type": "occupied", "operative_name": "Jo Fitter",
             "delivery_date": TOMORROW.isoformat(), "action": "submit"}
-    resp = client.post(reverse("orders:edit", args=[order.pk]), data, follow=True)
+    client.post(reverse("orders:edit", args=[order.pk]), data)
+    resp = client.post(reverse("orders:review", args=[order.pk]), follow=True)
     order.refresh_from_db()
     assert order.order_number and order.status == "submitted"  # saved regardless
     page = resp.content.decode()

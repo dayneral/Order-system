@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Check order · BFS Material Orders{% endblock %}
+{% block main_class %}page{% endblock %}
+{% block content %}
+{% url 'orders:edit' order.pk as edit_url %}
+<div class="row-between">
+  <h1>Check {% if amending %}the amended order{% else %}your order{% endif %} before sending</h1>
+  <a href="{{ edit_url }}">&larr; Back to edit</a>
+</div>
+<div class="msg msg-warning">Nothing has been sent yet. Check the items and quantities below, then press
+  <b>{% if amending %}Send amended order{% else %}Confirm and send{% endif %}</b>.</div>
+
+{% include "orders/_review_actions.html" %}
+
+<section class="panel">
+  <table class="details">
+    <tr><th>Job number</th><td>{{ order.job_number }}</td>
+        <th>Delivery date</th><td><b>{{ order.delivery_date|date:"l d F Y" }}</b></td></tr>
+    <tr><th>Property address</th><td>{{ order.property_address|linebreaksbr }}</td>
+        <th>Property type</th><td>{{ order.get_property_type_display }}{% if order.operative_name %}<br>Operative: <b>{{ order.operative_name }}</b>{% endif %}</td></tr>
+    <tr><th>Special instructions</th><td colspan="3">{{ order.special_instructions|default:"None"|linebreaksbr }}</td></tr>
+    <tr><th>Sent to</th><td colspan="3">{{ stores_email }}{% if copies %} (copy to {{ copies|join:", " }}){% endif %}</td></tr>
+  </table>
+</section>
+
+{% if amending and changes %}
+<section class="panel">
+  <b>Changes since stores last received this order:</b>
+  {{ changes.new }} new, {{ changes.changed }} changed, {{ changes.removed }} removed.
+  {% for h in changes.header %}<div><span class="flag flam">Changed</span> {{ h.label }} (was: {{ h.was }})</div>{% endfor %}
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2 class="first">{{ line_count }} item{{ line_count|pluralize }}</h2>
+  <table class="grid review">
+    <thead><tr><th>#</th><th>Item</th><th>Quantity</th></tr></thead>
+    <tbody>
+    {% for group in groups %}
+      <tr class="group-row"><td colspan="3">{{ group.section }}</td></tr>
+      {% for line in group.lines %}
+      <tr class="{% if line.change %}line-{{ line.change }}{% endif %}">
+        <td>{{ line.number }}</td>
+        <td>{{ line.description }}{% if line.is_flammable %} <span class="flag flam">Flammable</span>{% endif %}{% if line.kit_name %} <span class="flag kit">Kit: {{ line.kit_name }}</span>{% endif %}{% if line.change == "new" %} <span class="flag nonstock">New</span>{% elif line.change == "changed" %} <span class="flag nonstock">Changed</span>{% elif line.change == "removed" %} <span class="flag flam">Removed</span>{% endif %}</td>
+        <td>{% if line.change == "removed" %}<s>{{ line.quantity }}</s> (do not supply){% else %}<b>{{ line.quantity }}</b>{% if line.was %} <span class="hint">was {{ line.was }}</span>{% endif %}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% include "orders/_review_actions.html" %}
+{% endblock %}

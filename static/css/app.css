@@ -568,3 +568,11 @@ td.late { color: #b00020; font-weight: 700; }
 .job-strip .jd-grid { grid-template-columns: 170px 170px minmax(240px, 1.6fr) 210px minmax(180px, 1fr) minmax(200px, 1.2fr); }
 .job-strip .field ul { flex-direction: row; }
 .job-strip .field ul li { display: inline-flex; }
+/* Order review before sending */
+.review-actions { display: flex; gap: 1rem; align-items: center; justify-content: flex-end; margin: 0 0 1.25rem; }
+.review-actions .button { min-height: 44px; display: inline-flex; align-items: center; }
+table.review td { padding: .45rem .6rem; }
+table.review .group-row td { background: var(--sunk); font-weight: 700; }
+table.review .line-removed td { color: var(--muted); }
+table.details th { width: auto; white-space: nowrap; }
+.order-side .side-actions { margin: 0 0 .8rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line); }
