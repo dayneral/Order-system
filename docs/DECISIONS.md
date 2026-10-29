@@ -52,3 +52,4 @@ build brief. Newest first.
 | Email subject and heading | Show the first line of the property address instead of the order number. The order number stays in the details table. |
 | Part Nos. on emails | Hidden for now (too many placeholder codes). `EMAIL_SHOW_PART_NUMBERS=1` switches them back on. |
 | Misuse protection | Sign-in lockout (5 per email / 20 per IP per 15 min), registration limit (5 per IP per hour), password-reset limit (5 per IP, 3 per address per hour). Duplicate registrations get the normal response and the account holder is emailed, so account existence isn't revealed. |
+| Order page layout | Desktop layout: job details in one strip across the top; items as a card grid (no Part Nos., no inner scroll) with + / − and a typed total under each counted item; cut-to-size items keep a small measurement form; order panel on the right with Save/Submit. Search results use the same cards with the section shown. |

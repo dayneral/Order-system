@@ -523,3 +523,31 @@ def cancel(order, user, reason=""):
     record(user, "order.cancel", order, summary + (f": {reason.strip()}" if reason.strip() else ""))
     notify.order_cancelled(order)
     return order
+
+
+COUNTED = (MeasureType.EACH, MeasureType.PACK, MeasureType.WHOLE)
+
+
+def item_line(order, item):
+    """The order's line for a counted catalogue item (each / pack / whole), if any."""
+    return order.lines.filter(item=item, is_non_stocked=False, measure_type__in=COUNTED).first()
+
+
+def set_item_quantity(order, user, item, quantity):
+    """Set the total quantity of a counted item from the item grid (+ / − / typed). 0 removes it."""
+    try:
+        qty = int(str(quantity).strip())
+    except (TypeError, ValueError):
+        raise OrderError("Enter a whole number.")
+    if qty < 0 or qty > MAX_QUANTITY:
+        raise OrderError(f"Enter a number from 0 to {MAX_QUANTITY}.")
+    line = item_line(order, item)
+    if line is None:
+        if qty == 0:
+            return None
+        return add_item_line(order, user, item, {"quantity": str(qty)})
+    if qty == 0:
+        remove_line(line, user)
+        return None
+    update_line(line, user, {"quantity": str(qty)})
+    return line

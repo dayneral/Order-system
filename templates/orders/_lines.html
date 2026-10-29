@@ -1,4 +1,5 @@
 <div id="lines">
+  {{ item_counts|json_script:"item-counts" }}
   {% if line_error %}<div class="msg msg-error">{{ line_error }}</div>{% endif %}
   {% if line_notice %}<div class="msg msg-success">{{ line_notice }}</div>{% endif %}
   {% if suggested_items %}
@@ -26,12 +27,11 @@
   {% if order.amendment_pending %}<div class="msg msg-warning">This order has changes that have not been sent to stores yet.</div>{% endif %}
   {% if lines %}
   <table class="grid lines">
-    <thead><tr><th>Part No.</th><th>Item</th><th>Quantity / measurement</th>{% if show_values %}<th class="num">Value</th>{% endif %}<th></th></tr></thead>
+    <thead><tr><th>Item</th><th>Quantity / measurement</th>{% if show_values %}<th class="num">Value</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for line in lines %}
       <tr>
-        <td class="code">{% if line.is_non_stocked %}<span class="flag nonstock">Other item</span>{% else %}{{ line.part_no }}{% endif %}</td>
-        <td>{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
+        <td>{% if line.is_non_stocked %}<span class="flag nonstock">Other item</span> {% endif %}{{ line.name }}{% if line.is_flammable %} <span class="flag flam">FLAMMABLE</span>{% endif %}{% if line.kit_name %} <span class="flag kit">KIT: {{ line.kit_name }}</span>{% endif %}</td>
         <td>
           <form method="post" action="{% url 'orders:line_update' order.pk line.pk %}" class="inline-fields"
                 hx-post="{% url 'orders:line_update' order.pk line.pk %}" hx-trigger="change" hx-target="#lines" hx-swap="outerHTML">{% csrf_token %}
@@ -59,7 +59,7 @@
     {% endfor %}
     </tbody>
     {% if show_values %}<tfoot>
-      <tr><th colspan="3" class="num">Order value</th><th class="num">£{{ order.order_value }}</th><th></th></tr>
+      <tr><th colspan="2" class="num">Order value</th><th class="num">£{{ order.order_value }}</th><th></th></tr>
     </tfoot>{% endif %}
   </table>
   {% if show_values %}<p class="hint">Order value uses trade prices and excludes other items. It is not shown to stores.

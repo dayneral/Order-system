@@ -346,7 +346,7 @@ def test_full_order_through_the_website(client, make_user, items):
     order = Order.objects.get()
     edit = reverse("orders:edit", args=[order.pk])
     assert client.get(edit).status_code == 200
-    assert "ADH014" in client.get(reverse("orders:items", args=[order.pk]) + "?q=silicone").content.decode()
+    assert "Multi-purpose silicone" in client.get(reverse("orders:items", args=[order.pk]) + "?q=silicone").content.decode()
 
     resp = client.post(reverse("orders:line_add", args=[order.pk]),
                        {"item_id": items["vinyl"].pk, "length": "2.5", "width": "2.0"}, HTTP_HX_REQUEST="true")
@@ -392,3 +392,26 @@ def test_my_and_all_order_lists(client, make_user, items):
     detail = client.get(reverse("orders:detail", args=[theirs.pk])).content.decode()
     assert "THEIRS-1" in detail and "Amend order" not in detail
     assert client.get(reverse("orders:edit", args=[theirs.pk])).status_code == 403
+
+
+def test_item_grid_plus_minus_and_typed_quantity(client, make_user):
+    from catalogue.models import Section
+    user = make_user()
+    client.force_login(user)
+    item = Item.objects.create(part_no="GRID1", catalogue_name="Grid socket", section_id=Section.ELECTRICAL,
+                               trade_price=D("1.00"))
+    order = services.create_draft(user)
+    add, set_ = reverse("orders:line_add", args=[order.pk]), reverse("orders:line_set", args=[order.pk])
+    page = client.get(reverse("orders:items", args=[order.pk]) + "?section=electrical&sub=all").content.decode()
+    assert "Grid socket" in page and "GRID1" not in page and 'class="stepper"' in page
+    client.post(add, {"item_id": item.pk, "quantity": "1"}, HTTP_HX_REQUEST="true")   # +
+    resp = client.post(add, {"item_id": item.pk, "quantity": "1"}, HTTP_HX_REQUEST="true")  # +
+    assert f'"{item.pk}": 2.0' in resp.content.decode()
+    client.post(set_, {"item_id": item.pk, "quantity": "1"}, HTTP_HX_REQUEST="true")  # −
+    assert order.lines.get().quantity == 1
+    client.post(set_, {"item_id": item.pk, "quantity": "40"}, HTTP_HX_REQUEST="true")  # typed
+    assert order.lines.get().quantity == 40
+    resp = client.post(set_, {"item_id": item.pk, "quantity": "0"}, HTTP_HX_REQUEST="true")
+    assert not order.lines.exists() and '"item-counts" type="application/json">{}' in resp.content.decode()
+    resp = client.post(set_, {"item_id": item.pk, "quantity": "abc"}, HTTP_HX_REQUEST="true")
+    assert "Enter a whole number" in resp.content.decode()

@@ -41,10 +41,10 @@ def test_order_page_filters_by_subsection(client, make_user):
     order = services.create_draft(user)
     url = reverse("orders:items", args=[order.pk])
     page = client.get(url + "?section=electrical").content.decode()  # opens on the first subsection
-    assert "Sockets and Switches" in page and "ELE010" in page and "ELE031" not in page
+    assert "Sockets and Switches" in page and ">Socket<" in page and "Smoke alarm" not in page
     assert page.index("Sockets and Switches") < page.index(">All<")  # "All" is the last option
     page = client.get(url + "?section=electrical&sub=all").content.decode()
-    assert "ELE010" in page and "ELE031" in page
+    assert ">Socket<" in page and "Smoke alarm" in page
 
 
 def test_subsection_sets_its_section_and_mismatch_is_rejected_in_admin(admin_client):

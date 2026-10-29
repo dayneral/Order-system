@@ -25,10 +25,9 @@
   </div>
   {% endif %}
   {% if q %}<p class="hint">Results for "{{ q }}" across all sections.</p>{% endif %}
-  <div class="items-scroll">
   {% for offer in kit_offers %}
     <div class="kit-card">
-      <div class="row-between"><b><span class="flag kit">KIT</span> {{ offer.kit.name }}</b>
+      <div class="row-between"><b><span class="flag kit">Kit</span> {{ offer.kit.name }}</b>
         {% if show_values %}<span class="hint">Est. £{{ offer.estimated_value }}{% if offer.has_measured_items %} + measured items{% endif %}</span>{% endif %}</div>
       {% if offer.kit.description %}<div class="hint">{{ offer.kit.description }}</div>{% endif %}
       <details><summary>Show kit items</summary>
@@ -36,31 +35,39 @@
       </details>
     </div>
   {% endfor %}
-  <table class="grid items">
-    <thead><tr><th>Part No.</th><th>Item</th>{% if show_values %}<th class="num">Price</th>{% endif %}<th>Quantity / measurement</th></tr></thead>
-    <tbody>
-    {% for item in items %}
-      <tr class="{% if not item.is_orderable %}muted{% endif %}">
-        <td class="code">{{ item.part_no }}</td>
-        <td>{{ item.name }}
-          {% if item.is_flammable %}<span class="flag flam">FLAMMABLE</span>{% endif %}
-          {% if q %}<div class="hint">{{ item.section.name|default:"Other" }}{% if item.subsection %} › {{ item.subsection.name }}{% endif %}</div>{% endif %}
-          <div class="hint">{% include "orders/_unit_hint.html" %}</div>
-        </td>
-        {% if show_values %}<td class="num">{% if item.trade_price is not None %}£{{ item.trade_price|floatformat:2 }}{% else %}—{% endif %}</td>{% endif %}
-        <td>
-        {% if item.is_orderable %}
-          {% include "orders/_add_form.html" %}
-        {% else %}
-          <span class="hint">Not available yet: details incomplete</span>
-        {% endif %}
-        </td>
-      </tr>
-    {% empty %}
-      {% if not kit_offers %}<tr><td colspan="4">{% if q %}No items match "{{ q }}".{% else %}No items here yet.{% endif %}</td></tr>{% endif %}
-    {% endfor %}
-    </tbody>
-  </table>
+  <div class="item-grid">
+  {% for item in items %}
+    <div class="item-card{% if not item.is_orderable %} muted{% endif %}" data-item="{{ item.pk }}">
+      <div class="item-name">{{ item.name }}</div>
+      <div class="item-unit">{% include "orders/_card_unit.html" %}{% if q %} · {{ item.section.name|default:"Other" }}{% if item.subsection %} › {{ item.subsection.name }}{% endif %}{% endif %}</div>
+      {% if item.is_flammable %}<div><span class="flag flam">Flammable</span></div>{% endif %}
+      {% if not item.is_orderable %}
+        <div class="hint">Not available yet</div>
+      {% elif item.measure_type == "each" or item.measure_type == "pack" or item.measure_type == "whole" %}
+        <div class="stepper">
+          <button type="button" class="minus" data-step="-1" aria-label="Remove one {{ item.name }}">−</button>
+          <input type="number" min="0" step="1" value="0" class="count" aria-label="Quantity of {{ item.name }}" inputmode="numeric">
+          <button type="button" class="plus" data-step="1" aria-label="Add one {{ item.name }}">+</button>
+        </div>
+      {% else %}
+        <form method="post" action="{% url 'orders:line_add' order.pk %}" class="measure"
+              hx-post="{% url 'orders:line_add' order.pk %}" hx-target="#lines" hx-swap="outerHTML"
+              hx-on::after-request="if(event.detail.successful) this.reset()">{% csrf_token %}
+          <input type="hidden" name="item_id" value="{{ item.pk }}">
+          {% if item.measure_type == "area" %}
+            <input name="length" type="number" min="0.1" step="0.1" placeholder="L" required aria-label="Length in metres">
+            <span>×</span>
+            <input name="width" type="number" min="0.1" step="0.1" placeholder="W" required aria-label="Width in metres">
+          {% else %}
+            <input name="length" type="number" min="0.1" step="0.1" placeholder="m" required aria-label="Length in metres">
+          {% endif %}
+          <button>Add</button>
+        </form>
+      {% endif %}
+    </div>
+  {% empty %}
+    {% if not kit_offers %}<p class="hint">{% if q %}No items match "{{ q }}".{% else %}No items here yet.{% endif %}</p>{% endif %}
+  {% endfor %}
   </div>
   {% if more_items %}<p class="hint">Showing the first {{ items|length }} items. Search to narrow the list.</p>{% endif %}
 </div>

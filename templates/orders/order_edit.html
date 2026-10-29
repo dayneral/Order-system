@@ -12,9 +12,13 @@
   <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
 
+<form method="post" id="header-form" class="panel job-strip">{% csrf_token %}
+  {% include "orders/_job_details.html" %}
+</form>
+
 <div class="builder">
-  <section class="panel browser">
-    <h2 class="first">Add items</h2>
+  <section class="panel browser" id="browser"
+           data-add-url="{% url 'orders:line_add' order.pk %}" data-set-url="{% url 'orders:line_set' order.pk %}">
     {% include "orders/_items.html" %}
     <details class="nonstock">
       <summary>Can't find an item? Add an other item</summary>
@@ -33,23 +37,59 @@
     <section class="panel">
       <h2 class="first">This order</h2>
       {% include "orders/_lines.html" %}
-    </section>
-
-    <form method="post" id="header-form" class="panel job-details">{% csrf_token %}
-      <h2 class="first">Job details</h2>
-      {% include "orders/_job_details.html" %}
       <div class="side-actions">
       {% if order.is_draft %}
-        <button name="action" value="save">Save draft</button>
-        <button name="action" value="submit" class="primary big">Submit order</button>
+        <button form="header-form" name="action" value="save">Save draft</button>
+        <button form="header-form" name="action" value="submit" class="primary big">Submit order</button>
         <p class="hint">Submitting sends the order to stores.</p>
       {% else %}
-        <button name="action" value="save">Save job details</button>
-        <button name="action" value="send_amendment" class="primary big">Send amended order to stores</button>
+        <button form="header-form" name="action" value="save">Save job details</button>
+        <button form="header-form" name="action" value="send_amendment" class="primary big">Send amended order to stores</button>
         <p class="hint">Stores will receive the order marked AMENDED.</p>
       {% endif %}
       </div>
-    </form>
+    </section>
   </aside>
 </div>
+<script>
+/* Item grid: + adds one (same as Add, so linked-item suggestions still appear); − and typed
+   numbers set the total. Counters follow the order after every change to the order lines. */
+(function () {
+  var browser = document.getElementById("browser");
+  function syncCounts() {
+    var data = document.getElementById("item-counts");
+    var counts = data ? JSON.parse(data.textContent) : {};
+    document.querySelectorAll(".item-card[data-item]").forEach(function (card) {
+      var n = counts[card.dataset.item] || 0, box = card.querySelector(".count");
+      card.classList.toggle("on-order", n > 0);
+      if (box && document.activeElement !== box) box.value = n;
+    });
+  }
+  function send(url, values) {
+    htmx.ajax("POST", url, {target: "#lines", swap: "outerHTML", values: values});
+  }
+  browser.addEventListener("click", function (e) {
+    var b = e.target.closest(".stepper button"); if (!b) return;
+    var card = b.closest(".item-card"), box = card.querySelector(".count"), id = card.dataset.item;
+    if (b.dataset.step === "1") {
+      box.value = (parseInt(box.value, 10) || 0) + 1;
+      send(browser.dataset.addUrl, {item_id: id, quantity: 1});
+    } else {
+      var n = Math.max(0, (parseInt(box.value, 10) || 0) - 1);
+      box.value = n;
+      send(browser.dataset.setUrl, {item_id: id, quantity: n});
+    }
+  });
+  browser.addEventListener("change", function (e) {
+    if (!e.target.classList.contains("count")) return;
+    var card = e.target.closest(".item-card");
+    send(browser.dataset.setUrl, {item_id: card.dataset.item, quantity: Math.max(0, parseInt(e.target.value, 10) || 0)});
+  });
+  browser.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.classList.contains("count")) { e.preventDefault(); e.target.blur(); }
+  });
+  document.body.addEventListener("htmx:afterSettle", syncCounts);
+  syncCounts();
+})();
+</script>
 {% endblock %}

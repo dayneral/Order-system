@@ -1,0 +1,1 @@
+{% if item.measure_type == "pack" %}Pack of {{ item.pack_size }}{% elif item.measure_type == "area" %}Cut to size: length × width (m){% elif item.measure_type == "cut" %}Cut to order: length (m){% elif item.measure_type == "linear" %}Length (m){% elif item.measure_type == "whole" %}Whole {{ item.unit }}s{% else %}Per {{ item.unit }}{% endif %}

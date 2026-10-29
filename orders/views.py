@@ -169,7 +169,11 @@ def _item_browser(request, order):
 
 
 def _lines_context(order, error=None, notice=None):
-    return {"order": order, "lines": list(order.lines.all()), "line_error": error, "line_notice": notice}
+    lines = list(order.lines.all())
+    # Totals per catalogue item, so the item grid's counters can follow the order.
+    counts = {str(line.item_id): float(line.quantity) for line in lines
+              if line.item_id and line.measure_type in services.COUNTED and line.quantity is not None}
+    return {"order": order, "lines": lines, "line_error": error, "line_notice": notice, "item_counts": counts}
 
 
 @login_required
@@ -235,11 +239,24 @@ def line_add(request, order_id):
     try:
         line = services.add_item_line(order, request.user, item, request.POST)
     except OrderError as exc:
-        return _lines_response(request, order, error=f"{item.part_no}: {exc}")
-    notice = (f"{line.part_no} {line.name} was already on the order: quantity is now {line.measurement_text}."
-              if getattr(line, "merged", False) else f"Added {line.part_no} {line.name}.")
+        return _lines_response(request, order, error=f"{item.name}: {exc}")
+    notice = (f"{line.name}: now {line.measurement_text}."
+              if getattr(line, "merged", False) else f"Added {line.name}.")
     return _lines_response(request, order, notice=notice,
                            extra=suggestions.after_add(order, item))
+
+
+@login_required
+@require_POST
+def line_set(request, order_id):
+    """Item grid: set an item's total quantity (the − button and typed numbers; + uses line_add)."""
+    order = _get_order(request, order_id, edit=True)
+    item = get_object_or_404(Item, pk=request.POST.get("item_id"))
+    try:
+        services.set_item_quantity(order, request.user, item, request.POST.get("quantity"))
+    except OrderError as exc:
+        return _lines_response(request, order, error=f"{item.name}: {exc}")
+    return _lines_response(request, order)
 
 
 @login_required

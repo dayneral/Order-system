@@ -35,7 +35,7 @@ def test_adding_same_counted_item_increases_quantity(client, make_user):
     client.post(url, {"item_id": item.pk, "quantity": "2"}, HTTP_HX_REQUEST="true")
     resp = client.post(url, {"item_id": item.pk, "quantity": "3"}, HTTP_HX_REQUEST="true")
     assert order.lines.count() == 1 and order.lines.get().quantity == D("5")
-    assert "already on the order: quantity is now 5 each" in resp.content.decode()
+    assert "Item PLU1: now 5 each." in resp.content.decode()
 
 
 def test_packs_merge_but_measured_pieces_stay_separate(make_user):

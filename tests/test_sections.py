@@ -59,7 +59,7 @@ def test_removing_a_section_keeps_its_items_as_unsectioned(admin_client, make_us
     order = services.create_draft(user)
     admin_client.force_login(user)
     page = admin_client.get(reverse("orders:items", args=[order.pk]) + "?section=unsectioned").content.decode()
-    assert "JOI001" in page and ">Other<" in page
+    assert "Hinge" in page and ">Other<" in page
     line = services.add_item_line(order, user, item, {"quantity": "1"})
     assert line.section_name == ""
 
