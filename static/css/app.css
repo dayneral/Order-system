@@ -576,3 +576,6 @@ table.review .group-row td { background: var(--sunk); font-weight: 700; }
 table.review .line-removed td { color: var(--muted); }
 table.details th { width: auto; white-space: nowrap; }
 .order-side .side-actions { margin: 0 0 .8rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line); }
+.conflict-void { margin-bottom: 1rem; }
+.conflict-void h3 { margin: 0; font-size: 1.05rem; }
+table.conflicts td { vertical-align: top; }

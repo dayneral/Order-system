@@ -621,3 +621,107 @@ def test_ordering_only_user_sees_no_order_button_link_from_voids(client, make_us
     client.force_login(user)
     v = Void.objects.create(job_type=JobType.objects.first(), address="No Order Flat", status="stc")
     assert b"Order materials" not in client.get(reverse("voids:detail", args=[v.pk])).content
+
+
+# --- Tracker sync -------------------------------------------------------------------------------
+
+def _sync(rows, user=None):
+    from voids.sync import run_sync
+    run = run_sync(tracker(rows), "upload", user)
+    assert run.ok, run.error
+    return run.report
+
+
+def _row(plumbing=("Ben 23/09", ORANGE), access="Master Key", supervisor="Stee L", painting=None):
+    return [["EH16 6PR", supervisor, "SE", 7968, date(2026, 10, 2), "38 Balmwell Terrace", access,
+             ("P Works 23/09", ORANGE), plumbing, "STC", painting]]
+
+
+def test_sync_applies_sheet_changes_keeps_app_changes_and_flags_conflicts(db, admin_user, mailoutbox):
+    from voids.models import TrackerConflict
+    r = _sync(_row())
+    assert r["created"] == ["38 Balmwell Terrace"]
+    v = Void.objects.get(simpro="7968")
+    assert v.access == "Master Key" and v.tasks.get(trade__name="Plumbing").status == "in_progress"
+    # 1. Only the sheet changes -> applied.
+    r = _sync(_row(access="Key safe 1234"))
+    v.refresh_from_db()
+    assert v.access == "Key safe 1234" and r["updated"]
+    # 2. Only the app changes -> kept.
+    plumbing = v.tasks.get(trade__name="Plumbing")
+    plumbing.status, plumbing.assignee = "complete", "Kyle"
+    plumbing.save()
+    _sync(_row(access="Key safe 1234"))
+    assert v.tasks.get(trade__name="Plumbing").status == "complete"
+    # 3. Both change differently -> conflict, app kept.
+    r = _sync(_row(access="Key safe 1234", plumbing=("Ben 23/09", YELLOW)))
+    assert r["conflicts"] == 1
+    c = TrackerConflict.objects.get(resolution="")
+    assert c.key == "trade:Plumbing" and "Complete" in c.app_text and "Snagging" in c.sheet_text
+    assert v.tasks.get(trade__name="Plumbing").status == "complete"
+    assert any("to review" in m.subject for m in mailoutbox)
+    # Same sheet again: no new conflict, still one open.
+    r = _sync(_row(access="Key safe 1234", plumbing=("Ben 23/09", YELLOW)))
+    assert r["conflicts"] == 0 and TrackerConflict.objects.filter(resolution="").count() == 1
+    from voids.sync import resolve
+    resolve(c, admin_user, use_sheet=True)
+    assert v.tasks.get(trade__name="Plumbing").status == "snagging"
+
+
+def test_sync_never_changes_signed_off_voids_and_flags_missing(db):
+    from voids.models import TrackerConflict
+    _sync(_row())
+    v = Void.objects.get(simpro="7968")
+    v.status = Void.Status.HANDED_BACK
+    v.save()
+    _sync(_row(access="Changed"))
+    v.refresh_from_db()
+    assert v.access == "Master Key"
+    assert TrackerConflict.objects.filter(void=v, key="access", resolution="").exists()
+    # A row that disappears is flagged, not deleted (only for open voids).
+    v.status = Void.Status.IN_PROGRESS
+    v.save()
+    _sync([["EH4 4SH", "Andrew F", "NW", 11157, None, "4/6 Muirhouse View", "", None, None, None, None]])
+    v.refresh_from_db()
+    assert v.missing_from_tracker and Void.objects.filter(pk=v.pk).exists()
+
+
+def test_first_sync_without_baseline_lists_differences(db, admin_user):
+    from voids.models import TrackerConflict
+    run = importer.preview_upload("t.xlsx", tracker(_row()), admin_user, today=TODAY)
+    importer.apply_run(run, admin_user)  # imported the old way: no baseline yet
+    v = Void.objects.get(simpro="7968")
+    v.access = "Changed in app"
+    v.save()
+    r = _sync(_row())
+    assert r["conflicts"] == 1 and TrackerConflict.objects.get().key == "access"
+    v.refresh_from_db()
+    assert v.access == "Changed in app"
+
+
+def test_tracker_page_and_resolve(admin_client, monkeypatch):
+    from voids.models import TrackerConflict
+    _sync(_row())
+    v = Void.objects.get(simpro="7968")
+    v.access = "App"
+    v.save()
+    _sync(_row(access="Sheet"))
+    assert admin_client.get(reverse("voids:tracker")).status_code == 200
+    admin_client.post(reverse("voids:tracker_resolve"), {"all": "1", "choice": "app"})
+    assert TrackerConflict.objects.get().resolution == "kept_app"
+    from voids import onedrive
+    monkeypatch.setattr(onedrive, "configured", lambda: True)
+    monkeypatch.setattr(onedrive, "download", lambda: ("t.xlsx", tracker(_row(access="Sheet 2"))))
+    admin_client.post(reverse("voids:tracker"), {"sync_now": "1"})
+    v.refresh_from_db()
+    assert v.access == "App"  # app changed since the last sync too -> conflict, app kept
+    assert TrackerConflict.objects.filter(resolution="").count() == 1
+
+
+def test_onedrive_share_url_encoding(monkeypatch):
+    from voids import onedrive
+    monkeypatch.setenv("VOIDS_TRACKER_URL", "https://bfsuk-my.sharepoint.com/:x:/g/personal/x/abc")
+    assert onedrive.content_url().startswith("https://graph.microsoft.com/v1.0/shares/u!aHR0cHM6")
+    monkeypatch.delenv("VOIDS_TRACKER_URL")
+    monkeypatch.setenv("VOIDS_TRACKER_PATH", "dayne@bfsuk.org:/Voids/Void Tracker.xlsx")
+    assert onedrive.content_url().endswith("/users/dayne%40bfsuk.org/drive/root:/Voids/Void%20Tracker.xlsx:/content")

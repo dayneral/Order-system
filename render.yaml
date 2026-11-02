@@ -38,6 +38,15 @@ services:
         sync: false
       - key: OCCUPIED_CC_EMAIL     # copy for occupied orders; blank = none (go-live: info@bfsuk.org)
         sync: false
+      # Tracker sync from OneDrive, for the "Sync now" button (docs/ONEDRIVE_SYNC.md); blank = off:
+      - key: MS_TENANT_ID
+        sync: false
+      - key: MS_CLIENT_ID
+        sync: false
+      - key: MS_CLIENT_SECRET
+        sync: false
+      - key: VOIDS_TRACKER_URL
+        sync: false
 
   # Nightly job: data retention (orders 30 days after delivery, old drafts),
   # then the voids supervisor email (snagging first). Schedule is in UTC
@@ -49,7 +58,7 @@ services:
     plan: starter
     schedule: "15 2 * * *"
     buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py wait_for_db && python manage.py run_retention; python manage.py send_void_digest
+    startCommand: python manage.py wait_for_db && python manage.py run_retention; python manage.py sync_void_tracker; python manage.py send_void_digest
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -71,4 +80,13 @@ services:
           name: bfs-orders
           envVarKey: EMAIL_HOST_PASSWORD
       - key: SITE_URL              # address of the site, for links in the email, e.g. https://bfs-orders.onrender.com
+        sync: false
+      # For the nightly tracker sync from OneDrive (docs/ONEDRIVE_SYNC.md); blank = off:
+      - key: MS_TENANT_ID
+        sync: false
+      - key: MS_CLIENT_ID
+        sync: false
+      - key: MS_CLIENT_SECRET
+        sync: false
+      - key: VOIDS_TRACKER_URL
         sync: false

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Tracker sync · Voids{% endblock %}
+{% block main_class %}page wide{% endblock %}
+{% block help %}<p class="help">The void tracker spreadsheet is synced into the app {% if configured %}every night from OneDrive{% else %}when a file is uploaded (OneDrive sync isn't set up yet){% endif %}. Changes made only in the sheet are copied in; changes made only in the app are kept. When the same thing was changed in <b>both</b>, the app's value is kept and it is listed below for you to decide. Nothing is ever deleted, and the app never changes the spreadsheet.</p>{% endblock %}
+{% block content %}
+<div class="vhead">
+  <h1>Tracker sync</h1>
+  <div class="actions">
+    {% if configured %}<form method="post">{% csrf_token %}<button class="primary" name="sync_now" value="1">Sync from OneDrive now</button></form>{% endif %}
+  </div>
+</div>
+
+<h2>To review {% if conflict_count %}<span class="pill pill-pending">{{ conflict_count }}</span>{% endif %}</h2>
+{% if groups %}
+<form method="post" action="{% url 'voids:tracker_resolve' %}" class="actions panel">{% csrf_token %}<input type="hidden" name="all" value="1">
+  <span>All {{ conflict_count }}:</span>
+  <button name="choice" value="app">Keep the app's values</button>
+  <button name="choice" value="sheet" onclick="return confirm('Use the tracker\'s value for every conflict?')">Use the tracker's values</button>
+</form>
+{% for void, items in groups %}
+<section class="conflict-void panel">
+  <div class="vhead"><h3><a href="{% url 'voids:detail' void.pk %}">{{ void.address }}</a>{% if void.simpro %} <span class="muted">#{{ void.simpro }}</span>{% endif %} <span class="pill st-{{ void.status }}">{{ void.get_status_display }}</span></h3>
+    <form method="post" action="{% url 'voids:tracker_resolve' %}" class="actions">{% csrf_token %}<input type="hidden" name="void" value="{{ void.pk }}">
+      <button name="choice" value="app">Keep app (all {{ items|length }})</button><button name="choice" value="sheet">Use tracker (all {{ items|length }})</button></form></div>
+  <table class="grid compact conflicts">
+    <thead><tr><th>What</th><th>In the app (kept for now)</th><th>In the tracker</th><th></th></tr></thead>
+    <tbody>{% for c in items %}<tr>
+      <td><b>{{ c.label }}</b><br><small class="muted">since {{ c.created_at|date:"d M H:i" }}</small></td>
+      <td>{{ c.app_text }}</td><td>{{ c.sheet_text }}</td>
+      <td class="nowrap"><form method="post" action="{% url 'voids:tracker_resolve' %}" class="actions">{% csrf_token %}<input type="hidden" name="conflict" value="{{ c.pk }}">
+        <button name="choice" value="app">Keep app</button><button name="choice" value="sheet">Use tracker</button></form></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endfor %}
+{% else %}<p>Nothing to review.</p>{% endif %}
+
+{% if missing %}
+<h2>No longer in the tracker ({{ missing|length }})</h2>
+<p class="hint">These voids came from the tracker but weren't in the latest sync. Nothing has been deleted: check them, and sign them off or update them in the app.</p>
+<ul>{% for v in missing %}<li><a href="{% url 'voids:detail' v.pk %}">{{ v.address }}</a>{% if v.simpro %} · #{{ v.simpro }}{% endif %} · {{ v.get_status_display }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h2>Sync a file by hand</h2>
+<form method="post" enctype="multipart/form-data" class="panel">{% csrf_token %}
+  {% include "includes/form.html" %}
+  <button class="primary">Upload and sync</button>
+  <p class="hint">Uses the same safe rules as the automatic sync. (The original <a href="{% url 'voids:import' %}">full import</a>, where the sheet replaces everything, is still there for a first load.)</p>
+</form>
+
+<h2>Recent syncs</h2>
+<table class="grid compact">
+  <thead><tr><th>When</th><th>From</th><th>Result</th></tr></thead>
+  <tbody>{% for run in runs %}<tr><td class="nowrap">{{ run.started_at|date:"d M Y H:i" }}</td><td>{{ run.get_source_display }}{% if run.run_by %} · {{ run.run_by.full_name }}{% endif %}</td>
+    <td>{% if run.ok %}{{ run.report.created|length }} new · {{ run.report.updated|length }} updated · {{ run.report.unchanged }} unchanged · {{ run.report.conflicts }} conflict(s){% if run.report.missing %} · {{ run.report.missing|length }} missing{% endif %}{% else %}<span class="late">Failed: {{ run.error }}</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="3">No syncs yet.</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}

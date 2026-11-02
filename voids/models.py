@@ -188,6 +188,8 @@ class Void(models.Model):
     last_activity = models.DateTimeField(default=timezone.now, db_index=True)
     last_inspection = models.DateField(null=True, blank=True)
     imported = models.BooleanField(default=False)
+    # Set by the tracker sync when an imported void is no longer in the spreadsheet.
+    missing_from_tracker = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     handed_back_at = models.DateField(null=True, blank=True)
@@ -346,3 +348,53 @@ class VoidImportRun(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class TrackerBaseline(models.Model):
+    """What the spreadsheet said about a void at the last sync, so the next sync can tell
+    whether a difference came from the sheet or from the app."""
+
+    void = models.OneToOneField(Void, on_delete=models.CASCADE, related_name="tracker_baseline")
+    data = models.JSONField(default=dict)
+    synced_at = models.DateTimeField(auto_now=True)
+
+
+class TrackerConflict(models.Model):
+    """A field changed in both the app and the spreadsheet since the last sync. The app's value
+    is kept until someone chooses."""
+
+    class Resolution(models.TextChoices):
+        OPEN = "", "Open"
+        KEPT_APP = "kept_app", "Kept the app's value"
+        USED_SHEET = "used_sheet", "Used the tracker's value"
+        SUPERSEDED = "superseded", "Resolved by a later sync"
+
+    void = models.ForeignKey(Void, on_delete=models.CASCADE, related_name="tracker_conflicts")
+    key = models.CharField(max_length=80)          # "address", "trade:Plumbing", ...
+    label = models.CharField(max_length=120)
+    app_text = models.CharField(max_length=500, blank=True)
+    sheet_text = models.CharField(max_length=500, blank=True)
+    sheet_value = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolution = models.CharField(max_length=12, choices=Resolution.choices, blank=True, default="")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        ordering = ["void__address", "key"]
+
+
+class TrackerSyncRun(models.Model):
+    class Source(models.TextChoices):
+        ONEDRIVE = "onedrive", "OneDrive (automatic)"
+        UPLOAD = "upload", "Uploaded file"
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    source = models.CharField(max_length=10, choices=Source.choices)
+    run_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    ok = models.BooleanField(default=False)
+    error = models.TextField(blank=True)
+    report = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ["-started_at"]

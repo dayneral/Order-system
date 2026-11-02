@@ -651,3 +651,64 @@ def overview(request):
     from .overview import build
     job = JobType.objects.filter(pk=request.GET.get("job") or 0).first()
     return render(request, "voids/overview.html", build(job))
+
+
+@admin_required
+def tracker(request):
+    """Tracker sync: sync now / upload, and the conflicts waiting for a decision."""
+    from . import onedrive
+    from .models import TrackerConflict, TrackerSyncRun
+    from .sync import run_sync
+    if request.method == "POST" and "sync_now" in request.POST:
+        try:
+            name, data = onedrive.download()
+        except onedrive.OneDriveError as exc:
+            messages.error(request, str(exc))
+        else:
+            run = run_sync(data, TrackerSyncRun.Source.ONEDRIVE, request.user, name)
+            _sync_message(request, run)
+        return redirect("voids:tracker")
+    form = UploadForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        upload = form.cleaned_data["file"]
+        run = run_sync(upload.read(), TrackerSyncRun.Source.UPLOAD, request.user, upload.name)
+        _sync_message(request, run)
+        return redirect("voids:tracker")
+    conflicts = TrackerConflict.objects.filter(resolution="").select_related("void")
+    groups = {}
+    for c in conflicts:
+        groups.setdefault(c.void, []).append(c)
+    return render(request, "voids/tracker.html", {
+        "form": form, "configured": onedrive.configured(), "groups": groups.items(), "conflict_count": len(conflicts),
+        "runs": TrackerSyncRun.objects.select_related("run_by")[:10],
+        "missing": Void.objects.filter(missing_from_tracker=True).exclude(status=Void.Status.HANDED_BACK),
+    })
+
+
+def _sync_message(request, run):
+    if not run.ok:
+        messages.error(request, f"Sync failed: {run.error}")
+        return
+    r = run.report
+    messages.success(request, f"Synced: {len(r['created'])} new, {len(r['updated'])} updated, "
+                              f"{r['conflicts']} conflict(s) to review.")
+
+
+@admin_required
+@require_POST
+def tracker_resolve(request):
+    from .models import TrackerConflict
+    from .sync import resolve
+    use_sheet = request.POST.get("choice") == "sheet"
+    ids = request.POST.getlist("conflict")
+    if request.POST.get("all") == "1":
+        ids = list(TrackerConflict.objects.filter(resolution="").values_list("pk", flat=True))
+    elif request.POST.get("void"):
+        ids = list(TrackerConflict.objects.filter(resolution="", void_id=request.POST["void"])
+                   .values_list("pk", flat=True))
+    done = 0
+    for c in TrackerConflict.objects.filter(pk__in=ids, resolution="").select_related("void"):
+        resolve(c, request.user, use_sheet)
+        done += 1
+    messages.success(request, f"{done} conflict(s): {'used the tracker' if use_sheet else 'kept the app'}.")
+    return redirect("voids:tracker")
