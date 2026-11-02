@@ -576,3 +576,15 @@ table.review .group-row td { background: var(--sunk); font-weight: 700; }
 table.review .line-removed td { color: var(--muted); }
 table.details th { width: auto; white-space: nowrap; }
 .order-side .side-actions { margin: 0 0 .8rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line); }
+/* Save / Review buttons stay pinned at the top of the order panel while its list scrolls. */
+.order-side > .panel { padding-top: 0; }
+.order-side .side-actions { position: sticky; top: 0; z-index: 2; background: var(--card);
+  margin: 0 0 .8rem; padding: .8rem 0; border-bottom: 1px solid var(--line); }
+.order-side h2.first { padding-top: 1rem; margin-bottom: 0; }
+/* Special instructions: same size and style as the address box. */
+.job-strip .special textarea, .job-strip textarea { width: 100%; height: 2.6rem; min-height: 2.6rem; padding: .35rem .5rem;
+  border: 2px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; resize: vertical; }
+.job-strip .special .hint { display: inline; font-weight: 400; }
+.job-strip .jd-grid .special { grid-column: span 2; }
+.job-strip .special label .hint { margin: 0; }
+.job-strip .special textarea, .job-strip textarea { height: 3.3rem; }

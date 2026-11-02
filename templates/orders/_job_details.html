@@ -52,9 +52,8 @@
       sync();
     })();
   </script>
-  <details class="span2"{% if f.special_instructions.value %} open{% endif %}>
-    <summary>Special instructions (optional)</summary>
-    {{ f.special_instructions }}
-  </details>
+  <div class="field span2 special">
+    <label for="{{ f.special_instructions.id_for_label }}">Special instructions <span class="hint">(optional)</span></label>{{ f.special_instructions }}
+  </div>
 </div>
 {% endwith %}
