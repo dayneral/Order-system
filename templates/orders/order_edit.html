@@ -19,6 +19,12 @@
 <div class="builder">
   <section class="panel browser" id="browser"
            data-add-url="{% url 'orders:line_add' order.pk %}" data-set-url="{% url 'orders:line_set' order.pk %}">
+    {# Search box sits outside #items so it keeps focus while results update. #}
+    <form class="search" hx-get="{% url 'orders:items' order.pk %}" hx-target="#items" hx-swap="outerHTML"
+          hx-trigger="input changed delay:300ms from:find input, submit" action="" method="get">
+      <input type="search" id="item-search" name="q" value="{{ q }}" placeholder="Search all sections by name or Part No." autocomplete="off">
+      <button>Search</button>
+    </form>
     {% include "orders/_items.html" %}
     <details class="nonstock">
       <summary>Can't find an item? Add an other item</summary>
@@ -89,6 +95,11 @@
     if (e.key === "Enter" && e.target.classList.contains("count")) { e.preventDefault(); e.target.blur(); }
   });
   document.body.addEventListener("htmx:afterSettle", syncCounts);
+  // Picking a section tab clears the search box (the list is no longer a search).
+  document.body.addEventListener("htmx:afterSwap", function (e) {
+    var items = document.getElementById("items"), box = document.getElementById("item-search");
+    if (items && box && e.detail.target.id === "items" && document.activeElement !== box) box.value = items.dataset.q || "";
+  });
   syncCounts();
 })();
 </script>

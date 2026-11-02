@@ -1,9 +1,4 @@
-<div id="items">
-  <form class="search" hx-get="{% url 'orders:items' order.pk %}" hx-target="#items" hx-swap="outerHTML"
-        hx-trigger="input changed delay:300ms from:find input, submit" action="" method="get">
-    <input type="search" name="q" value="{{ q }}" placeholder="Search all sections by name or Part No." autocomplete="off">
-    <button>Search</button>
-  </form>
+<div id="items" data-q="{{ q }}">
   <div class="section-tabs">
     {% for s in sections %}
       <a href="?section={{ s.key }}" class="{% if s.key == current_section %}active{% endif %}"
