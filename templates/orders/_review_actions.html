@@ -1,4 +1,6 @@
 <form method="post" action="{% url 'orders:review' order.pk %}" class="review-actions">{% csrf_token %}
+  {% if open_orders %}<label class="confirm-separate"><input type="checkbox" name="confirm_separate" value="1" required>
+    Yes, place this as a separate order</label>{% endif %}
   <a class="button" href="{% url 'orders:edit' order.pk %}">Back to edit</a>
   <button class="primary big">{% if amending %}Send amended order to stores{% else %}Confirm and send to stores{% endif %}</button>
 </form>

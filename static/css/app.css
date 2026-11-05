@@ -588,3 +588,5 @@ table.details th { width: auto; white-space: nowrap; }
 .job-strip .jd-grid .special { grid-column: span 2; }
 .job-strip .special label .hint { margin: 0; }
 .job-strip .special textarea, .job-strip textarea { height: 3.3rem; }
+.confirm-separate { display: flex; gap: .5rem; align-items: center; font-weight: 700; margin-right: auto; }
+.confirm-separate input { width: 20px; height: 20px; accent-color: var(--brand); }

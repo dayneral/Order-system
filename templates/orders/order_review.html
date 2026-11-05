@@ -10,6 +10,12 @@
 <div class="msg msg-warning">Nothing has been sent yet. Check the items and quantities below, then press
   <b>{% if amending %}Send amended order{% else %}Confirm and send{% endif %}</b>.</div>
 
+{% if open_orders %}
+<div class="msg msg-warning"><b>Job {{ order.job_number }} already has {{ open_orders|length }} open order{{ open_orders|pluralize }}:</b>
+  <ul>{% for o in open_orders %}<li><a href="{% url 'orders:detail' o.pk %}">{{ o.order_number }}</a>, placed by {{ o.requester_name }} on {{ o.submitted_at|date:"d M Y" }}, delivery {{ o.delivery_date|date:"d M Y" }}.{% if o.owner_id == user.pk or user.is_admin %} <a href="{% url 'orders:edit' o.pk %}">Amend that order instead</a>{% endif %}</li>{% endfor %}</ul>
+  If this is extra material for a different delivery, tick the box below to place it as a separate order.</div>
+{% endif %}
+
 {% include "orders/_review_actions.html" %}
 
 <section class="panel">

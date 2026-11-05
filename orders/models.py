@@ -64,11 +64,6 @@ class Order(models.Model):
         ordering = ["-submitted_at", "-created_at"]
         constraints = [
             # One active order per job. Drafts and cancelled orders don't count.
-            models.UniqueConstraint(
-                fields=["job_number_key"],
-                condition=Q(status="submitted") & ~Q(job_number_key=""),
-                name="one_active_order_per_job",
-            ),
         ]
 
     def __str__(self):

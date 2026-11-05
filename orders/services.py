@@ -10,7 +10,7 @@ import re
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
@@ -193,19 +193,30 @@ def header_errors(order, today=None):
     return errors
 
 
-def active_order_for_job(job_number_key, exclude=None):
-    if not job_number_key:
-        return None
+# Job numbers that mean "not known yet": never treated as the same job.
+PLACEHOLDER_JOB_NUMBERS = {"TBC", "TBA", "TBD", "UNKNOWN", "NA", "N/A", "NONE", "-", "0"}
+
+
+def active_orders_for_job(job_number_key, exclude=None):
+    """Open (submitted, not cancelled) orders for a job. A job may have several, but users are
+    warned and must confirm before placing another."""
+    if not job_number_key or job_number_key in PLACEHOLDER_JOB_NUMBERS:
+        return []
     qs = Order.objects.filter(status=Order.Status.SUBMITTED, job_number_key=job_number_key)
     if exclude is not None:
         qs = qs.exclude(pk=exclude.pk)
-    return qs.first()
+    return list(qs.order_by("submitted_at"))
+
+
+def active_order_for_job(job_number_key, exclude=None):
+    orders = active_orders_for_job(job_number_key, exclude)
+    return orders[0] if orders else None
 
 
 def _job_clash_message(other):
-    return (f"Job {other.job_number} already has an active order, {other.order_number}, placed by "
+    return (f"Job {other.job_number} already has an open order, {other.order_number}, placed by "
             f"{other.requester_name} on {timezone.localtime(other.submitted_at):%d %b %Y}. "
-            "Amend that order, or cancel it before placing a new one.")
+            "You can amend that order instead, or confirm a separate order when you submit.")
 
 
 def update_header(order, user, data, today=None):
@@ -228,17 +239,10 @@ def update_header(order, user, data, today=None):
         errors = header_errors(order, today)
         if errors:
             raise OrderError(errors[0], errors)
-        other = active_order_for_job(order.job_number_key, exclude=order)
-        if other:
-            raise OrderError(_job_clash_message(other))
 
     changes = {name: {"from": str(old[name] or ""), "to": str(getattr(order, name) or "")}
                for name in HEADER_FIELDS if old[name] != getattr(order, name)}
-    try:
-        with transaction.atomic():
-            order.save()
-    except IntegrityError:
-        raise OrderError(_job_clash_message(active_order_for_job(order.job_number_key, exclude=order)))
+    order.save()
     if changes:
         _touch(order, user, "changed " + ", ".join(k.replace("_", " ") for k in changes), changes)
     return order
@@ -428,10 +432,18 @@ def submission_errors(order, user, today=None):
     return []
 
 
-def submit(order, user, today=None):
-    """Turn a draft into a submitted order. Raises OrderError listing every problem."""
+def submit(order, user, today=None, confirm_separate=False):
+    """Turn a draft into a submitted order. Raises OrderError listing every problem.
+    If the job already has an open order, the user must confirm a separate order."""
     lines = _check_submission(order, user, today)
-    return _do_submit(order, user, lines)
+    others = active_orders_for_job(order.job_number_key, exclude=order)
+    if others and not confirm_separate:
+        raise OrderError(_job_clash_message(others[0]) + " Tick the box to confirm a separate order.")
+    order = _do_submit(order, user, lines)
+    if others:
+        record(user, "order.submit", order, f"Placed as a separate order alongside "
+                                            f"{', '.join(o.order_number for o in others)} for job {order.job_number}")
+    return order
 
 
 def _check_submission(order, user, today=None):
@@ -455,32 +467,25 @@ def _check_submission(order, user, today=None):
         elif item.measure_type != line.measure_type:
             errors.append(f"{line.part_no} {line.name} is now ordered differently ({item.get_measure_type_display()}). "
                           "Remove it and add it again.")
-    other = active_order_for_job(order.job_number_key)
-    if other:
-        errors.append(_job_clash_message(other))
     if errors:
         raise OrderError(errors[0], errors)
     return lines
 
 
 def _do_submit(order, user, lines):
-    try:
-        with transaction.atomic():
-            # Fix prices and details as they are right now.
-            for line in lines:
-                if not line.is_non_stocked:
-                    _copy_item(line, line.item)
-                    _price(line)
-                    line.save()
-            order.submitted_at = timezone.now()
-            order.status = Order.Status.SUBMITTED
-            order.requester_name = user.full_name
-            order.order_number = _next_order_number(timezone.localtime(order.submitted_at).year)
-            order.order_value = order_total(line.line_value for line in lines)
-            order.save()
-    except IntegrityError:
-        order.refresh_from_db()
-        raise OrderError(_job_clash_message(active_order_for_job(order.job_number_key)))
+    with transaction.atomic():
+        # Fix prices and details as they are right now.
+        for line in lines:
+            if not line.is_non_stocked:
+                _copy_item(line, line.item)
+                _price(line)
+                line.save()
+        order.submitted_at = timezone.now()
+        order.status = Order.Status.SUBMITTED
+        order.requester_name = user.full_name
+        order.order_number = _next_order_number(timezone.localtime(order.submitted_at).year)
+        order.order_value = order_total(line.line_value for line in lines)
+        order.save()
     record(user, "order.submit", order, f"Submitted order {order.order_number} for job {order.job_number}")
     notify.order_submitted(order)
     return order

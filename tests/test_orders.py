@@ -247,32 +247,55 @@ def test_job_can_be_reordered_after_cancellation(make_user, items):
     assert second.status == Order.Status.SUBMITTED
 
 
-def test_database_enforces_one_active_order_per_job(make_user, items):
-    from django.db import IntegrityError, transaction
-
+def test_second_order_for_job_allowed_once_confirmed(make_user, items):
     user = make_user()
-    services.submit(ready_draft(user, items, "J-700"), user)
-    with pytest.raises(IntegrityError), transaction.atomic():
-        Order.objects.create(owner=user, job_number="J-700", job_number_key="J-700", status=Order.Status.SUBMITTED,
-                             order_number="BFS-TEST-1")
+    first = services.submit(ready_draft(user, items, "J-700"), user)
+    second = ready_draft(user, items, "J-700")
+    services.submit(second, user, confirm_separate=True)
+    second.refresh_from_db()
+    assert second.status == Order.Status.SUBMITTED and second.order_number != first.order_number
+    assert AuditEntry.objects.filter(target_id=str(second.pk), summary__contains=first.order_number).exists()
 
 
-def test_amending_job_number_to_one_with_active_order_is_blocked(make_user, items):
+def test_placeholder_job_numbers_never_clash(make_user, items):
+    user = make_user()
+    services.submit(ready_draft(user, items, "TBC"), user)
+    services.submit(ready_draft(user, items, "tbc"), user)  # no confirmation needed
+    assert Order.objects.filter(status=Order.Status.SUBMITTED, job_number_key="TBC").count() == 2
+
+
+def test_amending_job_number_to_one_with_open_order_is_allowed(make_user, items):
     user = make_user()
     services.submit(ready_draft(user, items, "J-1"), user)
-    second = ready_draft(user, items, "J-2")
-    services.submit(second, user)
-    with pytest.raises(OrderError, match="already has an active order"):
-        services.update_header(second, user, {"job_number": "J-1"})
+    second = services.submit(ready_draft(user, items, "J-2"), user)
+    services.update_header(second, user, {"job_number": "J-1"})
+    second.refresh_from_db()
+    assert second.job_number == "J-1"
 
 
-def test_draft_saved_with_job_that_has_active_order_shows_warning(client, make_user, items):
+def test_draft_saved_with_job_that_has_open_order_shows_warning(client, make_user, items):
     user = make_user()
     services.submit(ready_draft(user, items, "J-800"), user)
     client.force_login(user)
     draft = services.create_draft(user)
     resp = client.post(reverse("orders:edit", args=[draft.pk]), {"job_number": "J-800", "action": "save"})
-    assert any("already has an active order" in str(m) for m in get_messages(resp.wsgi_request))
+    assert any("already has an open order" in str(m) for m in get_messages(resp.wsgi_request))
+
+
+def test_review_page_asks_to_confirm_separate_order(client, make_user, items):
+    user = make_user()
+    first = services.submit(ready_draft(user, items, "J-900"), user)
+    second = ready_draft(user, items, "J-900")
+    client.force_login(user)
+    review = reverse("orders:review", args=[second.pk])
+    page = client.get(review).content.decode()
+    assert "already has 1 open order" in page and first.order_number in page and 'name="confirm_separate"' in page
+    client.post(review)  # not ticked: nothing sent
+    second.refresh_from_db()
+    assert second.is_draft
+    client.post(review, {"confirm_separate": "1"})
+    second.refresh_from_db()
+    assert second.status == Order.Status.SUBMITTED
 
 
 # --- Amend and cancel ---------------------------------------------------------------

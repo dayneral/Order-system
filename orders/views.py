@@ -224,12 +224,12 @@ def order_review(request, order_id):
                 services.finish_amendment(order, request.user)
                 _report_email(request, order, f"Amended order {order.order_number} sent to stores.")
             else:
-                services.submit(order, request.user)
+                services.submit(order, request.user, confirm_separate=request.POST.get("confirm_separate") == "1")
                 _report_email(request, order, f"Order {order.order_number} submitted and sent to stores.")
         except OrderError as exc:
             for error in exc.errors:
                 messages.error(request, error)
-            return redirect("orders:edit", order.pk)
+            return redirect("orders:review" if order.is_draft and order.lines.exists() else "orders:edit", order.pk)
         return redirect("orders:detail", order.pk)
     problems = (services.amendment_errors(order, request.user) if amending
                 else services.submission_errors(order, request.user))
@@ -241,7 +241,9 @@ def order_review(request, order_id):
     kind = "amended" if amending else "submitted"
     context = documents.document_context(order, kind, last_sent_snapshot(order) if amending else None)
     from notifications.sending import cc_list
-    return render(request, "orders/order_review.html", {**context, "amending": amending, "copies": cc_list(order)})
+    return render(request, "orders/order_review.html", {
+        **context, "amending": amending, "copies": cc_list(order),
+        "open_orders": [] if amending else services.active_orders_for_job(order.job_number_key, exclude=order)})
 
 
 @login_required
